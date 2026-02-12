@@ -1,4 +1,4 @@
-import type { PriceProposal, ReviewedProposal, RevenueCycleResult } from "@/lib/agents/types";
+import type { PriceProposal, RevenueCycleResult } from "@/lib/agents/types";
 
 export interface ProposalView extends PriceProposal {
   status: "pending" | "approved" | "rejected";
