@@ -45,6 +45,8 @@ export interface PMSClient {
     dates: string[]
   ): Promise<VerificationResult>;
 
+  getReservation(id: string | number): Promise<Reservation>;
+
   // Utility
   getMode(): "mock" | "live";
 }

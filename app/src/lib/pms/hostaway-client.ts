@@ -192,6 +192,12 @@ export class HostawayClient implements PMSClient {
     );
   }
 
+  async getReservation(id: string | number): Promise<Reservation> {
+    throw new Error(
+      "Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"
+    );
+  }
+
   async updateCalendar(
     id: string | number,
     intervals: CalendarInterval[]

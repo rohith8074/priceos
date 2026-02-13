@@ -108,6 +108,16 @@ export class MockPMSClient implements PMSClient {
     return results;
   }
 
+  async getReservation(id: string | number): Promise<Reservation> {
+    await this.delay(50);
+    const numId = typeof id === "string" ? parseInt(id) : id;
+    const reservation = MOCK_RESERVATIONS.find((r) => r.id === numId);
+    if (!reservation) {
+      throw new Error(`Reservation ${id} not found`);
+    }
+    return reservation;
+  }
+
   async updateCalendar(
     id: string | number,
     intervals: CalendarInterval[]
