@@ -39,6 +39,7 @@ export interface CalendarDay {
   minimumStay: number;
   maximumStay: number;
   notes?: string;
+  blockReason?: "owner_stay" | "maintenance" | "other";
 }
 
 export interface Reservation {

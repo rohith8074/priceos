@@ -47,6 +47,20 @@ export interface PMSClient {
 
   getReservation(id: string | number): Promise<Reservation>;
 
+  blockDates(
+    id: string | number,
+    startDate: string,
+    endDate: string,
+    reason: "owner_stay" | "maintenance" | "other"
+  ): Promise<UpdateResult>;
+  unblockDates(
+    id: string | number,
+    startDate: string,
+    endDate: string
+  ): Promise<UpdateResult>;
+
+  updateListing(id: string | number, updates: Partial<Listing>): Promise<Listing>;
+
   // Utility
   getMode(): "mock" | "live";
 }

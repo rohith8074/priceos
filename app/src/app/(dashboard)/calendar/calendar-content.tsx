@@ -97,7 +97,15 @@ export function CalendarContent({
           Loading calendar...
         </div>
       ) : (
-        <CalendarGrid days={days} />
+        <CalendarGrid days={days} onRefresh={async () => {
+          setLoading(true);
+          try {
+            const res = await fetch(`/api/calendar?propertyId=${selectedPropertyId}`);
+            if (res.ok) setDays(await res.json());
+          } finally {
+            setLoading(false);
+          }
+        }} />
       )}
     </div>
   );

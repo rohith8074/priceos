@@ -24,11 +24,16 @@ export class MockPMSClient implements PMSClient {
     string,
     Map<string, { date: string; price: number }>
   > = new Map();
+  private blockOverrides: Map<string, Map<string, { blocked: boolean; reason?: string }>> = new Map();
+  private listingOverrides: Map<number, Partial<Listing>> = new Map();
 
   async listListings(): Promise<Listing[]> {
     // Simulate network delay
     await this.delay(100);
-    return MOCK_PROPERTIES;
+    return MOCK_PROPERTIES.map((p) => {
+      const overrides = this.listingOverrides.get(p.id);
+      return overrides ? { ...p, ...overrides } : p;
+    });
   }
 
   async getListing(id: string | number): Promise<Listing> {
@@ -41,7 +46,8 @@ export class MockPMSClient implements PMSClient {
       throw new Error(`Listing ${id} not found`);
     }
 
-    return listing;
+    const overrides = this.listingOverrides.get(numId);
+    return overrides ? { ...listing, ...overrides } : listing;
   }
 
   async getCalendar(
@@ -68,6 +74,22 @@ export class MockPMSClient implements PMSClient {
         const override = overrides.get(day.date);
         if (override) {
           return { ...day, price: override.price };
+        }
+        return day;
+      });
+    }
+
+    // Apply block overrides
+    const blockOvr = this.blockOverrides.get(String(numId));
+    if (blockOvr) {
+      calendar = calendar.map((day) => {
+        const override = blockOvr.get(day.date);
+        if (override) {
+          if (override.blocked) {
+            return { ...day, status: "blocked" as const, price: 0, blockReason: override.reason as CalendarDay["blockReason"] };
+          } else {
+            return { ...day, status: "available" as const, blockReason: undefined };
+          }
         }
         return day;
       });
@@ -108,6 +130,16 @@ export class MockPMSClient implements PMSClient {
     return results;
   }
 
+  async updateListing(id: string | number, updates: Partial<Listing>): Promise<Listing> {
+    await this.delay(100);
+    const numId = typeof id === "string" ? parseInt(id) : id;
+    const listing = MOCK_PROPERTIES.find((p) => p.id === numId);
+    if (!listing) throw new Error(`Listing ${id} not found`);
+    const existing = this.listingOverrides.get(numId) ?? {};
+    this.listingOverrides.set(numId, { ...existing, ...updates });
+    return { ...listing, ...existing, ...updates };
+  }
+
   async getReservation(id: string | number): Promise<Reservation> {
     await this.delay(50);
     const numId = typeof id === "string" ? parseInt(id) : id;
@@ -116,6 +148,53 @@ export class MockPMSClient implements PMSClient {
       throw new Error(`Reservation ${id} not found`);
     }
     return reservation;
+  }
+
+  async blockDates(
+    id: string | number,
+    startDate: string,
+    endDate: string,
+    reason: "owner_stay" | "maintenance" | "other"
+  ): Promise<UpdateResult> {
+    await this.delay(100);
+    const key = String(typeof id === "string" ? parseInt(id) : id);
+    if (!this.blockOverrides.has(key)) {
+      this.blockOverrides.set(key, new Map());
+    }
+    const overrides = this.blockOverrides.get(key)!;
+    let count = 0;
+    const current = new Date(startDate);
+    const end = new Date(endDate);
+    while (current <= end) {
+      const dateStr = current.toISOString().split("T")[0];
+      overrides.set(dateStr, { blocked: true, reason });
+      count++;
+      current.setDate(current.getDate() + 1);
+    }
+    return { success: true, updatedCount: count };
+  }
+
+  async unblockDates(
+    id: string | number,
+    startDate: string,
+    endDate: string
+  ): Promise<UpdateResult> {
+    await this.delay(100);
+    const key = String(typeof id === "string" ? parseInt(id) : id);
+    if (!this.blockOverrides.has(key)) {
+      this.blockOverrides.set(key, new Map());
+    }
+    const overrides = this.blockOverrides.get(key)!;
+    let count = 0;
+    const current = new Date(startDate);
+    const end = new Date(endDate);
+    while (current <= end) {
+      const dateStr = current.toISOString().split("T")[0];
+      overrides.set(dateStr, { blocked: false });
+      count++;
+      current.setDate(current.getDate() + 1);
+    }
+    return { success: true, updatedCount: count };
   }
 
   async updateCalendar(

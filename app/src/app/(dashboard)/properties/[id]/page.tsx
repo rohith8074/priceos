@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Bed, Bath, MapPin } from "lucide-react";
 import { PropertyAskAI } from "./ask-ai";
+import { ListingEditForm } from "@/components/properties/listing-edit-form";
 import { mapCycleToProposals } from "@/types/proposal";
 
 interface Props {
@@ -46,7 +47,10 @@ export default async function PropertyDetailPage({ params }: Props) {
             {property.area}
           </div>
         </div>
-        <PropertyAskAI property={property} />
+        <div className="flex items-center gap-2">
+          <ListingEditForm property={property} />
+          <PropertyAskAI property={property} />
+        </div>
       </div>
 
       {/* Property Details */}

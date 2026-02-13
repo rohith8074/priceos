@@ -198,6 +198,18 @@ export class HostawayClient implements PMSClient {
     );
   }
 
+  async updateListing(id: string | number, updates: Partial<Listing>): Promise<Listing> {
+    throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock");
+  }
+
+  async blockDates(id: string | number, startDate: string, endDate: string, reason: "owner_stay" | "maintenance" | "other"): Promise<UpdateResult> {
+    throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock");
+  }
+
+  async unblockDates(id: string | number, startDate: string, endDate: string): Promise<UpdateResult> {
+    throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock");
+  }
+
   async updateCalendar(
     id: string | number,
     intervals: CalendarInterval[]

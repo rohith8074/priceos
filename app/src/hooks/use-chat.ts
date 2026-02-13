@@ -44,6 +44,9 @@ export function useChat() {
           `Bedrooms: ${activeProperty.bedroomsNumber}`,
           `Base Price: ${activeProperty.price} ${activeProperty.currencyCode}`,
           `Price Range: ${activeProperty.priceFloor}-${activeProperty.priceCeiling} ${activeProperty.currencyCode}`,
+          activeProperty.personCapacity
+            ? `Max Guests: ${activeProperty.personCapacity}`
+            : null,
           activeProperty.amenities?.length
             ? `Amenities: ${(activeProperty.amenities as string[]).join(', ')}`
             : null,
