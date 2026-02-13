@@ -2,13 +2,15 @@ import { createPMSClient } from "@/lib/pms";
 import { runFullRevenueCycle } from "@/lib/agents";
 import { PropertyList } from "@/components/properties/property-list";
 import { DashboardStats } from "./dashboard-stats";
+import { ChannelBreakdown } from "@/components/dashboard/channel-breakdown";
 
 export default async function DashboardPage() {
   const pms = createPMSClient();
 
-  const [allProperties, cycle] = await Promise.all([
+  const [allProperties, cycle, allReservations] = await Promise.all([
     pms.listListings(),
     runFullRevenueCycle(),
+    pms.getReservations(),
   ]);
 
   const avgBasePrice =
@@ -38,6 +40,9 @@ export default async function DashboardPage() {
         occupancyRate={occupancyRate}
         monthlyRevenueFormatted={monthlyRevenue.toLocaleString("en-US")}
       />
+
+      {/* Channel Breakdown */}
+      <ChannelBreakdown reservations={allReservations} />
 
       {/* Properties Grid */}
       <div>

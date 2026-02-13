@@ -1,7 +1,9 @@
 import { createPMSClient } from "@/lib/pms";
 import { runRevenueCycle } from "@/lib/agents";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Bed, Bath, MapPin } from "lucide-react";
@@ -48,6 +50,9 @@ export default async function PropertyDetailPage({ params }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Link href={`/properties/${property.id}/rules`}>
+            <Button variant="outline" size="sm">Pricing Rules</Button>
+          </Link>
           <ListingEditForm property={property} />
           <PropertyAskAI property={property} />
         </div>
