@@ -3,15 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
+  Home,
   Building2,
-  ClipboardList,
   CalendarDays,
   Mail,
   CheckSquare,
-  FileCheck,
-  Lightbulb,
+  DollarSign,
   Wallet,
+  Settings,
   MessageSquare,
   Menu,
   X,
@@ -22,33 +21,53 @@ import { useChatStore } from "@/stores/chat-store";
 import { useAgentStore } from "@/stores/agent-store";
 import { useState } from "react";
 
-const navSections = [
-  {
-    label: "Operations",
-    items: [
-      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/properties", label: "Properties", icon: Building2 },
-      { href: "/reservations", label: "Reservations", icon: ClipboardList },
-      { href: "/calendar", label: "Calendar", icon: CalendarDays },
-      { href: "/inbox", label: "Inbox", icon: Mail },
-      { href: "/tasks", label: "Tasks", icon: CheckSquare },
-    ],
-  },
-  {
-    label: "Intelligence",
-    items: [
-      { href: "/proposals", label: "Proposals", icon: FileCheck },
-      { href: "/insights", label: "Insights", icon: Lightbulb },
-      { href: "/finance", label: "Finance", icon: Wallet },
-    ],
-  },
+const navItems = [
+  { href: "/dashboard", label: "Home", icon: Home },
+  { href: "/properties", label: "Properties", icon: Building2 },
+  { href: "/bookings", label: "Bookings", icon: CalendarDays },
+  { href: "/inbox", label: "Inbox", icon: Mail },
+  { href: "/tasks", label: "Tasks", icon: CheckSquare },
 ];
+
+const navItemsLower = [
+  { href: "/pricing", label: "Pricing", icon: DollarSign },
+  { href: "/finance", label: "Finance", icon: Wallet },
+];
+
+const navSettings = { href: "/settings", label: "Settings", icon: Settings };
 
 export function Sidebar() {
   const pathname = usePathname();
   const { open } = useChatStore();
   const { agents } = useAgentStore();
   const [collapsed, setCollapsed] = useState(false);
+
+  function isActive(href: string) {
+    return (
+      pathname === href ||
+      (href !== "/dashboard" && pathname.startsWith(href))
+    );
+  }
+
+  function renderNavItem(item: { href: string; label: string; icon: React.ComponentType<{ className?: string }> }) {
+    const active = isActive(item.href);
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        onClick={() => setCollapsed(false)}
+        className={cn(
+          "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+          active
+            ? "bg-sidebar-accent text-sidebar-accent-foreground"
+            : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+        )}
+      >
+        <item.icon className="h-4 w-4" />
+        {item.label}
+      </Link>
+    );
+  }
 
   return (
     <>
@@ -80,35 +99,16 @@ export function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-4 p-3">
-          {navSections.map((section) => (
-            <div key={section.label} className="space-y-1">
-              <p className="px-3 text-xs font-medium text-sidebar-foreground/50 uppercase tracking-wider">
-                {section.label}
-              </p>
-              {section.items.map((item) => {
-                const isActive =
-                  pathname === item.href ||
-                  (item.href !== "/dashboard" && pathname.startsWith(item.href));
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setCollapsed(false)}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                      isActive
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
-                    )}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
+        <nav className="flex-1 space-y-1 p-3">
+          {navItems.map(renderNavItem)}
+
+          <div className="my-3 border-t" />
+
+          {navItemsLower.map(renderNavItem)}
+
+          <div className="my-3 border-t" />
+
+          {renderNavItem(navSettings)}
         </nav>
 
         {/* Agent status */}

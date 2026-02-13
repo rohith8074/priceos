@@ -8,6 +8,7 @@ import {
   timestamp,
   jsonb,
   varchar,
+  boolean,
 } from "drizzle-orm/pg-core";
 
 export const listings = pgTable("listings", {
@@ -107,6 +108,96 @@ export const executions = pgTable("executions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// --- New tables ---
+
+export const seasonalRules = pgTable("seasonal_rules", {
+  id: serial("id").primaryKey(),
+  listingId: integer("listing_id")
+    .references(() => listings.id)
+    .notNull(),
+  name: text("name").notNull(),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  priceModifier: integer("price_modifier").notNull().default(0),
+  minimumStay: integer("minimum_stay"),
+  maximumStay: integer("maximum_stay"),
+  enabled: boolean("enabled").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const conversations = pgTable("conversations", {
+  id: serial("id").primaryKey(),
+  listingId: integer("listing_id")
+    .references(() => listings.id)
+    .notNull(),
+  reservationId: integer("reservation_id").references(() => reservations.id),
+  guestName: text("guest_name").notNull(),
+  guestEmail: text("guest_email").notNull(),
+  channel: text("channel").notNull().default("Direct"),
+  lastMessage: text("last_message"),
+  lastMessageAt: timestamp("last_message_at"),
+  unreadCount: integer("unread_count").notNull().default(0),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const conversationMessages = pgTable("conversation_messages", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id")
+    .references(() => conversations.id)
+    .notNull(),
+  sender: text("sender").notNull(), // guest, host, system
+  content: text("content").notNull(),
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+});
+
+export const messageTemplates = pgTable("message_templates", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  content: text("content").notNull(),
+  category: text("category").notNull(), // check_in, check_out, general, issue
+});
+
+export const tasks = pgTable("tasks", {
+  id: serial("id").primaryKey(),
+  listingId: integer("listing_id")
+    .references(() => listings.id)
+    .notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  category: text("category").notNull(), // cleaning, maintenance, inspection, other
+  priority: text("priority").notNull().default("medium"), // low, medium, high
+  status: text("status").notNull().default("todo"), // todo, in_progress, done
+  dueDate: date("due_date"),
+  assignee: text("assignee"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const expenses = pgTable("expenses", {
+  id: serial("id").primaryKey(),
+  listingId: integer("listing_id")
+    .references(() => listings.id)
+    .notNull(),
+  category: text("category").notNull(), // cleaning, maintenance, supplies, utilities, commission, other
+  amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
+  currencyCode: varchar("currency_code", { length: 3 }).notNull().default("AED"),
+  description: text("description").notNull(),
+  date: date("date").notNull(),
+});
+
+export const ownerStatements = pgTable("owner_statements", {
+  id: serial("id").primaryKey(),
+  listingId: integer("listing_id")
+    .references(() => listings.id)
+    .notNull(),
+  month: text("month").notNull(), // "2026-01"
+  totalRevenue: numeric("total_revenue", { precision: 10, scale: 2 }).notNull(),
+  totalExpenses: numeric("total_expenses", { precision: 10, scale: 2 }).notNull(),
+  netIncome: numeric("net_income", { precision: 10, scale: 2 }).notNull(),
+  occupancyRate: integer("occupancy_rate").notNull().default(0),
+  reservationCount: integer("reservation_count").notNull().default(0),
+});
+
 // Type exports
 export type ListingRow = typeof listings.$inferSelect;
 export type NewListing = typeof listings.$inferInsert;
@@ -120,3 +211,17 @@ export type ChatMessage = typeof chatMessages.$inferSelect;
 export type NewChatMessage = typeof chatMessages.$inferInsert;
 export type Execution = typeof executions.$inferSelect;
 export type NewExecution = typeof executions.$inferInsert;
+export type SeasonalRuleRow = typeof seasonalRules.$inferSelect;
+export type NewSeasonalRule = typeof seasonalRules.$inferInsert;
+export type ConversationRow = typeof conversations.$inferSelect;
+export type NewConversation = typeof conversations.$inferInsert;
+export type ConversationMessageRow = typeof conversationMessages.$inferSelect;
+export type NewConversationMessage = typeof conversationMessages.$inferInsert;
+export type MessageTemplateRow = typeof messageTemplates.$inferSelect;
+export type NewMessageTemplate = typeof messageTemplates.$inferInsert;
+export type TaskRow = typeof tasks.$inferSelect;
+export type NewTask = typeof tasks.$inferInsert;
+export type ExpenseRow = typeof expenses.$inferSelect;
+export type NewExpense = typeof expenses.$inferInsert;
+export type OwnerStatementRow = typeof ownerStatements.$inferSelect;
+export type NewOwnerStatement = typeof ownerStatements.$inferInsert;

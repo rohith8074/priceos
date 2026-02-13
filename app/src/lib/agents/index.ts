@@ -5,9 +5,8 @@ import {
   getSignalsInRange,
   MOCK_COMPETITOR_SIGNALS,
 } from "@/data/mock-competitors";
-import { MOCK_PROPERTIES } from "@/data/mock-properties";
+import { createPMSClient } from "@/lib/pms";
 import { generateMockCalendarForMultipleProperties } from "@/data/mock-calendar";
-import { MOCK_RESERVATIONS, getReservationsInRange } from "@/data/mock-reservations";
 
 /**
  * Revenue Cycle Orchestration
@@ -27,18 +26,16 @@ export async function runRevenueCycle(
   }
 ): Promise<RevenueCycleResult> {
   const cycleId = generateCycleId();
+  const pms = createPMSClient();
 
-  // 1. Data Aggregator - Fetch calendars
+  // 1. Data Aggregator - Fetch properties for area info
+  const allProperties = await pms.listListings();
+
+  // Generate calendars (still using mock generator for deterministic results)
   const calendars = generateMockCalendarForMultipleProperties(
     propertyIds,
     dateRange.start,
     dateRange.end
-  );
-
-  const reservations = getReservationsInRange(
-    dateRange.start,
-    dateRange.end,
-    MOCK_RESERVATIONS
   );
 
   // 2. Event Intelligence - Get events in range
@@ -60,7 +57,7 @@ export async function runRevenueCycle(
     competitorSignals: competitorSignals.filter(
       (s) =>
         s.area ===
-        MOCK_PROPERTIES.find((p) => p.id === id)?.area
+        allProperties.find((p) => p.id === id)?.area
     ),
   }));
 
@@ -106,7 +103,6 @@ export async function runRevenueCycle(
 }
 
 function generateCycleId(): string {
-  // Simple ID generation with timestamp and random suffix
   return `CYCLE-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
@@ -157,7 +153,7 @@ function calculateAggregatedData(
 
 function calculateAveragePriceChange(proposals: any[]): number {
   if (proposals.length === 0) return 0;
-  const sum = proposals.reduce((acc, p) => acc + p.changePct, 0);
+  const sum = proposals.reduce((acc: number, p: any) => acc + p.changePct, 0);
   return Math.round(sum / proposals.length);
 }
 
@@ -173,7 +169,9 @@ export async function runFullRevenueCycle(
     end: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
   }
 ): Promise<RevenueCycleResult> {
-  const propertyIds = MOCK_PROPERTIES.map((p) => p.id);
+  const pms = createPMSClient();
+  const allProperties = await pms.listListings();
+  const propertyIds = allProperties.map((p) => p.id);
   return runRevenueCycle(propertyIds, dateRange);
 }
 
