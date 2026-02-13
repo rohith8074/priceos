@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { createPMSClient } from "@/lib/pms";
 import { notFound } from "next/navigation";
 import { PropertyHub } from "@/components/properties/property-hub";

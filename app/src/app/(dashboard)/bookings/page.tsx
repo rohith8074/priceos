@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { createPMSClient } from "@/lib/pms";
 import { BookingsContent } from "./bookings-content";
 import type { CalendarDay } from "@/types/hostaway";

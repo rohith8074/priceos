@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { createPMSClient } from "@/lib/pms";
 import { TaskBoard } from "@/components/tasks/task-board";
 

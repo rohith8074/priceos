@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { createPMSClient } from "@/lib/pms";
 import { runFullRevenueCycle } from "@/lib/agents";
 import { mapCycleToProposals } from "@/types/proposal";
