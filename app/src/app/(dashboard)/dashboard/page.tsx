@@ -3,6 +3,7 @@ import { runFullRevenueCycle } from "@/lib/agents";
 import { PropertyList } from "@/components/properties/property-list";
 import { DashboardStats } from "./dashboard-stats";
 import { ChannelBreakdown } from "@/components/dashboard/channel-breakdown";
+import { RevenueForecast } from "@/components/dashboard/revenue-forecast";
 
 export default async function DashboardPage() {
   const pms = createPMSClient();
@@ -43,6 +44,9 @@ export default async function DashboardPage() {
 
       {/* Channel Breakdown */}
       <ChannelBreakdown reservations={allReservations} />
+
+      {/* Revenue Forecast */}
+      <RevenueForecast reservations={allReservations} />
 
       {/* Properties Grid */}
       <div>

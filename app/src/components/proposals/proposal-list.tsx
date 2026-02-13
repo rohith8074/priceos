@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { ProposalCard } from "./proposal-card";
 import type { ProposalView } from "@/types/proposal";
 import type { Listing } from "@/types/hostaway";
@@ -9,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckCheck } from "lucide-react";
 import { toast } from "sonner";
+import { useSettingsStore } from "@/stores/settings-store";
 
 interface ProposalListProps {
   proposals: ProposalView[];
@@ -17,6 +20,7 @@ interface ProposalListProps {
 
 export function ProposalList({ proposals: initialProposals, properties }: ProposalListProps) {
   const [proposals, setProposals] = useState(initialProposals);
+  const { autoApproveLowRisk, setAutoApproveLowRisk } = useSettingsStore();
   const propertyMap = new Map(properties.map((p) => [p.id, p]));
 
   const handleApprove = (id: string) => {
@@ -76,6 +80,23 @@ export function ProposalList({ proposals: initialProposals, properties }: Propos
           Approve All Low-Risk ({pendingLowRisk.length})
         </Button>
       )}
+
+      {/* Auto-approve toggle */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <Switch
+            id="auto-approve"
+            checked={autoApproveLowRisk}
+            onCheckedChange={setAutoApproveLowRisk}
+          />
+          <Label htmlFor="auto-approve">Auto-approve low-risk</Label>
+        </div>
+        {autoApproveLowRisk && (
+          <p className="text-xs text-muted-foreground pl-11">
+            New low-risk proposals will be automatically approved
+          </p>
+        )}
+      </div>
 
       <Tabs defaultValue="pending">
         <TabsList>

@@ -11,6 +11,7 @@ import {
   CheckSquare,
   FileCheck,
   Lightbulb,
+  Wallet,
   MessageSquare,
   Menu,
   X,
@@ -38,6 +39,7 @@ const navSections = [
     items: [
       { href: "/proposals", label: "Proposals", icon: FileCheck },
       { href: "/insights", label: "Insights", icon: Lightbulb },
+      { href: "/finance", label: "Finance", icon: Wallet },
     ],
   },
 ];
