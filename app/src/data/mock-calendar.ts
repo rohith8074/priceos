@@ -1,11 +1,8 @@
 import { CalendarDay } from "@/types/hostaway";
 import {
   eachDayOfInterval,
-  isWeekend,
   getDay,
-  isWithinInterval,
 } from "date-fns";
-import { getMockProperty } from "./mock-properties";
 
 /**
  * Mock Calendar Data Generation
@@ -67,12 +64,12 @@ function shouldBeBlocked(seed: number): boolean {
 export function generateMockCalendar(
   listingId: number,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  propertyInfo?: { price: number; priceFloor: number; priceCeiling: number }
 ): CalendarDay[] {
-  const property = getMockProperty(listingId);
-  if (!property) {
-    throw new Error(`Property ${listingId} not found`);
-  }
+  const basePrice = propertyInfo?.price ?? 500;
+  const floor = propertyInfo?.priceFloor ?? Math.round(basePrice * 0.5);
+  const ceiling = propertyInfo?.priceCeiling ?? Math.round(basePrice * 2);
 
   const calendar: CalendarDay[] = [];
   const days = eachDayOfInterval({ start: startDate, end: endDate });
@@ -81,7 +78,6 @@ export function generateMockCalendar(
     // Seeded randomness per property per day
     const seed = (listingId * 1000 + index) % 100;
 
-    const basePrice = property.price;
     const seasonMultiplier = getSeasonMultiplier(date);
     const dayOfWeekMultiplier = getDayOfWeekMultiplier(date);
     const randomVariation = 0.95 + (seed % 10) / 100; // ±5% variation
@@ -94,19 +90,17 @@ export function generateMockCalendar(
       price = 0;
     } else if (shouldBeBooked(seed)) {
       status = "booked";
-      // Booked dates still have a price (what was paid)
       price = Math.round(
         basePrice * seasonMultiplier * dayOfWeekMultiplier * randomVariation
       );
     } else {
-      // Available dates: calculate dynamic price
       price = Math.round(
         basePrice * seasonMultiplier * dayOfWeekMultiplier * randomVariation
       );
     }
 
     // Clamp to floor/ceiling
-    price = Math.max(property.priceFloor, Math.min(property.priceCeiling, price));
+    price = Math.max(floor, Math.min(ceiling, price));
 
     calendar.push({
       date: date.toISOString().split("T")[0],
@@ -121,14 +115,21 @@ export function generateMockCalendar(
 }
 
 export function generateMockCalendarForMultipleProperties(
-  listingIds: number[],
+  listings: { id: number; price: number; priceFloor: number; priceCeiling: number }[],
   startDate: Date,
   endDate: Date
 ): Map<number, CalendarDay[]> {
   const result = new Map<number, CalendarDay[]>();
 
-  listingIds.forEach((id) => {
-    result.set(id, generateMockCalendar(id, startDate, endDate));
+  listings.forEach((listing) => {
+    result.set(
+      listing.id,
+      generateMockCalendar(listing.id, startDate, endDate, {
+        price: listing.price,
+        priceFloor: listing.priceFloor,
+        priceCeiling: listing.priceCeiling,
+      })
+    );
   });
 
   return result;

@@ -1,11 +1,9 @@
 import { PriceProposal, ReviewedProposal } from "./types";
-import { EventSignal, getEventsInRange } from "@/data/mock-events";
+import { EventSignal } from "@/data/mock-events";
 import {
   CompetitorSignal,
-  getSignalsInRange,
 } from "@/data/mock-competitors";
 import { CalendarDay } from "@/types/hostaway";
-import { getMockProperty } from "@/data/mock-properties";
 import {
   eachDayOfInterval,
   parseISO,
@@ -22,7 +20,7 @@ import {
  * - Seasonal and day-of-week patterns
  */
 
-interface OptimizerInput {
+export interface OptimizerInput {
   listingMapId: number;
   calendar: CalendarDay[];
   dateRange: {
@@ -31,6 +29,7 @@ interface OptimizerInput {
   };
   events: EventSignal[];
   competitorSignals: CompetitorSignal[];
+  propertyInfo: { price: number; priceFloor: number; priceCeiling: number; area: string };
 }
 
 export function generatePriceProposals(
@@ -40,8 +39,7 @@ export function generatePriceProposals(
   let proposalId = 1;
 
   inputs.forEach((input) => {
-    const property = getMockProperty(input.listingMapId);
-    if (!property) return;
+    const property = input.propertyInfo;
 
     const daysInRange = eachDayOfInterval({
       start: input.dateRange.start,

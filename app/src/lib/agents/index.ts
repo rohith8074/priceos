@@ -31,9 +31,17 @@ export async function runRevenueCycle(
   // 1. Data Aggregator - Fetch properties for area info
   const allProperties = await pms.listListings();
 
-  // Generate calendars (still using mock generator for deterministic results)
+  // Generate calendars using actual property data (price, floor, ceiling)
+  const listingsForCalendar = allProperties
+    .filter((p) => propertyIds.includes(p.id))
+    .map((p) => ({
+      id: p.id,
+      price: p.price,
+      priceFloor: p.priceFloor,
+      priceCeiling: p.priceCeiling,
+    }));
   const calendars = generateMockCalendarForMultipleProperties(
-    propertyIds,
+    listingsForCalendar,
     dateRange.start,
     dateRange.end
   );
@@ -49,17 +57,24 @@ export async function runRevenueCycle(
   );
 
   // 4. Pricing Optimizer - Generate proposals
-  const optimizerInputs = propertyIds.map((id) => ({
-    listingMapId: id,
-    calendar: calendars.get(id) || [],
-    dateRange,
-    events,
-    competitorSignals: competitorSignals.filter(
-      (s) =>
-        s.area ===
-        allProperties.find((p) => p.id === id)?.area
-    ),
-  }));
+  const optimizerInputs = propertyIds.map((id) => {
+    const prop = allProperties.find((p) => p.id === id);
+    return {
+      listingMapId: id,
+      calendar: calendars.get(id) || [],
+      dateRange,
+      events,
+      competitorSignals: competitorSignals.filter(
+        (s) => s.area === prop?.area
+      ),
+      propertyInfo: {
+        price: prop?.price ?? 500,
+        priceFloor: prop?.priceFloor ?? 250,
+        priceCeiling: prop?.priceCeiling ?? 1000,
+        area: prop?.area ?? "Unknown",
+      },
+    };
+  });
 
   const allProposals = generatePriceProposals(optimizerInputs);
 
