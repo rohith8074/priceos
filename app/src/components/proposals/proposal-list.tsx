@@ -6,6 +6,8 @@ import { ProposalCard } from "./proposal-card";
 import type { ProposalView } from "@/types/proposal";
 import type { Listing } from "@/types/hostaway";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { CheckCheck } from "lucide-react";
 import { toast } from "sonner";
 
 interface ProposalListProps {
@@ -35,6 +37,15 @@ export function ProposalList({ proposals: initialProposals, properties }: Propos
   const approved = proposals.filter((p) => p.status === "approved");
   const rejected = proposals.filter((p) => p.status === "rejected");
   const highRisk = proposals.filter((p) => p.riskLevel === "high");
+  const pendingLowRisk = pending.filter((p) => p.riskLevel === "low");
+
+  const handleApproveAllLowRisk = () => {
+    const ids = new Set(pendingLowRisk.map((p) => p.id));
+    setProposals((prev) =>
+      prev.map((p) => (ids.has(p.id) ? { ...p, status: "approved" as const } : p))
+    );
+    toast.success(`Approved ${ids.size} low-risk proposals`);
+  };
 
   return (
     <div className="space-y-4">
@@ -53,6 +64,18 @@ export function ProposalList({ proposals: initialProposals, properties }: Propos
           <Badge variant="destructive">{highRisk.length}</Badge>
         </div>
       </div>
+
+      {pendingLowRisk.length > 0 && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          onClick={handleApproveAllLowRisk}
+        >
+          <CheckCheck className="h-4 w-4" />
+          Approve All Low-Risk ({pendingLowRisk.length})
+        </Button>
+      )}
 
       <Tabs defaultValue="pending">
         <TabsList>

@@ -7,6 +7,8 @@ import {
   Building2,
   ClipboardList,
   CalendarDays,
+  Mail,
+  CheckSquare,
   FileCheck,
   Lightbulb,
   MessageSquare,
@@ -27,6 +29,8 @@ const navSections = [
       { href: "/properties", label: "Properties", icon: Building2 },
       { href: "/reservations", label: "Reservations", icon: ClipboardList },
       { href: "/calendar", label: "Calendar", icon: CalendarDays },
+      { href: "/inbox", label: "Inbox", icon: Mail },
+      { href: "/tasks", label: "Tasks", icon: CheckSquare },
     ],
   },
   {

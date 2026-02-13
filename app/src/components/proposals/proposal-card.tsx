@@ -3,7 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, MessageSquare, ArrowRight } from "lucide-react";
+import { Check, X, MessageSquare, ArrowRight, MapPin } from "lucide-react";
 import { RiskBadge } from "@/components/chat/risk-badge";
 import type { ProposalView } from "@/types/proposal";
 import type { Listing } from "@/types/hostaway";
@@ -45,6 +45,12 @@ export function ProposalCard({ proposal, property, onApprove, onReject }: Propos
               {property?.name ?? `Property #${proposal.listingMapId}`}
             </p>
             <p className="text-xs text-muted-foreground">{proposal.date}</p>
+            {property?.area && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                {property.area}
+              </p>
+            )}
           </div>
           <RiskBadge level={proposal.riskLevel} />
         </div>
