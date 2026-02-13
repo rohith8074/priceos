@@ -23,7 +23,7 @@ import {
  */
 
 interface OptimizerInput {
-  propertyId: number;
+  listingMapId: number;
   calendar: CalendarDay[];
   dateRange: {
     start: Date;
@@ -40,7 +40,7 @@ export function generatePriceProposals(
   let proposalId = 1;
 
   inputs.forEach((input) => {
-    const property = getMockProperty(input.propertyId);
+    const property = getMockProperty(input.listingMapId);
     if (!property) return;
 
     const daysInRange = eachDayOfInterval({
@@ -70,7 +70,7 @@ export function generatePriceProposals(
         return (
           date >= start &&
           date <= end &&
-          s.area === property.address.area
+          s.area === property.area
         );
       });
 
@@ -83,11 +83,10 @@ export function generatePriceProposals(
 
       // 4. Calculate base proposal
       const proposal = calculateProposal({
-        propertyId: input.propertyId,
-        hostawayListingId: property.hostawayListingId,
+        listingMapId: input.listingMapId,
         date: dateStr,
         currentPrice: currentDay.price,
-        basePrice: property.basePrice,
+        basePrice: property.price,
         floor: property.priceFloor,
         ceiling: property.priceCeiling,
         events: relevantEvents,
@@ -119,8 +118,7 @@ function calculateBookingVelocity(
 }
 
 interface ProposalCalcInput {
-  propertyId: number;
-  hostawayListingId: string;
+  listingMapId: number;
   date: string;
   currentPrice: number;
   basePrice: number;
@@ -179,8 +177,7 @@ function calculateProposal(input: ProposalCalcInput): Omit<
   const riskLevel = determineRiskLevel(Math.abs(changePct));
 
   return {
-    propertyId: input.propertyId,
-    hostawayListingId: input.hostawayListingId,
+    listingMapId: input.listingMapId,
     date: input.date,
     currentPrice: input.currentPrice,
     proposedPrice: clampedPrice,

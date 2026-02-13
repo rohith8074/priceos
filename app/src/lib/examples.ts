@@ -21,7 +21,7 @@ export async function example1_ListProperties() {
   console.log(`Total properties: ${listings.length}`);
 
   listings.forEach((listing) => {
-    console.log(`- ${listing.name} (${listing.bedrooms}BR) - AED ${listing.basePrice}/night`);
+    console.log(`- ${listing.name} (${listing.bedroomsNumber}BR) - AED ${listing.price}/night`);
   });
 }
 
@@ -75,7 +75,7 @@ export async function example3_GetReservations() {
 
   // By property
   MOCK_PROPERTIES.forEach((prop) => {
-    const propReservations = allReservations.filter((r) => r.listingId === prop.id);
+    const propReservations = allReservations.filter((r) => r.listingMapId === prop.id);
     console.log(
       `- ${prop.name}: ${propReservations.length} bookings`
     );
@@ -228,9 +228,9 @@ export async function example8_PropertyAnalysis() {
   const property = await pmsClient.getListing(propertyId);
 
   console.log(`\nProperty: ${property.name}`);
-  console.log(`Location: ${property.address.area}, Dubai`);
-  console.log(`Type: ${property.bedrooms}BR/${property.bathrooms}BA ${property.propertyType}`);
-  console.log(`Base price: AED ${property.basePrice}/night`);
+  console.log(`Location: ${property.area}, Dubai`);
+  console.log(`Type: ${property.bedroomsNumber}BR/${property.bathroomsNumber}BA ${property.propertyType}`);
+  console.log(`Base price: AED ${property.price}/night`);
   console.log(`Price range: AED ${property.priceFloor} - AED ${property.priceCeiling}`);
 
   const startDate = new Date(2026, 2, 1);
@@ -244,7 +244,7 @@ export async function example8_PropertyAnalysis() {
   console.log(`- Occupancy: ${occupancy}%`);
   console.log(`- Booked nights: ${booked}`);
 
-  const reservations = await pmsClient.getReservations({ listingId: propertyId });
+  const reservations = await pmsClient.getReservations({ listingMapId: propertyId });
   const revenue = reservations.reduce((sum, r) => sum + r.totalPrice, 0);
 
   console.log(`- Reservations: ${reservations.length}`);

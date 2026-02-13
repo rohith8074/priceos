@@ -14,7 +14,7 @@ export default async function DashboardPage() {
   const avgBasePrice =
     allProperties.length > 0
       ? Math.round(
-          allProperties.reduce((sum, p) => sum + p.basePrice, 0) /
+          allProperties.reduce((sum, p) => sum + p.price, 0) /
             allProperties.length
         )
       : 0;
@@ -36,7 +36,7 @@ export default async function DashboardPage() {
         totalProperties={allProperties.length}
         avgBasePrice={avgBasePrice}
         occupancyRate={occupancyRate}
-        monthlyRevenue={monthlyRevenue}
+        monthlyRevenueFormatted={monthlyRevenue.toLocaleString("en-US")}
       />
 
       {/* Properties Grid */}

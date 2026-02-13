@@ -33,7 +33,7 @@ export function PropertyCard({ property, detailed = false }: PropertyCardProps) 
                 {property.name}
               </CardTitle>
             </Link>
-            <p className="text-xs text-muted-foreground">{property.address.area}</p>
+            <p className="text-xs text-muted-foreground">{property.area}</p>
           </div>
           <Badge variant="secondary" className="text-xs">
             {property.propertyType}
@@ -44,18 +44,18 @@ export function PropertyCard({ property, detailed = false }: PropertyCardProps) 
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-1">
             <Bed className="h-3.5 w-3.5" />
-            {property.bedrooms === 0 ? "Studio" : `${property.bedrooms} Bed`}
+            {property.bedroomsNumber === 0 ? "Studio" : `${property.bedroomsNumber} Bed`}
           </div>
           <div className="flex items-center gap-1">
             <Bath className="h-3.5 w-3.5" />
-            {property.bathrooms} Bath
+            {property.bathroomsNumber} Bath
           </div>
         </div>
 
         <div className="flex items-center justify-between">
           <div>
             <p className="text-lg font-bold">
-              {property.basePrice}{" "}
+              {property.price}{" "}
               <span className="text-xs font-normal text-muted-foreground">
                 AED/night
               </span>

@@ -8,7 +8,7 @@ export async function saveChatMessage(data: {
   sessionId: string
   role: string
   content: string
-  propertyId?: number
+  listingId?: number
   structured?: Record<string, unknown>
 }) {
   await db.insert(chatMessages).values({
@@ -16,7 +16,7 @@ export async function saveChatMessage(data: {
     sessionId: data.sessionId,
     role: data.role,
     content: data.content,
-    propertyId: data.propertyId ?? null,
+    listingId: data.listingId ?? null,
     structured: data.structured ?? null,
   })
 }

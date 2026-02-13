@@ -4,7 +4,7 @@ dotenv.config({ path: ".env.local" });
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import {
-  properties,
+  listings,
   calendarDays,
   proposals,
 } from "./schema";
@@ -20,40 +20,41 @@ import { runFullRevenueCycle } from "@/lib/agents/index";
 async function seed() {
   console.log("Seeding database...");
 
-  // 1. Insert properties
-  console.log("Inserting properties...");
-  const insertedProperties: { id: number; originalId: number }[] = [];
+  // 1. Insert listings
+  console.log("Inserting listings...");
+  const insertedListings: { id: number; originalId: number }[] = [];
 
   for (const prop of MOCK_PROPERTIES) {
     const [inserted] = await db
-      .insert(properties)
+      .insert(listings)
       .values({
         name: prop.name,
-        area: prop.address.area,
-        type: prop.propertyType,
-        bedrooms: prop.bedrooms,
-        bathrooms: prop.bathrooms,
-        basePrice: prop.basePrice,
-        currency: prop.currency,
-        priceFloor: prop.priceFloor,
-        priceCeiling: prop.priceCeiling,
-        maximumGuests: prop.maximumGuests ?? null,
+        city: prop.city,
+        countryCode: prop.countryCode,
+        area: prop.area,
+        bedroomsNumber: prop.bedroomsNumber,
+        bathroomsNumber: prop.bathroomsNumber,
+        propertyType: prop.propertyType,
+        price: String(prop.price),
+        currencyCode: prop.currencyCode,
+        priceFloor: String(prop.priceFloor),
+        priceCeiling: String(prop.priceCeiling),
+        personCapacity: prop.personCapacity ?? null,
         amenities: prop.amenities ?? [],
-        hostawayListingId: prop.hostawayListingId,
       })
-      .returning({ id: properties.id });
+      .returning({ id: listings.id });
 
-    insertedProperties.push({ id: inserted.id, originalId: prop.id });
-    console.log(`  Property: ${prop.name} (DB id: ${inserted.id})`);
+    insertedListings.push({ id: inserted.id, originalId: prop.id });
+    console.log(`  Listing: ${prop.name} (DB id: ${inserted.id})`);
   }
 
-  // 2. Insert calendar days (90 days per property)
+  // 2. Insert calendar days (90 days per listing)
   console.log("Inserting calendar days...");
   const startDate = new Date();
   const endDate = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
   let totalCalendarDays = 0;
 
-  for (const { id: dbId, originalId } of insertedProperties) {
+  for (const { id: dbId, originalId } of insertedListings) {
     const calendar = generateMockCalendar(originalId, startDate, endDate);
 
     // Insert in batches of 50
@@ -61,12 +62,12 @@ async function seed() {
       const batch = calendar.slice(i, i + 50);
       await db.insert(calendarDays).values(
         batch.map((day) => ({
-          propertyId: dbId,
+          listingId: dbId,
           date: day.date,
           status: day.status,
-          price: day.price,
-          minStay: day.minStay,
-          maxStay: day.maxStay,
+          price: String(day.price),
+          minimumStay: day.minimumStay,
+          maximumStay: day.maximumStay,
         }))
       );
     }
@@ -81,9 +82,9 @@ async function seed() {
     end: endDate,
   });
 
-  // Map original property IDs to DB IDs
+  // Map original listing IDs to DB IDs
   const idMap = new Map(
-    insertedProperties.map(({ id, originalId }) => [originalId, id])
+    insertedListings.map(({ id, originalId }) => [originalId, id])
   );
 
   let totalProposals = 0;
@@ -94,10 +95,10 @@ async function seed() {
     const batch = allReviewed.slice(i, i + 50);
     await db.insert(proposals).values(
       batch.map((reviewed) => ({
-        propertyId: idMap.get(reviewed.proposal.propertyId) ?? 1,
+        listingId: idMap.get(reviewed.proposal.listingMapId) ?? 1,
         date: reviewed.proposal.date,
-        currentPrice: reviewed.proposal.currentPrice,
-        proposedPrice: reviewed.proposal.proposedPrice,
+        currentPrice: String(reviewed.proposal.currentPrice),
+        proposedPrice: String(reviewed.proposal.proposedPrice),
         changePct: reviewed.proposal.changePct,
         riskLevel: reviewed.proposal.riskLevel,
         status: reviewed.approved ? "pending" : "rejected",
@@ -110,7 +111,7 @@ async function seed() {
 
   console.log(`  Inserted ${totalProposals} proposals`);
   console.log("\nSeed complete!");
-  console.log(`  Properties: ${insertedProperties.length}`);
+  console.log(`  Listings: ${insertedListings.length}`);
   console.log(`  Calendar days: ${totalCalendarDays}`);
   console.log(`  Proposals: ${totalProposals}`);
 }

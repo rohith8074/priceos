@@ -1,6 +1,7 @@
 /**
  * Hostaway API Type Definitions
- * Based on https://api.hostaway.com/documentation
+ * Field names aligned with Hostaway API (https://api.hostaway.com/documentation)
+ * PriceOS-specific fields (priceFloor, priceCeiling, area) are clearly marked.
  */
 
 export interface HostawayResponse<T> {
@@ -15,21 +16,19 @@ export interface HostawayResponse<T> {
 
 export interface Listing {
   id: number;
-  hostawayListingId: string;
   name: string;
-  address: {
-    city: string;
-    area: string;
-    country: string;
-  };
-  bedrooms: number;
-  bathrooms: number;
+  city: string;
+  countryCode: string;
+  area: string; // PriceOS-specific: Dubai sub-area (e.g., "Dubai Marina")
+  bedroomsNumber: number;
+  bathroomsNumber: number;
   propertyType: "Studio" | "Apartment" | "Villa" | "House" | "Townhouse";
-  basePrice: number;
-  currency: "AED" | "USD";
-  priceFloor: number;
-  priceCeiling: number;
-  maximumGuests?: number;
+  propertyTypeId?: number; // Hostaway API integer ID
+  price: number;
+  currencyCode: "AED" | "USD";
+  priceFloor: number; // PriceOS-specific
+  priceCeiling: number; // PriceOS-specific
+  personCapacity?: number;
   amenities?: string[];
 }
 
@@ -37,21 +36,20 @@ export interface CalendarDay {
   date: string; // ISO format YYYY-MM-DD
   status: "available" | "booked" | "blocked";
   price: number;
-  minStay: number;
-  maxStay: number;
+  minimumStay: number;
+  maximumStay: number;
   notes?: string;
 }
 
 export interface Reservation {
   id: number;
-  hostawayReservationId: string;
-  listingId: number;
+  listingMapId: number;
   guestName: string;
   guestEmail?: string;
   channelName: "Airbnb" | "Booking.com" | "Direct" | "Other";
   arrivalDate: string; // ISO format
   departureDate: string; // ISO format
-  nightsCount: number;
+  nights: number;
   totalPrice: number;
   pricePerNight: number;
   status: "confirmed" | "pending" | "cancelled" | "completed";
@@ -85,7 +83,7 @@ export interface VerificationResult {
 }
 
 export interface ReservationFilters {
-  listingId?: number;
+  listingMapId?: number;
   channelName?: string;
   status?: "confirmed" | "pending" | "cancelled" | "completed";
   startDate?: Date;

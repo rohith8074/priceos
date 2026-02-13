@@ -42,7 +42,7 @@ export function ProposalCard({ proposal, property, onApprove, onReject }: Propos
         <div className="flex items-start justify-between">
           <div>
             <p className="text-sm font-medium">
-              {property?.name ?? `Property #${proposal.propertyId}`}
+              {property?.name ?? `Property #${proposal.listingMapId}`}
             </p>
             <p className="text-xs text-muted-foreground">{proposal.date}</p>
           </div>

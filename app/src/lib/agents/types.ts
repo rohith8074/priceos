@@ -8,8 +8,7 @@ import { CompetitorSignal } from "@/data/mock-competitors";
 
 export interface PriceProposal {
   id: string;
-  propertyId: number;
-  hostawayListingId: string;
+  listingMapId: number;
   date: string; // ISO format
   currentPrice: number;
   proposedPrice: number;

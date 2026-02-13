@@ -81,7 +81,7 @@ export function generateMockCalendar(
     // Seeded randomness per property per day
     const seed = (listingId * 1000 + index) % 100;
 
-    const basePrice = property.basePrice;
+    const basePrice = property.price;
     const seasonMultiplier = getSeasonMultiplier(date);
     const dayOfWeekMultiplier = getDayOfWeekMultiplier(date);
     const randomVariation = 0.95 + (seed % 10) / 100; // ±5% variation
@@ -112,8 +112,8 @@ export function generateMockCalendar(
       date: date.toISOString().split("T")[0],
       status,
       price,
-      minStay: status === "available" ? 1 : 0,
-      maxStay: status === "available" ? 30 : 0,
+      minimumStay: status === "available" ? 1 : 0,
+      maximumStay: status === "available" ? 30 : 0,
     });
   });
 

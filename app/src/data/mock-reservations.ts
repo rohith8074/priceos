@@ -38,7 +38,7 @@ function getRandomChannel(seed: number): typeof CHANNELS[number] {
   return "Direct";
 }
 
-function getRandomNightsCount(seed: number): number {
+function getRandomNights(seed: number): number {
   const rand = seed % 100;
   if (rand < 30) return 2;
   if (rand < 60) return 3;
@@ -73,22 +73,21 @@ export function generateMockReservations(): Reservation[] {
     const leadDays = 5 + (seed % 50); // 5-55 day lead time
     const arrivalDate = addDays(today, leadDays);
 
-    const nightsCount = getRandomNightsCount(seed);
-    const departureDate = addDays(arrivalDate, nightsCount);
+    const nights = getRandomNights(seed);
+    const departureDate = addDays(arrivalDate, nights);
 
     const pricePerNight = Math.round(basePrice * (0.9 + Math.random() * 0.2));
-    const totalPrice = pricePerNight * nightsCount;
+    const totalPrice = pricePerNight * nights;
 
     reservations.push({
       id: reservationId++,
-      hostawayReservationId: `RES-${Date.now()}-${i}`,
-      listingId: propertyId,
+      listingMapId: propertyId,
       guestName: getRandomGuest(seed),
       guestEmail: `guest${i}@example.com`,
       channelName: getRandomChannel(seed),
       arrivalDate: format(arrivalDate, "yyyy-MM-dd"),
       departureDate: format(departureDate, "yyyy-MM-dd"),
-      nightsCount,
+      nights,
       totalPrice,
       pricePerNight,
       status: seed % 100 < 95 ? "confirmed" : "pending",
@@ -111,10 +110,10 @@ export const MOCK_RESERVATIONS = generateMockReservations();
  * Get reservations for a specific property
  */
 export function getReservationsForProperty(
-  listingId: number,
+  listingMapId: number,
   reservations = MOCK_RESERVATIONS
 ): Reservation[] {
-  return reservations.filter((r) => r.listingId === listingId);
+  return reservations.filter((r) => r.listingMapId === listingMapId);
 }
 
 /**

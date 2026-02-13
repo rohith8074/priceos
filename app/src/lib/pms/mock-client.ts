@@ -81,8 +81,8 @@ export class MockPMSClient implements PMSClient {
 
     let results = MOCK_RESERVATIONS;
 
-    if (filters?.listingId) {
-      results = getReservationsForProperty(filters.listingId);
+    if (filters?.listingMapId) {
+      results = getReservationsForProperty(filters.listingMapId);
     }
 
     if (filters?.startDate && filters?.endDate) {
@@ -135,7 +135,7 @@ export class MockPMSClient implements PMSClient {
       const startDate = parseISO(interval.startDate);
       const endDate = parseISO(interval.endDate);
 
-      let current = new Date(startDate);
+      const current = new Date(startDate);
       while (current <= endDate) {
         const dateStr = format(current, "yyyy-MM-dd");
         overrides.set(dateStr, {

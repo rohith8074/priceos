@@ -73,7 +73,7 @@ export function ProposalList({ proposals: initialProposals, properties }: Propos
               <ProposalCard
                 key={proposal.id}
                 proposal={proposal}
-                property={propertyMap.get(proposal.propertyId)}
+                property={propertyMap.get(proposal.listingMapId)}
                 onApprove={handleApprove}
                 onReject={handleReject}
               />
@@ -92,7 +92,7 @@ export function ProposalList({ proposals: initialProposals, properties }: Propos
               <ProposalCard
                 key={proposal.id}
                 proposal={proposal}
-                property={propertyMap.get(proposal.propertyId)}
+                property={propertyMap.get(proposal.listingMapId)}
               />
             ))}
             {approved.length === 0 && (
@@ -109,7 +109,7 @@ export function ProposalList({ proposals: initialProposals, properties }: Propos
               <ProposalCard
                 key={proposal.id}
                 proposal={proposal}
-                property={propertyMap.get(proposal.propertyId)}
+                property={propertyMap.get(proposal.listingMapId)}
               />
             ))}
             {rejected.length === 0 && (

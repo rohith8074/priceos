@@ -43,7 +43,7 @@ export default async function PropertyDetailPage({ params }: Props) {
           <h1 className="text-2xl font-bold">{property.name}</h1>
           <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
             <MapPin className="h-3.5 w-3.5" />
-            {property.address.area}
+            {property.area}
           </div>
         </div>
         <PropertyAskAI property={property} />
@@ -62,20 +62,20 @@ export default async function PropertyDetailPage({ params }: Props) {
             <div className="flex items-center gap-1.5">
               <Bed className="h-4 w-4 text-muted-foreground" />
               <span className="font-semibold">
-                {property.bedrooms === 0 ? "Studio" : property.bedrooms}
+                {property.bedroomsNumber === 0 ? "Studio" : property.bedroomsNumber}
               </span>
             </div>
             <Separator orientation="vertical" className="h-5" />
             <div className="flex items-center gap-1.5">
               <Bath className="h-4 w-4 text-muted-foreground" />
-              <span className="font-semibold">{property.bathrooms}</span>
+              <span className="font-semibold">{property.bathroomsNumber}</span>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">Base Price</p>
-            <p className="text-lg font-semibold">{property.basePrice} AED</p>
+            <p className="text-lg font-semibold">{property.price} AED</p>
           </CardContent>
         </Card>
         <Card>

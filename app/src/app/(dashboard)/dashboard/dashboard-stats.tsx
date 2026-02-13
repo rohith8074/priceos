@@ -7,14 +7,14 @@ interface DashboardStatsProps {
   totalProperties: number;
   avgBasePrice: number;
   occupancyRate: number;
-  monthlyRevenue: number;
+  monthlyRevenueFormatted: string;
 }
 
 export function DashboardStats({
   totalProperties,
   avgBasePrice,
   occupancyRate,
-  monthlyRevenue,
+  monthlyRevenueFormatted,
 }: DashboardStatsProps) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -38,7 +38,7 @@ export function DashboardStats({
       />
       <StatCard
         title="30-Day Revenue"
-        value={`${monthlyRevenue.toLocaleString()} AED`}
+        value={`${monthlyRevenueFormatted} AED`}
         subtitle="Projected"
         icon={TrendingUp}
       />

@@ -39,11 +39,11 @@ export function useChat() {
       if (activeProperty) {
         const ctx = [
           `Property: ${activeProperty.name}`,
-          `Area: ${activeProperty.address.area}`,
+          `Area: ${activeProperty.area}`,
           `Type: ${activeProperty.propertyType}`,
-          `Bedrooms: ${activeProperty.bedrooms}`,
-          `Base Price: ${activeProperty.basePrice} ${activeProperty.currency}`,
-          `Price Range: ${activeProperty.priceFloor}-${activeProperty.priceCeiling} ${activeProperty.currency}`,
+          `Bedrooms: ${activeProperty.bedroomsNumber}`,
+          `Base Price: ${activeProperty.price} ${activeProperty.currencyCode}`,
+          `Price Range: ${activeProperty.priceFloor}-${activeProperty.priceCeiling} ${activeProperty.currencyCode}`,
           activeProperty.amenities?.length
             ? `Amenities: ${(activeProperty.amenities as string[]).join(', ')}`
             : null,

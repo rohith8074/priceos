@@ -65,8 +65,8 @@ export function ChatPanel() {
           </div>
           {activeProperty && (
             <p className="text-xs text-muted-foreground">
-              {activeProperty.address.area} &middot; {activeProperty.propertyType} &middot;{" "}
-              {activeProperty.basePrice} AED/night
+              {activeProperty.area} &middot; {activeProperty.propertyType} &middot;{" "}
+              {activeProperty.price} AED/night
             </p>
           )}
         </SheetHeader>

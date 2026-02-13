@@ -53,14 +53,14 @@ export async function runRevenueCycle(
 
   // 4. Pricing Optimizer - Generate proposals
   const optimizerInputs = propertyIds.map((id) => ({
-    propertyId: id,
+    listingMapId: id,
     calendar: calendars.get(id) || [],
     dateRange,
     events,
     competitorSignals: competitorSignals.filter(
       (s) =>
         s.area ===
-        MOCK_PROPERTIES.find((p) => p.id === id)?.address.area
+        MOCK_PROPERTIES.find((p) => p.id === id)?.area
     ),
   }));
 
