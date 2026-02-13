@@ -8,6 +8,15 @@ import {
   VerificationResult,
   ReservationFilters,
 } from "@/types/hostaway";
+import type {
+  SeasonalRule,
+  Conversation,
+  ConversationMessage,
+  MessageTemplate,
+  OperationalTask,
+  Expense,
+  OwnerStatement,
+} from "@/types/operations";
 
 /**
  * Hostaway API Wire Types
@@ -209,6 +218,22 @@ export class HostawayClient implements PMSClient {
   async unblockDates(id: string | number, startDate: string, endDate: string): Promise<UpdateResult> {
     throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock");
   }
+
+  async getSeasonalRules(listingId: string | number): Promise<SeasonalRule[]> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
+  async createSeasonalRule(listingId: string | number, rule: Omit<SeasonalRule, "id" | "listingMapId">): Promise<SeasonalRule> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
+  async updateSeasonalRule(listingId: string | number, ruleId: number, updates: Partial<SeasonalRule>): Promise<SeasonalRule> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
+  async deleteSeasonalRule(listingId: string | number, ruleId: number): Promise<void> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
+  async getConversations(listingId?: string | number): Promise<Conversation[]> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
+  async getConversationMessages(conversationId: number): Promise<ConversationMessage[]> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
+  async sendMessage(conversationId: number, content: string): Promise<ConversationMessage> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
+  async getMessageTemplates(): Promise<MessageTemplate[]> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
+  async getTasks(listingId?: string | number): Promise<OperationalTask[]> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
+  async createTask(task: Omit<OperationalTask, "id" | "createdAt">): Promise<OperationalTask> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
+  async updateTask(taskId: number, updates: Partial<OperationalTask>): Promise<OperationalTask> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
+  async getExpenses(listingId?: string | number): Promise<Expense[]> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
+  async createExpense(expense: Omit<Expense, "id">): Promise<Expense> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
+  async getOwnerStatements(listingId?: string | number): Promise<OwnerStatement[]> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
+  async createReservation(reservation: Omit<Reservation, "id" | "createdAt" | "pricePerNight">): Promise<Reservation> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
 
   async updateCalendar(
     id: string | number,

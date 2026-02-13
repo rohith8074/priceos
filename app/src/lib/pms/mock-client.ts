@@ -8,9 +8,22 @@ import {
   VerificationResult,
   ReservationFilters,
 } from "@/types/hostaway";
+import type {
+  SeasonalRule,
+  Conversation,
+  ConversationMessage,
+  MessageTemplate,
+  OperationalTask,
+  Expense,
+  OwnerStatement,
+} from "@/types/operations";
 import { MOCK_PROPERTIES } from "@/data/mock-properties";
 import { generateMockCalendar } from "@/data/mock-calendar";
 import { MOCK_RESERVATIONS, getReservationsInRange, getReservationsForProperty } from "@/data/mock-reservations";
+import { MOCK_SEASONAL_RULES, getRulesForListing } from "@/data/mock-seasonal-rules";
+import { MOCK_CONVERSATIONS, MOCK_MESSAGES, MOCK_MESSAGE_TEMPLATES, getMessagesForConversation } from "@/data/mock-conversations";
+import { MOCK_TASKS } from "@/data/mock-tasks";
+import { MOCK_EXPENSES, MOCK_OWNER_STATEMENTS } from "@/data/mock-expenses";
 import { format, parseISO } from "date-fns";
 
 /**
@@ -195,6 +208,138 @@ export class MockPMSClient implements PMSClient {
       current.setDate(current.getDate() + 1);
     }
     return { success: true, updatedCount: count };
+  }
+
+  // --- Seasonal Rules ---
+
+  async getSeasonalRules(listingId: string | number): Promise<SeasonalRule[]> {
+    await this.delay(100);
+    const numId = typeof listingId === "string" ? parseInt(listingId) : listingId;
+    return getRulesForListing(numId);
+  }
+
+  async createSeasonalRule(listingId: string | number, rule: Omit<SeasonalRule, "id" | "listingMapId">): Promise<SeasonalRule> {
+    await this.delay(100);
+    const numId = typeof listingId === "string" ? parseInt(listingId) : listingId;
+    const newRule: SeasonalRule = { ...rule, id: Date.now(), listingMapId: numId };
+    MOCK_SEASONAL_RULES.push(newRule);
+    return newRule;
+  }
+
+  async updateSeasonalRule(listingId: string | number, ruleId: number, updates: Partial<SeasonalRule>): Promise<SeasonalRule> {
+    await this.delay(100);
+    const idx = MOCK_SEASONAL_RULES.findIndex((r) => r.id === ruleId);
+    if (idx === -1) throw new Error(`Rule ${ruleId} not found`);
+    MOCK_SEASONAL_RULES[idx] = { ...MOCK_SEASONAL_RULES[idx], ...updates };
+    return MOCK_SEASONAL_RULES[idx];
+  }
+
+  async deleteSeasonalRule(listingId: string | number, ruleId: number): Promise<void> {
+    await this.delay(100);
+    const idx = MOCK_SEASONAL_RULES.findIndex((r) => r.id === ruleId);
+    if (idx !== -1) MOCK_SEASONAL_RULES.splice(idx, 1);
+  }
+
+  // --- Conversations ---
+
+  async getConversations(listingId?: string | number): Promise<Conversation[]> {
+    await this.delay(100);
+    if (listingId) {
+      const numId = typeof listingId === "string" ? parseInt(listingId) : listingId;
+      return MOCK_CONVERSATIONS.filter((c) => c.listingMapId === numId);
+    }
+    return MOCK_CONVERSATIONS;
+  }
+
+  async getConversationMessages(conversationId: number): Promise<ConversationMessage[]> {
+    await this.delay(100);
+    return getMessagesForConversation(conversationId);
+  }
+
+  async sendMessage(conversationId: number, content: string): Promise<ConversationMessage> {
+    await this.delay(100);
+    const msg: ConversationMessage = {
+      id: Date.now(),
+      conversationId,
+      sender: "host",
+      content,
+      sentAt: new Date().toISOString(),
+    };
+    MOCK_MESSAGES.push(msg);
+    return msg;
+  }
+
+  async getMessageTemplates(): Promise<MessageTemplate[]> {
+    await this.delay(50);
+    return MOCK_MESSAGE_TEMPLATES;
+  }
+
+  // --- Tasks ---
+
+  async getTasks(listingId?: string | number): Promise<OperationalTask[]> {
+    await this.delay(100);
+    if (listingId) {
+      const numId = typeof listingId === "string" ? parseInt(listingId) : listingId;
+      return MOCK_TASKS.filter((t) => t.listingMapId === numId);
+    }
+    return MOCK_TASKS;
+  }
+
+  async createTask(task: Omit<OperationalTask, "id" | "createdAt">): Promise<OperationalTask> {
+    await this.delay(100);
+    const newTask: OperationalTask = { ...task, id: Date.now(), createdAt: new Date().toISOString() };
+    MOCK_TASKS.push(newTask);
+    return newTask;
+  }
+
+  async updateTask(taskId: number, updates: Partial<OperationalTask>): Promise<OperationalTask> {
+    await this.delay(100);
+    const idx = MOCK_TASKS.findIndex((t) => t.id === taskId);
+    if (idx === -1) throw new Error(`Task ${taskId} not found`);
+    MOCK_TASKS[idx] = { ...MOCK_TASKS[idx], ...updates };
+    return MOCK_TASKS[idx];
+  }
+
+  // --- Expenses ---
+
+  async getExpenses(listingId?: string | number): Promise<Expense[]> {
+    await this.delay(100);
+    if (listingId) {
+      const numId = typeof listingId === "string" ? parseInt(listingId) : listingId;
+      return MOCK_EXPENSES.filter((e) => e.listingMapId === numId);
+    }
+    return MOCK_EXPENSES;
+  }
+
+  async createExpense(expense: Omit<Expense, "id">): Promise<Expense> {
+    await this.delay(100);
+    const newExpense: Expense = { ...expense, id: Date.now() };
+    MOCK_EXPENSES.push(newExpense);
+    return newExpense;
+  }
+
+  async getOwnerStatements(listingId?: string | number): Promise<OwnerStatement[]> {
+    await this.delay(100);
+    if (listingId) {
+      const numId = typeof listingId === "string" ? parseInt(listingId) : listingId;
+      return MOCK_OWNER_STATEMENTS.filter((s) => s.listingMapId === numId);
+    }
+    return MOCK_OWNER_STATEMENTS;
+  }
+
+  // --- Create Reservation ---
+
+  async createReservation(reservation: Omit<Reservation, "id" | "createdAt" | "pricePerNight">): Promise<Reservation> {
+    await this.delay(100);
+    const pricePerNight = reservation.nights > 0 ? Math.round(reservation.totalPrice / reservation.nights) : 0;
+    const newReservation: Reservation = {
+      ...reservation,
+      id: Date.now(),
+      pricePerNight,
+      createdAt: new Date().toISOString(),
+    };
+    MOCK_RESERVATIONS.push(newReservation);
+    return newReservation;
   }
 
   async updateCalendar(
