@@ -191,7 +191,8 @@ All rollbacks are automated and verifiable — every change has a return path.
 | Layer | Technology |
 |-------|-----------|
 | Frontend | Next.js + shadcn/ui (Vercel) |
-| Backend | Supabase (shared project) |
+| Authentication | Neon Auth |
+| Database | Neon Postgres (serverless) |
 | AI / Agents | Lyzr Manager-Worker architecture |
 | PMS Integration | Hostaway API (POC); Guesty, Channex (V1+); Airbnb, VRBO, Booking.com via channel managers |
 
@@ -223,13 +224,57 @@ No routine chatter on secondary channels. If the PM has to check WhatsApp, somet
 
 ## Getting Started
 
+Navigate to the app directory:
+
 ```bash
-cd frontend
+cd app
+```
+
+Install dependencies:
+
+```bash
 npm install
+```
+
+Configure environment variables in `app/.env.local`:
+
+```bash
+# Database (Neon Postgres)
+DATABASE_URL=postgresql://...
+
+# Neon Auth
+NEON_AUTH_BASE_URL=https://auth.neon.tech
+NEON_AUTH_COOKIE_SECRET=$(openssl rand -base64 32)
+
+# PMS Mode
+HOSTAWAY_MODE=db  # db | mock | live
+```
+
+Initialize database:
+
+```bash
+npm run db:push
+npm run db:seed
+```
+
+Start development server:
+
+```bash
 npm run dev
 ```
 
-Requires `.env.local` with Supabase keys (already configured).
+Visit http://localhost:3000/auth/sign-in to access the application.
+
+## Authentication
+
+PriceOS uses Neon Auth for secure user authentication:
+
+- **Sign Up/Sign In**: Email-based authentication
+- **Session Management**: JWT tokens in HTTP-only cookies
+- **Protected Routes**: Automatic redirect for unauthenticated users
+- **Account Settings**: User profile and security management
+
+See [Neon Auth Setup Guide](docs/neon-auth-setup.md) for detailed configuration.
 
 ---
 
