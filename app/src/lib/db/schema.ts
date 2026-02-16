@@ -223,6 +223,16 @@ export const ownerStatements = pgTable("owner_statements", {
   reservationCount: integer("reservation_count").notNull().default(0),
 });
 
+export const userSettings = pgTable("user_settings", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().unique(), // From Neon Auth
+  lyzrApiKey: text("lyzr_api_key"), // Encrypted or hashed
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("user_settings_user_id_idx").on(table.userId),
+}));
+
 // Type exports
 export type ListingRow = typeof listings.$inferSelect;
 export type NewListing = typeof listings.$inferInsert;
@@ -248,5 +258,9 @@ export type TaskRow = typeof tasks.$inferSelect;
 export type NewTask = typeof tasks.$inferInsert;
 export type ExpenseRow = typeof expenses.$inferSelect;
 export type NewExpense = typeof expenses.$inferInsert;
+export type OwnerStatementRow = typeof ownerStatements.$inferSelect;
+export type NewOwnerStatement = typeof ownerStatements.$inferInsert;
+export type UserSettingsRow = typeof userSettings.$inferSelect;
+export type NewUserSettings = typeof userSettings.$inferInsert;
 export type OwnerStatementRow = typeof ownerStatements.$inferSelect;
 export type NewOwnerStatement = typeof ownerStatements.$inferInsert;

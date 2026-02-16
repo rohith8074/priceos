@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/lib/auth/server'
+import { db } from '@/lib/db'
+import { userSettings } from '@/lib/db'
+import { eq } from 'drizzle-orm'
 
 const LYZR_UPLOAD_URL = 'https://agent-prod.studio.lyzr.ai/v3/assets/upload'
-const LYZR_API_KEY = process.env.LYZR_API_KEY || ''
 
 export async function POST(request: NextRequest) {
   try {
-    if (!LYZR_API_KEY) {
+    // Get authenticated user
+    const authResult = await auth()
+    const session = authResult?.session
+
+    if (!session?.userId) {
       return NextResponse.json(
         {
           success: false,
@@ -14,13 +21,39 @@ export async function POST(request: NextRequest) {
           total_files: 0,
           successful_uploads: 0,
           failed_uploads: 0,
-          message: 'LYZR_API_KEY not configured',
+          message: 'Unauthorized',
           timestamp: new Date().toISOString(),
-          error: 'LYZR_API_KEY not configured on server',
+          error: 'Unauthorized',
+        },
+        { status: 401 }
+      )
+    }
+
+    // Fetch user's API key from database
+    const settings = await db
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, session.userId))
+      .limit(1)
+
+    if (settings.length === 0 || !settings[0].lyzrApiKey) {
+      return NextResponse.json(
+        {
+          success: false,
+          asset_ids: [],
+          files: [],
+          total_files: 0,
+          successful_uploads: 0,
+          failed_uploads: 0,
+          message: 'LYZR_API_KEY not configured. Please add your API key in Settings.',
+          timestamp: new Date().toISOString(),
+          error: 'LYZR_API_KEY not configured. Please add your API key in Settings.',
         },
         { status: 500 }
       )
     }
+
+    const LYZR_API_KEY = settings[0].lyzrApiKey
 
     const formData = await request.formData()
     const files = formData.getAll('files')

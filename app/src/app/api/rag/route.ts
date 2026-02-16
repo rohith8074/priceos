@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/lib/auth/server'
+import { db } from '@/lib/db'
+import { userSettings } from '@/lib/db'
+import { eq } from 'drizzle-orm'
 
 const LYZR_RAG_BASE_URL = 'https://rag-prod.studio.lyzr.ai/v3'
-const LYZR_API_KEY = process.env.LYZR_API_KEY || ''
 
 const FILE_TYPE_MAP: Record<string, 'pdf' | 'docx' | 'txt'> = {
   'application/pdf': 'pdf',
@@ -25,15 +28,38 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    if (!LYZR_API_KEY) {
+    // Get authenticated user
+    const authResult = await auth()
+    const session = authResult?.session
+
+    if (!session?.userId) {
       return NextResponse.json(
         {
           success: false,
-          error: 'LYZR_API_KEY not configured on server',
+          error: 'Unauthorized',
+        },
+        { status: 401 }
+      )
+    }
+
+    // Fetch user's API key from database
+    const settings = await db
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, session.userId))
+      .limit(1)
+
+    if (settings.length === 0 || !settings[0].lyzrApiKey) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'LYZR_API_KEY not configured. Please add your API key in Settings.',
         },
         { status: 500 }
       )
     }
+
+    const LYZR_API_KEY = settings[0].lyzrApiKey
 
     const response = await fetch(`${LYZR_RAG_BASE_URL}/rag/documents/${encodeURIComponent(ragId)}/`, {
       method: 'GET',
@@ -91,15 +117,38 @@ export async function GET(request: NextRequest) {
 // POST - Upload and train a document
 export async function POST(request: NextRequest) {
   try {
-    if (!LYZR_API_KEY) {
+    // Get authenticated user
+    const authResult = await auth()
+    const session = authResult?.session
+
+    if (!session?.userId) {
       return NextResponse.json(
         {
           success: false,
-          error: 'LYZR_API_KEY not configured on server',
+          error: 'Unauthorized',
+        },
+        { status: 401 }
+      )
+    }
+
+    // Fetch user's API key from database
+    const settings = await db
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, session.userId))
+      .limit(1)
+
+    if (settings.length === 0 || !settings[0].lyzrApiKey) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'LYZR_API_KEY not configured. Please add your API key in Settings.',
         },
         { status: 500 }
       )
     }
+
+    const LYZR_API_KEY = settings[0].lyzrApiKey
 
     const formData = await request.formData()
     const ragId = formData.get('ragId') as string
@@ -183,15 +232,38 @@ export async function POST(request: NextRequest) {
 // PATCH - Crawl a website and add content to knowledge base
 export async function PATCH(request: NextRequest) {
   try {
-    if (!LYZR_API_KEY) {
+    // Get authenticated user
+    const authResult = await auth()
+    const session = authResult?.session
+
+    if (!session?.userId) {
       return NextResponse.json(
         {
           success: false,
-          error: 'LYZR_API_KEY not configured on server',
+          error: 'Unauthorized',
+        },
+        { status: 401 }
+      )
+    }
+
+    // Fetch user's API key from database
+    const settings = await db
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, session.userId))
+      .limit(1)
+
+    if (settings.length === 0 || !settings[0].lyzrApiKey) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'LYZR_API_KEY not configured. Please add your API key in Settings.',
         },
         { status: 500 }
       )
     }
+
+    const LYZR_API_KEY = settings[0].lyzrApiKey
 
     const body = await request.json()
     const { ragId, url } = body
@@ -250,15 +322,38 @@ export async function PATCH(request: NextRequest) {
 // DELETE - Remove documents from knowledge base
 export async function DELETE(request: NextRequest) {
   try {
-    if (!LYZR_API_KEY) {
+    // Get authenticated user
+    const authResult = await auth()
+    const session = authResult?.session
+
+    if (!session?.userId) {
       return NextResponse.json(
         {
           success: false,
-          error: 'LYZR_API_KEY not configured on server',
+          error: 'Unauthorized',
+        },
+        { status: 401 }
+      )
+    }
+
+    // Fetch user's API key from database
+    const settings = await db
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, session.userId))
+      .limit(1)
+
+    if (settings.length === 0 || !settings[0].lyzrApiKey) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'LYZR_API_KEY not configured. Please add your API key in Settings.',
         },
         { status: 500 }
       )
     }
+
+    const LYZR_API_KEY = settings[0].lyzrApiKey
 
     const body = await request.json()
     const { ragId, documentNames } = body

@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import parseLLMJson from '@/lib/agents/json-parser'
+import { auth } from '@/lib/auth/server'
+import { db } from '@/lib/db'
+import { userSettings } from '@/lib/db'
+import { eq } from 'drizzle-orm'
 
 const LYZR_API_URL = 'https://agent-prod.studio.lyzr.ai/v3/inference/chat/'
-const LYZR_API_KEY = process.env.LYZR_API_KEY || ''
 
 // Types
 interface NormalizedAgentResponse {
@@ -117,20 +120,48 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!LYZR_API_KEY) {
+    // Get authenticated user
+    const authResult = await auth()
+    const session = authResult?.session
+
+    if (!session?.userId) {
       return NextResponse.json(
         {
           success: false,
           response: {
             status: 'error',
             result: {},
-            message: 'LYZR_API_KEY not configured',
+            message: 'Unauthorized',
           },
-          error: 'LYZR_API_KEY not configured on server',
+          error: 'Unauthorized',
+        },
+        { status: 401 }
+      )
+    }
+
+    // Fetch user's API key from database
+    const settings = await db
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, session.userId))
+      .limit(1)
+
+    if (settings.length === 0 || !settings[0].lyzrApiKey) {
+      return NextResponse.json(
+        {
+          success: false,
+          response: {
+            status: 'error',
+            result: {},
+            message: 'LYZR_API_KEY not configured. Please add your API key in Settings.',
+          },
+          error: 'LYZR_API_KEY not configured. Please add your API key in Settings.',
         },
         { status: 500 }
       )
     }
+
+    const LYZR_API_KEY = settings[0].lyzrApiKey
 
     const finalUserId = user_id || `user-${generateUUID()}`
     const finalSessionId = session_id || `${agent_id}-${generateUUID().substring(0, 12)}`
