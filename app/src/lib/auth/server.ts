@@ -1,3 +1,7 @@
-import { createAuthServer } from '@neondatabase/auth/next/server';
+import { createAuthServer, neonAuth } from '@neondatabase/auth/next/server';
 
-export const auth = createAuthServer();
+// Server auth API client for server actions
+export const authServer = createAuthServer();
+
+// Session getter for server components (returns { session, user })
+export const auth = neonAuth;
