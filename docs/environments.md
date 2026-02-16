@@ -47,3 +47,16 @@ cd app && npm run db:seed
 - **Project ID:** `summer-cake-85946943`
 - **Org ID:** `org-orange-flower-61544110`
 - **Region:** `aws-us-east-1`
+
+## Authentication
+
+PriceOS uses Neon Auth for user authentication.
+
+### Environment Variables
+
+| Variable | Description | How to Obtain |
+|----------|-------------|---------------|
+| `NEON_AUTH_BASE_URL` | Auth service endpoint | Use `https://auth.neon.tech` |
+| `NEON_AUTH_COOKIE_SECRET` | Session cookie secret | Generate: `openssl rand -base64 32` |
+
+**Important:** Use different `NEON_AUTH_COOKIE_SECRET` values for production, preview, and development environments.
