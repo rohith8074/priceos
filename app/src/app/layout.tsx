@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
-import { NeonAuthUIProvider } from "@neondatabase/auth-ui";
+import { NeonAuthUIProvider } from "@neondatabase/auth/react/ui";
 import { authClient } from "@/lib/auth/client";
-import "@neondatabase/auth-ui/css";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });

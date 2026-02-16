@@ -9,6 +9,7 @@ import {
   jsonb,
   varchar,
   boolean,
+  index,
 } from "drizzle-orm/pg-core";
 
 export const listings = pgTable("listings", {
@@ -44,7 +45,9 @@ export const calendarDays = pgTable("calendar_days", {
   maximumStay: integer("maximum_stay").default(30),
   notes: text("notes"),
   syncedAt: timestamp("synced_at"),
-});
+}, (table) => ({
+  listingDateIdx: index("calendar_listing_date_idx").on(table.listingId, table.date),
+}));
 
 export const reservations = pgTable("reservations", {
   id: serial("id").primaryKey(),
@@ -65,7 +68,11 @@ export const reservations = pgTable("reservations", {
   externalData: jsonb("external_data").$type<Record<string, unknown>>(),
   syncedAt: timestamp("synced_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  listingIdx: index("reservations_listing_idx").on(table.listingMapId),
+  datesIdx: index("reservations_dates_idx").on(table.arrivalDate, table.departureDate),
+  statusIdx: index("reservations_status_idx").on(table.status),
+}));
 
 export const proposals = pgTable("proposals", {
   id: serial("id").primaryKey(),
@@ -81,7 +88,10 @@ export const proposals = pgTable("proposals", {
   reasoning: text("reasoning"),
   signals: jsonb("signals").$type<Record<string, unknown>>().default({}),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  listingDateIdx: index("proposals_listing_date_idx").on(table.listingId, table.date),
+  statusIdx: index("proposals_status_idx").on(table.status),
+}));
 
 export const chatMessages = pgTable("chat_messages", {
   id: serial("id").primaryKey(),
@@ -123,7 +133,10 @@ export const seasonalRules = pgTable("seasonal_rules", {
   maximumStay: integer("maximum_stay"),
   enabled: boolean("enabled").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  listingIdx: index("seasonal_rules_listing_idx").on(table.listingId),
+  datesIdx: index("seasonal_rules_dates_idx").on(table.startDate, table.endDate),
+}));
 
 export const conversations = pgTable("conversations", {
   id: serial("id").primaryKey(),
@@ -139,7 +152,10 @@ export const conversations = pgTable("conversations", {
   unreadCount: integer("unread_count").notNull().default(0),
   status: text("status").notNull().default("active"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  listingIdx: index("conversations_listing_idx").on(table.listingId),
+  statusIdx: index("conversations_status_idx").on(table.status),
+}));
 
 export const conversationMessages = pgTable("conversation_messages", {
   id: serial("id").primaryKey(),
@@ -149,7 +165,9 @@ export const conversationMessages = pgTable("conversation_messages", {
   sender: text("sender").notNull(), // guest, host, system
   content: text("content").notNull(),
   sentAt: timestamp("sent_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  conversationIdx: index("messages_conversation_idx").on(table.conversationId),
+}));
 
 export const messageTemplates = pgTable("message_templates", {
   id: serial("id").primaryKey(),
@@ -171,7 +189,11 @@ export const tasks = pgTable("tasks", {
   dueDate: date("due_date"),
   assignee: text("assignee"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  listingIdx: index("tasks_listing_idx").on(table.listingId),
+  statusIdx: index("tasks_status_idx").on(table.status),
+  dueDateIdx: index("tasks_due_date_idx").on(table.dueDate),
+}));
 
 export const expenses = pgTable("expenses", {
   id: serial("id").primaryKey(),
@@ -183,7 +205,10 @@ export const expenses = pgTable("expenses", {
   currencyCode: varchar("currency_code", { length: 3 }).notNull().default("AED"),
   description: text("description").notNull(),
   date: date("date").notNull(),
-});
+}, (table) => ({
+  listingIdx: index("expenses_listing_idx").on(table.listingId),
+  dateIdx: index("expenses_date_idx").on(table.date),
+}));
 
 export const ownerStatements = pgTable("owner_statements", {
   id: serial("id").primaryKey(),

@@ -1,8 +1,21 @@
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { neonAuthMiddleware } from '@neondatabase/auth/next/server';
 
-export default neonAuthMiddleware({
+// Create the auth middleware
+const authMiddleware = neonAuthMiddleware({
   loginUrl: '/auth/sign-in',
 });
+
+export default function middleware(request: NextRequest) {
+  // Allow root path (landing page) and auth routes without authentication
+  if (request.nextUrl.pathname === '/' || request.nextUrl.pathname.startsWith('/auth')) {
+    return NextResponse.next();
+  }
+
+  // Apply auth middleware to all other routes
+  return authMiddleware(request);
+}
 
 export const config = {
   matcher: [
