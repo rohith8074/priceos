@@ -14,6 +14,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BarChart3 } from "lucide-react";
 import type { Reservation } from "@/types/hostaway";
 
 interface ChannelBreakdownProps {
@@ -23,11 +24,11 @@ interface ChannelBreakdownProps {
 const chartConfig = {
   revenue: {
     label: "Revenue (AED)",
-    color: "var(--chart-1)",
+    color: "hsl(var(--chart-1))",
   },
   bookings: {
     label: "Bookings",
-    color: "var(--chart-2)",
+    color: "hsl(var(--chart-2))",
   },
 } satisfies ChartConfig;
 
@@ -60,31 +61,48 @@ export function ChannelBreakdown({ reservations }: ChannelBreakdownProps) {
   if (chartData.length === 0) return null;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Channel Performance</CardTitle>
+    <Card className="relative overflow-hidden group">
+      {/* Decorative gradient */}
+      <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-blue-100/20 to-cyan-100/20 dark:from-blue-900/10 dark:to-cyan-900/10 rounded-full blur-3xl" />
+
+      <CardHeader className="relative">
+        <CardTitle className="text-lg font-bold flex items-center gap-2">
+          <div className="rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 p-2 shadow-md">
+            <BarChart3 className="h-4 w-4 text-white" />
+          </div>
+          Channel Performance
+        </CardTitle>
       </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig} className="h-[250px] w-full">
+
+      <CardContent className="relative">
+        <ChartContainer config={chartConfig} className="h-[280px] w-full">
           <BarChart data={chartData} accessibilityLayer>
-            <CartesianGrid vertical={false} />
+            <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.3} />
             <XAxis
               dataKey="channel"
               tickLine={false}
               tickMargin={10}
               axisLine={false}
+              className="text-xs font-medium"
             />
             <YAxis
               tickLine={false}
               axisLine={false}
               tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+              className="text-xs font-medium"
             />
             <ChartTooltip content={<ChartTooltipContent />} />
             <Bar
               dataKey="revenue"
-              fill="var(--color-revenue)"
-              radius={[4, 4, 0, 0]}
+              fill="url(#blueGradient)"
+              radius={[8, 8, 0, 0]}
             />
+            <defs>
+              <linearGradient id="blueGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                <stop offset="100%" stopColor="#06b6d4" stopOpacity={0.3}/>
+              </linearGradient>
+            </defs>
           </BarChart>
         </ChartContainer>
       </CardContent>

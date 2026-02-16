@@ -56,11 +56,14 @@ export default async function DashboardPage() {
   const monthlyRevenue = Math.round((bookedDays * averagePrice) / 3);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          AI-powered revenue overview for your Dubai properties
+    <div className="space-y-8">
+      {/* Enhanced Header */}
+      <div className="space-y-2">
+        <h1 className="text-4xl font-black tracking-tight bg-gradient-to-r from-amber-600 via-orange-600 to-red-600 dark:from-amber-400 dark:via-orange-400 dark:to-red-400 bg-clip-text text-transparent">
+          Revenue Dashboard
+        </h1>
+        <p className="text-muted-foreground font-medium">
+          AI-powered insights and real-time performance tracking for your Dubai properties
         </p>
       </div>
 

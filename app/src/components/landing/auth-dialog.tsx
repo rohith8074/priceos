@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { SignInForm, SignUpForm } from '@neondatabase/auth/react/ui';
+import { SignInForm, SignUpForm, authLocalization } from '@neondatabase/auth/react/ui';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { authClient } from '@/lib/auth/client';
 
 interface AuthDialogProps {
   open: boolean;
@@ -21,18 +20,32 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
 
-  // Debug: Log authClient
-  console.log('AuthDialog - authClient:', authClient);
-  console.log('AuthDialog - authClient type:', typeof authClient);
+  // Listen for successful auth and redirect
+  useEffect(() => {
+    if (!open) return;
 
-  const handleSuccess = () => {
-    // Defer state updates to avoid updating unmounted component
-    setTimeout(() => {
-      onOpenChange(false);
-    }, 0);
-    router.push('/dashboard');
-    router.refresh();
-  };
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/auth/get-session');
+        const data = await response.json();
+
+        if (data && data.session) {
+          // User is authenticated, close dialog and redirect
+          setTimeout(() => {
+            onOpenChange(false);
+          }, 0);
+          router.push('/dashboard');
+          router.refresh();
+        }
+      } catch (error) {
+        // Ignore errors, form will handle them
+      }
+    };
+
+    // Poll for auth status after form submission
+    const interval = setInterval(checkAuth, 1000);
+    return () => clearInterval(interval);
+  }, [open, onOpenChange, router]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -52,11 +65,11 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
           </TabsList>
 
           <TabsContent value="signin" className="space-y-4">
-            <SignInForm authClient={authClient} onSuccess={handleSuccess} />
+            <SignInForm localization={authLocalization} />
           </TabsContent>
 
           <TabsContent value="signup" className="space-y-4">
-            <SignUpForm authClient={authClient} onSuccess={handleSuccess} />
+            <SignUpForm localization={authLocalization} />
           </TabsContent>
         </Tabs>
       </DialogContent>
