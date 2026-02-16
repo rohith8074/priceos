@@ -26,7 +26,10 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
   console.log('AuthDialog - authClient type:', typeof authClient);
 
   const handleSuccess = () => {
-    onOpenChange(false);
+    // Defer state updates to avoid updating unmounted component
+    setTimeout(() => {
+      onOpenChange(false);
+    }, 0);
     router.push('/dashboard');
     router.refresh();
   };
