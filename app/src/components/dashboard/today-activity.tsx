@@ -34,7 +34,7 @@ export function TodayActivity({
             <div className="rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 p-2 shadow-md">
               <Calendar className="h-4 w-4 text-white" />
             </div>
-            Today's Activity
+            Today&apos;s Activity
           </CardTitle>
           <Badge variant="outline" className="border-amber-500/30 text-amber-700 dark:text-amber-400 font-semibold">
             {checkIns.length + checkOuts.length} {checkIns.length + checkOuts.length === 1 ? 'event' : 'events'}

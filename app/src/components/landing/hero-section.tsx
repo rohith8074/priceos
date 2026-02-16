@@ -30,7 +30,7 @@ export function HeroSection() {
           {/* Hero headline with dramatic typography */}
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-200">
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter bg-gradient-to-br from-amber-600 via-orange-600 to-red-600 dark:from-amber-400 dark:via-orange-400 dark:to-red-400 bg-clip-text text-transparent leading-[1.1]">
-              Dubai's Smartest
+              Dubai&apos;s Smartest
               <br />
               <span className="relative">
                 Revenue Engine

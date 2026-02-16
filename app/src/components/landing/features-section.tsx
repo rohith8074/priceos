@@ -1,6 +1,6 @@
 'use client';
 
-import { TrendingUp, Zap, Calendar, DollarSign, Brain, Shield, BarChart3, Rocket } from 'lucide-react';
+import { Zap, Calendar, Brain, Shield, BarChart3, Rocket } from 'lucide-react';
 
 const features = [
   {

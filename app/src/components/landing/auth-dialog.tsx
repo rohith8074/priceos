@@ -37,7 +37,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
           router.push('/dashboard');
           router.refresh();
         }
-      } catch (error) {
+      } catch {
         // Ignore errors, form will handle them
       }
     };
