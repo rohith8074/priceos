@@ -1,23 +1,26 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createPMSClient } from "@/lib/pms";
+import { NextResponse } from "next/server";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-  const pms = createPMSClient();
-  const rules = await pms.getSeasonalRules(id);
-  return NextResponse.json(rules);
+// Seasonal rules API removed - Use AI pricing proposals instead
+export async function GET() {
+  return NextResponse.json({
+    error: "Seasonal rules removed in Price Intelligence Layer redesign. Use AI pricing proposals instead."
+  }, { status: 410 });
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-  const body = await request.json();
-  const pms = createPMSClient();
-  const rule = await pms.createSeasonalRule(id, body);
-  return NextResponse.json(rule);
+export async function POST() {
+  return NextResponse.json({
+    error: "Seasonal rules removed in Price Intelligence Layer redesign. Use AI pricing proposals instead."
+  }, { status: 410 });
+}
+
+export async function PUT() {
+  return NextResponse.json({
+    error: "Seasonal rules removed in Price Intelligence Layer redesign. Use AI pricing proposals instead."
+  }, { status: 410 });
+}
+
+export async function DELETE() {
+  return NextResponse.json({
+    error: "Seasonal rules removed in Price Intelligence Layer redesign. Use AI pricing proposals instead."
+  }, { status: 410 });
 }

@@ -1,193 +1,27 @@
-import { RevenueCycleResult } from "./types";
-import { generatePriceProposals, reviewProposals } from "./mock-agents";
-import { getEventsInRange, MOCK_EVENTS } from "@/data/mock-events";
-import {
-  getSignalsInRange,
-  MOCK_COMPETITOR_SIGNALS,
-} from "@/data/mock-competitors";
-import { createPMSClient } from "@/lib/pms";
-import { generateMockCalendarForMultipleProperties } from "@/data/mock-calendar";
+// Agent exports for PriceOS Intelligence Layer
 
-/**
- * Revenue Cycle Orchestration
- * Runs the complete pricing loop:
- * 1. Data Aggregator - Collect calendar, reservations, occupancy
- * 2. Event Intelligence - Get relevant events
- * 3. Competitor Scanner - Get market signals
- * 4. Pricing Optimizer - Generate proposals
- * 5. Adjustment Reviewer - Apply guardrails
- */
+export {
+  DataSyncAgent,
+  createDataSyncAgent,
+  type SyncResult,
+} from "./data-sync-agent";
 
-export async function runRevenueCycle(
-  propertyIds: number[],
-  dateRange: {
-    start: Date;
-    end: Date;
-  }
-): Promise<RevenueCycleResult> {
-  const cycleId = generateCycleId();
-  const pms = createPMSClient();
+export {
+  ChannelSyncAgent,
+  createChannelSyncAgent,
+  type ExecutionResult,
+} from "./channel-sync-agent";
 
-  // 1. Data Aggregator - Fetch properties for area info
-  const allProperties = await pms.listListings();
+export {
+  EventIntelligenceAgent,
+  createEventIntelligenceAgent,
+  type EventSignal,
+  type EventAnalysisResult,
+} from "./event-intelligence-agent";
 
-  // Generate calendars using actual property data (price, floor, ceiling)
-  const listingsForCalendar = allProperties
-    .filter((p) => propertyIds.includes(p.id))
-    .map((p) => ({
-      id: p.id,
-      price: p.price,
-      priceFloor: p.priceFloor,
-      priceCeiling: p.priceCeiling,
-    }));
-  const calendars = generateMockCalendarForMultipleProperties(
-    listingsForCalendar,
-    dateRange.start,
-    dateRange.end
-  );
-
-  // 2. Event Intelligence - Get events in range
-  const events = getEventsInRange(dateRange.start, dateRange.end, MOCK_EVENTS);
-
-  // 3. Competitor Scanner - Get signals in range
-  const competitorSignals = getSignalsInRange(
-    dateRange.start,
-    dateRange.end,
-    MOCK_COMPETITOR_SIGNALS
-  );
-
-  // 4. Pricing Optimizer - Generate proposals
-  const optimizerInputs = propertyIds.map((id) => {
-    const prop = allProperties.find((p) => p.id === id);
-    return {
-      listingMapId: id,
-      calendar: calendars.get(id) || [],
-      dateRange,
-      events,
-      competitorSignals: competitorSignals.filter(
-        (s) => s.area === prop?.area
-      ),
-      propertyInfo: {
-        price: prop?.price ?? 500,
-        priceFloor: prop?.priceFloor ?? 250,
-        priceCeiling: prop?.priceCeiling ?? 1000,
-        area: prop?.area ?? "Unknown",
-      },
-    };
-  });
-
-  const allProposals = generatePriceProposals(optimizerInputs);
-
-  // 5. Adjustment Reviewer - Review and apply guardrails
-  const reviewedProposals = reviewProposals(allProposals);
-
-  // Aggregate statistics
-  const approvedProposals = reviewedProposals.filter((r) => r.approved);
-  const rejectedProposals = reviewedProposals.filter((r) => !r.approved);
-
-  const aggregatedData = calculateAggregatedData(
-    calendars,
-    propertyIds,
-    dateRange
-  );
-
-  return {
-    cycleId,
-    timestamp: new Date().toISOString(),
-    properties: propertyIds,
-    dateRange: {
-      start: dateRange.start.toISOString().split("T")[0],
-      end: dateRange.end.toISOString().split("T")[0],
-    },
-    aggregatedData,
-    events,
-    competitorSignals,
-    allProposals,
-    approvedProposals,
-    rejectedProposals,
-    stats: {
-      totalProposals: allProposals.length,
-      approvedCount: approvedProposals.length,
-      rejectedCount: rejectedProposals.length,
-      avgPriceChange: calculateAveragePriceChange(allProposals),
-      highRiskCount: allProposals.filter(
-        (p) => p.riskLevel === "high"
-      ).length,
-    },
-  };
-}
-
-function generateCycleId(): string {
-  return `CYCLE-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-}
-
-function calculateAggregatedData(
-  calendars: Map<number, any[]>,
-  propertyIds: number[],
-  dateRange: { start: Date; end: Date }
-) {
-  let totalBooked = 0;
-  let totalAvailable = 0;
-
-  calendars.forEach((calendar) => {
-    totalBooked += calendar.filter(
-      (d: any) => d.status === "booked"
-    ).length;
-    totalAvailable += calendar.filter(
-      (d: any) => d.status === "available"
-    ).length;
-  });
-
-  const totalDays = (calendars.get(propertyIds[0]) || []).length;
-  const totalDaysAll = totalDays * propertyIds.length;
-  const occupancyRate =
-    totalDaysAll > 0 ? (totalBooked / totalDaysAll) * 100 : 0;
-
-  let totalPrice = 0;
-  let priceCount = 0;
-
-  calendars.forEach((calendar) => {
-    calendar.forEach((day: any) => {
-      if (day.status === "available") {
-        totalPrice += day.price;
-        priceCount++;
-      }
-    });
-  });
-
-  const averagePrice = priceCount > 0 ? Math.round(totalPrice / priceCount) : 0;
-
-  return {
-    totalProperties: propertyIds.length,
-    bookedDays: totalBooked,
-    availableDays: totalAvailable,
-    occupancyRate: Math.round(occupancyRate),
-    averagePrice,
-  };
-}
-
-function calculateAveragePriceChange(proposals: any[]): number {
-  if (proposals.length === 0) return 0;
-  const sum = proposals.reduce((acc: number, p: any) => acc + p.changePct, 0);
-  return Math.round(sum / proposals.length);
-}
-
-/**
- * Run revenue cycle for all properties
- */
-export async function runFullRevenueCycle(
-  dateRange: {
-    start: Date;
-    end: Date;
-  } = {
-    start: new Date(),
-    end: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
-  }
-): Promise<RevenueCycleResult> {
-  const pms = createPMSClient();
-  const allProperties = await pms.listListings();
-  const propertyIds = allProperties.map((p) => p.id);
-  return runRevenueCycle(propertyIds, dateRange);
-}
-
-export * from "./types";
+export {
+  PricingAnalystAgent,
+  createPricingAnalystAgent,
+  type PricingProposal,
+  type AnalysisResult,
+} from "./pricing-analyst-agent";

@@ -22,13 +22,10 @@ export default async function PropertyDetailPage({ params }: Props) {
   const today = new Date();
   const endDate90 = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
 
-  const [calendar, reservations, rules, expenses, statements] =
+  const [calendar, reservations] =
     await Promise.all([
       pms.getCalendar(property.id, today, endDate90),
       pms.getReservations({ listingMapId: property.id }),
-      pms.getSeasonalRules(property.id),
-      pms.getExpenses(property.id),
-      pms.getOwnerStatements(property.id),
     ]);
 
   return (
@@ -36,9 +33,9 @@ export default async function PropertyDetailPage({ params }: Props) {
       property={property}
       calendar={calendar}
       reservations={reservations}
-      rules={rules}
-      expenses={expenses}
-      statements={statements}
+      rules={[]}
+      expenses={[]}
+      statements={[]}
     />
   );
 }

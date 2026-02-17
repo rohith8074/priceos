@@ -4,6 +4,8 @@ import { auth } from '@/lib/auth/server'
 import { db } from '@/lib/db'
 import { userSettings } from '@/lib/db'
 import { eq } from 'drizzle-orm'
+import type { AgentCacheContext } from '@/lib/cache/types'
+import { buildAgentContext } from '@/lib/cache/utils'
 
 const LYZR_API_URL = 'https://agent-prod.studio.lyzr.ai/v3/inference/chat/'
 
@@ -103,7 +105,7 @@ function normalizeResponse(parsed: any): NormalizedAgentResponse {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { message, agent_id, user_id, session_id, assets } = body
+    const { message, agent_id, user_id, session_id, assets, cache } = body
 
     if (!message || !agent_id) {
       return NextResponse.json(
@@ -166,8 +168,16 @@ export async function POST(request: NextRequest) {
     const finalUserId = user_id || `user-${generateUUID()}`
     const finalSessionId = session_id || `${agent_id}-${generateUUID().substring(0, 12)}`
 
+    // Enhance message with cache context if available
+    let enhancedMessage = message
+    if (cache) {
+      const cacheContext = buildAgentContext({ cache: cache as AgentCacheContext, message })
+      enhancedMessage = cacheContext
+      console.log(`[Agent Cache] Injecting cache context for agent ${agent_id}`)
+    }
+
     const payload: Record<string, any> = {
-      message,
+      message: enhancedMessage,
       agent_id,
       user_id: finalUserId,
       session_id: finalSessionId,

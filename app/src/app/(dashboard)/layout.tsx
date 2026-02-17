@@ -1,6 +1,5 @@
-import { Sidebar } from "@/components/layout/sidebar";
-import { Header } from "@/components/layout/header";
-import { ChatPanel } from "@/components/layout/chat-panel";
+import { HeaderNav } from "@/components/layout/header-nav";
+import { AgentCacheProvider } from "@/lib/cache/agent-cache-provider";
 
 export default function DashboardLayout({
   children,
@@ -8,13 +7,11 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
-      </div>
-      <ChatPanel />
+    <div className="flex h-screen flex-col overflow-hidden">
+      <HeaderNav />
+      <AgentCacheProvider>
+        <main className="flex-1 overflow-hidden">{children}</main>
+      </AgentCacheProvider>
     </div>
   );
 }

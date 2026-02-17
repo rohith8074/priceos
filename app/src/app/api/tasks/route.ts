@@ -1,29 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createPMSClient } from "@/lib/pms";
+import { NextResponse } from "next/server";
 
+// Tasks API removed - Use HostAway for task management
 export async function GET() {
-  const pms = createPMSClient();
-  try {
-    const tasks = await pms.getTasks();
-    return NextResponse.json(tasks);
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to fetch tasks" },
-      { status: 500 }
-    );
-  }
-}
-
-export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const pms = createPMSClient();
-  try {
-    const task = await pms.createTask(body);
-    return NextResponse.json(task);
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to create task" },
-      { status: 400 }
-    );
-  }
+  return NextResponse.json({ 
+    error: "Tasks API removed in Price Intelligence Layer redesign. Use HostAway for task management." 
+  }, { status: 410 });
 }

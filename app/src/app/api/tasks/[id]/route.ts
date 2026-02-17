@@ -1,20 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createPMSClient } from "@/lib/pms";
+import { NextResponse } from "next/server";
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-  const body = await request.json();
-  const pms = createPMSClient();
-  try {
-    const task = await pms.updateTask(Number(id), body);
-    return NextResponse.json(task);
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to update task" },
-      { status: 400 }
-    );
-  }
+// Tasks API removed - Use HostAway for task management
+export async function GET() {
+  return NextResponse.json({
+    error: "Tasks API removed in Price Intelligence Layer redesign. Use HostAway for task management."
+  }, { status: 410 });
+}
+
+export async function PUT() {
+  return NextResponse.json({
+    error: "Tasks API removed in Price Intelligence Layer redesign. Use HostAway for task management."
+  }, { status: 410 });
 }

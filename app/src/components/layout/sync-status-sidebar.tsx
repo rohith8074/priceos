@@ -98,12 +98,13 @@ export function SyncStatusSidebar() {
     }));
 
     try {
+      // Always sync portfolio (all properties) regardless of current context
+      // Property-specific sync is not yet supported
       const response = await fetch("/api/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          context: contextType,
-          propertyId: contextType === "property" ? propertyId : undefined,
+          context: "portfolio",
         }),
       });
 
@@ -240,15 +241,15 @@ export function SyncStatusSidebar() {
             size="icon"
             onClick={handleSyncAll}
             disabled={isSyncing}
-            title="Sync Now"
+            title="Sync All Properties"
             className="h-8 w-8"
           >
             <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
           </Button>
           <div className="h-px w-full bg-border" />
-          <Building2 className="h-4 w-4 text-muted-foreground" title="Listings" />
-          <Calendar className="h-4 w-4 text-muted-foreground" title="Reservations" />
-          <CalendarRange className="h-4 w-4 text-muted-foreground" title="Calendar" />
+          <Building2 className="h-4 w-4 text-muted-foreground" />
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <CalendarRange className="h-4 w-4 text-muted-foreground" />
         </div>
       )}
     </aside>

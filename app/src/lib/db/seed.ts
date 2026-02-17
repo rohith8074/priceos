@@ -9,13 +9,7 @@ import {
   calendarDays,
   reservations,
   proposals,
-  seasonalRules,
-  conversations,
-  conversationMessages,
-  messageTemplates,
-  tasks,
-  expenses,
-  ownerStatements,
+  eventSignals,
 } from "./schema";
 
 const client = neon(process.env.DATABASE_URL!);
@@ -157,160 +151,20 @@ async function seed() {
       };
     });
 
-    for (let i = 0; i < proposalBatch.length; i += 50) {
-      await db.insert(proposals).values(proposalBatch.slice(i, i + 50));
-    }
-    totalProposals += proposalBatch.length;
+    // Proposal seed commented out - schema changed to dateRangeStart/dateRangeEnd
+    // Use quick-seed.ts or manually test proposals via agents
+    // for (let i = 0; i < proposalBatch.length; i += 50) {
+    //   await db.insert(proposals).values(proposalBatch.slice(i, i + 50));
+    // }
+    // totalProposals += proposalBatch.length;
   }
-  console.log(`  ${totalProposals} proposals`);
+  console.log(`  ${totalProposals} proposals (commented out - use quick-seed.ts)`);
 
-  // --- 5. Seasonal Rules ---
-  console.log("Inserting seasonal rules...");
-  for (const rule of MOCK_SEASONAL_RULES) {
-    const dbListingId = listingIdMap.get(rule.listingMapId) ?? 1;
-    await db.insert(seasonalRules).values({
-      listingId: dbListingId,
-      name: rule.name,
-      startDate: rule.startDate,
-      endDate: rule.endDate,
-      priceModifier: rule.priceModifier,
-      minimumStay: rule.minimumStay,
-      enabled: rule.enabled,
-    });
-  }
-  console.log(`  ${MOCK_SEASONAL_RULES.length} seasonal rules`);
+  // --- Operational tables removed (seasonal rules, conversations, tasks, expenses) ---
+  console.log("Operational seeds skipped - features removed in Price Intelligence Layer redesign");
+  console.log("Use quick-seed.ts for minimal seeding or test agents directly");
 
-  // --- 6. Conversations ---
-  console.log("Inserting conversations...");
-  const conversationIdMap = new Map<number, number>();
-
-  for (const conv of MOCK_CONVERSATIONS) {
-    const dbListingId = listingIdMap.get(conv.listingMapId) ?? 1;
-    const dbReservationId = conv.reservationId
-      ? reservationIdMap.get(conv.reservationId) ?? null
-      : null;
-
-    const [inserted] = await db
-      .insert(conversations)
-      .values({
-        listingId: dbListingId,
-        reservationId: dbReservationId,
-        guestName: conv.guestName,
-        guestEmail: conv.guestEmail,
-        channel: "Direct",
-        lastMessageAt: new Date(conv.lastMessageAt),
-        unreadCount: conv.unreadCount,
-        status: conv.status,
-      })
-      .returning({ id: conversations.id });
-
-    conversationIdMap.set(conv.id, inserted.id);
-  }
-  console.log(`  ${MOCK_CONVERSATIONS.length} conversations`);
-
-  // --- 7. Conversation Messages ---
-  console.log("Inserting messages...");
-  for (const msg of MOCK_MESSAGES) {
-    const dbConvId = conversationIdMap.get(msg.conversationId);
-    if (!dbConvId) continue;
-
-    await db.insert(conversationMessages).values({
-      conversationId: dbConvId,
-      sender: msg.sender,
-      content: msg.content,
-      sentAt: new Date(msg.sentAt),
-    });
-  }
-
-  // Update lastMessage on conversations
-  for (const conv of MOCK_CONVERSATIONS) {
-    const dbConvId = conversationIdMap.get(conv.id);
-    if (!dbConvId) continue;
-    const msgs = MOCK_MESSAGES.filter((m) => m.conversationId === conv.id);
-    if (msgs.length > 0) {
-      const lastMsg = msgs[msgs.length - 1];
-      await db
-        .update(conversations)
-        .set({ lastMessage: lastMsg.content })
-        .where(sql`id = ${dbConvId}`);
-    }
-  }
-  console.log(`  ${MOCK_MESSAGES.length} messages`);
-
-  // --- 8. Message Templates ---
-  console.log("Inserting message templates...");
-  for (const tmpl of MOCK_MESSAGE_TEMPLATES) {
-    await db.insert(messageTemplates).values({
-      name: tmpl.name,
-      content: tmpl.content,
-      category: tmpl.category,
-    });
-  }
-  console.log(`  ${MOCK_MESSAGE_TEMPLATES.length} templates`);
-
-  // --- 9. Tasks ---
-  console.log("Inserting tasks...");
-  for (const task of MOCK_TASKS) {
-    const dbListingId = listingIdMap.get(task.listingMapId) ?? 1;
-    await db.insert(tasks).values({
-      listingId: dbListingId,
-      title: task.title,
-      description: task.description,
-      category: task.category,
-      priority: task.priority,
-      status: task.status,
-      dueDate: task.dueDate,
-      assignee: task.assignee,
-    });
-  }
-  console.log(`  ${MOCK_TASKS.length} tasks`);
-
-  // --- 10. Expenses ---
-  console.log("Inserting expenses...");
-  for (const exp of MOCK_EXPENSES) {
-    const dbListingId = listingIdMap.get(exp.listingMapId) ?? 1;
-    await db.insert(expenses).values({
-      listingId: dbListingId,
-      category: exp.category,
-      amount: String(exp.amount),
-      currencyCode: exp.currencyCode,
-      description: exp.description,
-      date: exp.date,
-    });
-  }
-  console.log(`  ${MOCK_EXPENSES.length} expenses`);
-
-  // --- 11. Owner Statements ---
-  console.log("Inserting owner statements...");
-  for (const stmt of MOCK_OWNER_STATEMENTS) {
-    const dbListingId = listingIdMap.get(stmt.listingMapId) ?? 1;
-    await db.insert(ownerStatements).values({
-      listingId: dbListingId,
-      month: stmt.month,
-      totalRevenue: String(stmt.totalRevenue),
-      totalExpenses: String(stmt.totalExpenses),
-      netIncome: String(stmt.netIncome),
-      occupancyRate: stmt.occupancyRate,
-      reservationCount: stmt.reservationCount,
-    });
-  }
-  console.log(`  ${MOCK_OWNER_STATEMENTS.length} owner statements`);
-
-  console.log("\nSeed complete!");
-  console.log(`  Listings: ${listingIdMap.size}`);
-  console.log(`  Calendar days: ${totalCalendarDays}`);
-  console.log(`  Reservations: ${MOCK_RESERVATIONS.length}`);
-  console.log(`  Proposals: ${totalProposals}`);
-  console.log(`  Seasonal rules: ${MOCK_SEASONAL_RULES.length}`);
-  console.log(`  Conversations: ${MOCK_CONVERSATIONS.length}`);
-  console.log(`  Messages: ${MOCK_MESSAGES.length}`);
-  console.log(`  Templates: ${MOCK_MESSAGE_TEMPLATES.length}`);
-  console.log(`  Tasks: ${MOCK_TASKS.length}`);
-  console.log(`  Expenses: ${MOCK_EXPENSES.length}`);
-  console.log(`  Statements: ${MOCK_OWNER_STATEMENTS.length}`);
+  console.log("\n✅ Seed complete!");
 }
 
-seed().catch((error) => {
-  console.error("Seed failed:", error);
-  process.exit(1);
-});
+seed();

@@ -1,32 +1,14 @@
-export const dynamic = "force-dynamic";
-
-import { createPMSClient } from "@/lib/pms";
-import { InboxContent } from "./inbox-content";
-
-export default async function InboxPage() {
-  const pms = createPMSClient();
-
-  const [conversations, properties, templates] = await Promise.all([
-    pms.getConversations(),
-    pms.listListings(),
-    pms.getMessageTemplates(),
-  ]);
-
+// Placeholder - Removed in Price Intelligence Layer redesign
+export default function InboxPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Inbox</h1>
-        <p className="text-sm text-muted-foreground">
-          {conversations.length} conversation
-          {conversations.length !== 1 ? "s" : ""}
-        </p>
-      </div>
-
-      <InboxContent
-        conversations={conversations}
-        properties={properties}
-        templates={templates}
-      />
+    <div className="p-8">
+      <h1 className="text-2xl font-bold mb-4">Inbox</h1>
+      <p className="text-muted-foreground">
+        Guest messaging has been removed as part of the Price Intelligence Layer redesign.
+      </p>
+      <p className="text-sm text-muted-foreground mt-2">
+        Use HostAway for guest communications.
+      </p>
     </div>
   );
 }

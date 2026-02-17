@@ -1,23 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createPMSClient } from "@/lib/pms";
+import { NextResponse } from "next/server";
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-  const pms = createPMSClient();
-  const messages = await pms.getConversationMessages(Number(id));
-  return NextResponse.json(messages);
+// Conversations API removed - Use HostAway for guest messaging
+export async function GET() {
+  return NextResponse.json({
+    error: "Conversations API removed in Price Intelligence Layer redesign. Use HostAway for guest messaging."
+  }, { status: 410 });
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-  const { content } = await request.json();
-  const pms = createPMSClient();
-  const message = await pms.sendMessage(Number(id), content);
-  return NextResponse.json(message);
+export async function POST() {
+  return NextResponse.json({
+    error: "Conversations API removed in Price Intelligence Layer redesign. Use HostAway for guest messaging."
+  }, { status: 410 });
 }

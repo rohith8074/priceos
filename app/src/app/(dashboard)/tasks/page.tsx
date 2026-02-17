@@ -1,24 +1,14 @@
-export const dynamic = "force-dynamic";
-
-import { createPMSClient } from "@/lib/pms";
-import { TaskBoard } from "@/components/tasks/task-board";
-
-export default async function TasksPage() {
-  const pms = createPMSClient();
-  const [tasks, properties] = await Promise.all([
-    pms.getTasks(),
-    pms.listListings(),
-  ]);
-
+// Placeholder - Removed in Price Intelligence Layer redesign
+export default function TasksPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Tasks</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage cleaning, maintenance, and operational tasks
-        </p>
-      </div>
-      <TaskBoard initialTasks={tasks} properties={properties} />
+    <div className="p-8">
+      <h1 className="text-2xl font-bold mb-4">Tasks</h1>
+      <p className="text-muted-foreground">
+        Task management has been removed as part of the Price Intelligence Layer redesign.
+      </p>
+      <p className="text-sm text-muted-foreground mt-2">
+        Use HostAway for operational tasks.
+      </p>
     </div>
   );
 }
