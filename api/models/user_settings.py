@@ -1,7 +1,8 @@
 """
 User settings model - matches Drizzle schema exactly
 """
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Column
+from sqlalchemy.dialects.postgresql import JSONB
 from typing import Optional, Dict, Any
 from datetime import datetime
 
@@ -24,7 +25,7 @@ class UserSettings(SQLModel, table=True):
     hostaway_api_key: Optional[str] = Field(default=None, sa_column_kwargs={"name": "hostaway_api_key"})
 
     # User preferences
-    preferences: Optional[Dict[str, Any]] = Field(default_factory=dict, sa_column_kwargs={"type_": "JSONB"})
+    preferences: Optional[Dict[str, Any]] = Field(default_factory=dict, sa_column=Column(JSONB))
 
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.now, sa_column_kwargs={"name": "created_at", "nullable": False})

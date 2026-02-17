@@ -1,9 +1,11 @@
 """
 Calendar day model - matches Drizzle schema exactly
 """
+from __future__ import annotations
+
 from sqlmodel import SQLModel, Field
 from typing import Optional
-from datetime import date, datetime
+from datetime import date as Date, datetime
 from decimal import Decimal
 
 
@@ -21,7 +23,7 @@ class CalendarDay(SQLModel, table=True):
     listing_id: int = Field(..., foreign_key="listings.id", sa_column_kwargs={"name": "listing_id", "nullable": False})
 
     # Date and status
-    date: date = Field(..., sa_column_kwargs={"nullable": False})
+    date: Date = Field(..., sa_column_kwargs={"nullable": False})
     status: str = Field(default="available", sa_column_kwargs={"nullable": False})  # available, booked, blocked
 
     # Pricing

@@ -1,7 +1,8 @@
 """
 Listing model - matches Drizzle schema exactly
 """
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Column
+from sqlalchemy.dialects.postgresql import JSONB
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from decimal import Decimal
@@ -42,8 +43,8 @@ class Listing(SQLModel, table=True):
     person_capacity: Optional[int] = Field(default=None, sa_column_kwargs={"name": "person_capacity"})
 
     # JSONB fields
-    amenities: Optional[List[str]] = Field(default_factory=list, sa_column_kwargs={"type_": "JSONB"})
-    external_data: Optional[Dict[str, Any]] = Field(default=None, sa_column_kwargs={"name": "external_data", "type_": "JSONB"})
+    amenities: Optional[List[str]] = Field(default_factory=list, sa_column=Column(JSONB))
+    external_data: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column("external_data", JSONB))
 
     # Timestamps
     synced_at: Optional[datetime] = Field(default=None, sa_column_kwargs={"name": "synced_at"})

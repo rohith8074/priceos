@@ -1,9 +1,12 @@
 """
 Event signal model - matches Drizzle schema exactly
 """
-from sqlmodel import SQLModel, Field
+from __future__ import annotations
+
+from sqlmodel import SQLModel, Field, Column
+from sqlalchemy.dialects.postgresql import JSONB
 from typing import Optional, Dict, Any
-from datetime import date, datetime
+from datetime import date as Date, datetime
 
 
 class EventSignal(SQLModel, table=True):
@@ -18,8 +21,8 @@ class EventSignal(SQLModel, table=True):
 
     # Event details
     name: str = Field(..., sa_column_kwargs={"nullable": False})
-    start_date: date = Field(..., sa_column_kwargs={"name": "start_date", "nullable": False})
-    end_date: date = Field(..., sa_column_kwargs={"name": "end_date", "nullable": False})
+    start_date: Date = Field(..., sa_column_kwargs={"name": "start_date", "nullable": False})
+    end_date: Date = Field(..., sa_column_kwargs={"name": "end_date", "nullable": False})
     location: str = Field(default="Dubai", sa_column_kwargs={"nullable": False})
 
     # Impact assessment
@@ -30,7 +33,7 @@ class EventSignal(SQLModel, table=True):
     description: Optional[str] = Field(default=None)
 
     # Additional metadata
-    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, sa_column_kwargs={"type_": "JSONB"})
+    event_metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, sa_column=Column("metadata", JSONB))
 
     # Timestamp
     fetched_at: datetime = Field(default_factory=datetime.now, sa_column_kwargs={"name": "fetched_at", "nullable": False})

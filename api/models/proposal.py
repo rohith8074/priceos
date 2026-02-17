@@ -1,7 +1,8 @@
 """
 Proposal model - matches Drizzle schema exactly
 """
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Column
+from sqlalchemy.dialects.postgresql import JSONB
 from typing import Optional, Dict, Any
 from datetime import date, datetime
 from decimal import Decimal
@@ -37,7 +38,7 @@ class Proposal(SQLModel, table=True):
     reasoning: Optional[str] = Field(default=None)
 
     # Signals used for pricing decision
-    signals: Optional[Dict[str, Any]] = Field(default_factory=dict, sa_column_kwargs={"type_": "JSONB"})
+    signals: Optional[Dict[str, Any]] = Field(default_factory=dict, sa_column=Column(JSONB))
 
     # Timestamps
     executed_at: Optional[datetime] = Field(default=None, sa_column_kwargs={"name": "executed_at"})

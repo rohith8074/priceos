@@ -1,7 +1,8 @@
 """
 Reservation model - matches Drizzle schema exactly
 """
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Column
+from sqlalchemy.dialects.postgresql import JSONB
 from typing import Optional, Dict, Any
 from datetime import date, datetime
 from decimal import Decimal
@@ -47,7 +48,7 @@ class Reservation(SQLModel, table=True):
     check_out_time: Optional[str] = Field(default=None, sa_column_kwargs={"name": "check_out_time"})
 
     # JSONB external data
-    external_data: Optional[Dict[str, Any]] = Field(default=None, sa_column_kwargs={"name": "external_data", "type_": "JSONB"})
+    external_data: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column("external_data", JSONB))
 
     # Timestamps
     synced_at: Optional[datetime] = Field(default=None, sa_column_kwargs={"name": "synced_at"})

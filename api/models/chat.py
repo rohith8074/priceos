@@ -1,7 +1,8 @@
 """
 Chat message model - matches Drizzle schema exactly
 """
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Column
+from sqlalchemy.dialects.postgresql import JSONB
 from typing import Optional, Dict, Any
 from datetime import datetime
 
@@ -28,7 +29,7 @@ class ChatMessage(SQLModel, table=True):
     listing_id: Optional[int] = Field(default=None, sa_column_kwargs={"name": "listing_id"})
 
     # Structured data (proposals, analysis, etc.)
-    structured: Optional[Dict[str, Any]] = Field(default=None, sa_column_kwargs={"type_": "JSONB"})
+    structured: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB))
 
     # Timestamp
     created_at: datetime = Field(default_factory=datetime.now, sa_column_kwargs={"name": "created_at", "nullable": False})
