@@ -4,6 +4,8 @@ Health check router
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import Optional
+from sqlmodel import Session, text
+from api.database import get_session
 
 router = APIRouter()
 
@@ -17,13 +19,13 @@ class HealthResponse(BaseModel):
 
 
 @router.get("/", response_model=HealthResponse)
-async def health_check():
+async def health_check(session: Session = Depends(get_session)):
     """
     Comprehensive health check endpoint
 
     Checks:
     - API availability
-    - Database connection (TODO: implement in Task 3)
+    - Database connection
     - lyzr-adk availability
     """
 
@@ -33,6 +35,14 @@ async def health_check():
         "service": "priceos-agent-backend",
     }
 
+    # Check database connection
+    try:
+        result = session.exec(text("SELECT 1")).one()
+        health_data["database"] = "connected"
+    except Exception as e:
+        health_data["database"] = f"error: {str(e)}"
+        health_data["status"] = "degraded"
+
     # Check lyzr-adk import
     try:
         from lyzr import Studio
@@ -40,8 +50,5 @@ async def health_check():
     except Exception as e:
         health_data["lyzr_adk"] = f"error: {str(e)}"
         health_data["status"] = "degraded"
-
-    # TODO: Database check will be added in Task 3
-    health_data["database"] = "not_configured"
 
     return health_data
