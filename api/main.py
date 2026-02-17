@@ -33,14 +33,12 @@ app.add_middleware(
 )
 
 # Import routers
-from api.routers import health
-# from api.routers import agent, chat, sync  # Will be created in next tasks
+from api.routers import health, agent, sync
 
 # Include routers
 app.include_router(health.router, prefix="/api/health", tags=["health"])
-# app.include_router(agent.router, prefix="/api/agent", tags=["agents"])
-# app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
-# app.include_router(sync.router, prefix="/api/sync", tags=["sync"])
+app.include_router(agent.router, prefix="/api/agent", tags=["agents"])
+app.include_router(sync.router, prefix="/api/sync", tags=["sync"])
 
 
 @app.get("/")

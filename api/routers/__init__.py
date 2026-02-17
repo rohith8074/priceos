@@ -1,6 +1,6 @@
 """
 API Routers
 """
-from . import health
+from . import health, agent, sync
 
-__all__ = ["health"]
+__all__ = ["health", "agent", "sync"]
