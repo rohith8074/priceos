@@ -1,8 +1,33 @@
 {
+  "version": 2,
   "git": {
     "deploymentEnabled": {
       "main": true,
       "dev": true
     }
-  }
+  },
+  "builds": [
+    {
+      "src": "api/main.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "50mb",
+        "runtime": "python3.11"
+      }
+    },
+    {
+      "src": "app/package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "api/main.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "app/$1"
+    }
+  ]
 }
