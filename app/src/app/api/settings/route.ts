@@ -7,10 +7,9 @@ import { eq } from 'drizzle-orm';
 export async function GET() {
   try {
     // Get authenticated user
-    const authResult = await auth();
-    const session = authResult?.session;
+    const { data: session, error } = await auth.getSession();
 
-    if (!session?.userId) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -18,7 +17,7 @@ export async function GET() {
     const settings = await db
       .select()
       .from(userSettings)
-      .where(eq(userSettings.userId, session.userId))
+      .where(eq(userSettings.userId, session.user.id))
       .limit(1);
 
     if (settings.length === 0) {
@@ -50,10 +49,9 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     // Get authenticated user
-    const authResult = await auth();
-    const session = authResult?.session;
+    const { data: session, error } = await auth.getSession();
 
-    if (!session?.userId) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -71,7 +69,7 @@ export async function POST(request: NextRequest) {
     const existing = await db
       .select()
       .from(userSettings)
-      .where(eq(userSettings.userId, session.userId))
+      .where(eq(userSettings.userId, session.user.id))
       .limit(1);
 
     if (existing.length > 0) {
@@ -82,11 +80,11 @@ export async function POST(request: NextRequest) {
           lyzrApiKey,
           updatedAt: new Date(),
         })
-        .where(eq(userSettings.userId, session.userId));
+        .where(eq(userSettings.userId, session.user.id));
     } else {
       // Insert new settings
       await db.insert(userSettings).values({
-        userId: session.userId,
+        userId: session.user.id,
         lyzrApiKey,
       });
     }

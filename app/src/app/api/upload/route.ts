@@ -9,10 +9,9 @@ const LYZR_UPLOAD_URL = 'https://agent-prod.studio.lyzr.ai/v3/assets/upload'
 export async function POST(request: NextRequest) {
   try {
     // Get authenticated user
-    const authResult = await auth()
-    const session = authResult?.session
+    const { data: session, error } = await auth.getSession()
 
-    if (!session?.userId) {
+    if (!session?.user?.id) {
       return NextResponse.json(
         {
           success: false,
@@ -33,7 +32,7 @@ export async function POST(request: NextRequest) {
     const settings = await db
       .select()
       .from(userSettings)
-      .where(eq(userSettings.userId, session.userId))
+      .where(eq(userSettings.userId, session.user.id))
       .limit(1)
 
     if (settings.length === 0 || !settings[0].lyzrApiKey) {

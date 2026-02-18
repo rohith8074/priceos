@@ -15,10 +15,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Get authenticated user
-    const authResult = await auth()
-    const session = authResult?.session
+    const { data: session, error } = await auth.getSession()
 
-    if (!session?.userId) {
+    if (!session?.user?.id) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 }
@@ -32,7 +31,7 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        user_id: session.userId,
+        user_id: session.user.id,
         listing_id: propertyId || null,
         context: context,
       }),

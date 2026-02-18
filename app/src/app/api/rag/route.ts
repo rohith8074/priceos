@@ -29,10 +29,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get authenticated user
-    const authResult = await auth()
-    const session = authResult?.session
+    const { data: session, error } = await auth.getSession()
 
-    if (!session?.userId) {
+    if (!session?.user?.id) {
       return NextResponse.json(
         {
           success: false,
@@ -46,7 +45,7 @@ export async function GET(request: NextRequest) {
     const settings = await db
       .select()
       .from(userSettings)
-      .where(eq(userSettings.userId, session.userId))
+      .where(eq(userSettings.userId, session.user.id))
       .limit(1)
 
     if (settings.length === 0 || !settings[0].lyzrApiKey) {
@@ -118,10 +117,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Get authenticated user
-    const authResult = await auth()
-    const session = authResult?.session
+    const { data: session, error } = await auth.getSession()
 
-    if (!session?.userId) {
+    if (!session?.user?.id) {
       return NextResponse.json(
         {
           success: false,
@@ -135,7 +133,7 @@ export async function POST(request: NextRequest) {
     const settings = await db
       .select()
       .from(userSettings)
-      .where(eq(userSettings.userId, session.userId))
+      .where(eq(userSettings.userId, session.user.id))
       .limit(1)
 
     if (settings.length === 0 || !settings[0].lyzrApiKey) {
@@ -233,10 +231,9 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     // Get authenticated user
-    const authResult = await auth()
-    const session = authResult?.session
+    const { data: session, error } = await auth.getSession()
 
-    if (!session?.userId) {
+    if (!session?.user?.id) {
       return NextResponse.json(
         {
           success: false,
@@ -250,7 +247,7 @@ export async function PATCH(request: NextRequest) {
     const settings = await db
       .select()
       .from(userSettings)
-      .where(eq(userSettings.userId, session.userId))
+      .where(eq(userSettings.userId, session.user.id))
       .limit(1)
 
     if (settings.length === 0 || !settings[0].lyzrApiKey) {
@@ -323,10 +320,9 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     // Get authenticated user
-    const authResult = await auth()
-    const session = authResult?.session
+    const { data: session, error } = await auth.getSession()
 
-    if (!session?.userId) {
+    if (!session?.user?.id) {
       return NextResponse.json(
         {
           success: false,
@@ -340,7 +336,7 @@ export async function DELETE(request: NextRequest) {
     const settings = await db
       .select()
       .from(userSettings)
-      .where(eq(userSettings.userId, session.userId))
+      .where(eq(userSettings.userId, session.user.id))
       .limit(1)
 
     if (settings.length === 0 || !settings[0].lyzrApiKey) {

@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { neonAuthMiddleware } from '@neondatabase/auth/next/server';
+import { auth } from '@/lib/auth/server';
 
-// Create the auth middleware
-const authMiddleware = neonAuthMiddleware({
+// Create the auth middleware using v0.2 API
+const authMiddleware = auth.middleware({
   loginUrl: '/auth/sign-in',
 });
 

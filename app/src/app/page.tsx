@@ -8,8 +8,7 @@ export default async function LandingPage() {
   // Check auth status, but don't block rendering if auth fails
   let session = null;
   try {
-    const authResult = await auth();
-    session = authResult?.session;
+    const { data: session, error } = await auth.getSession();
   } catch (error) {
     // Auth check failed (network error, etc.) - render landing page anyway
     console.error('Auth check failed:', error);

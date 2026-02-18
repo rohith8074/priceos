@@ -25,10 +25,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Get authenticated user
-    const authResult = await auth()
-    const session = authResult?.session
+    const { data: session, error } = await auth.getSession()
 
-    if (!session?.userId) {
+    if (!session?.user?.id) {
       return NextResponse.json(
         {
           success: false,
@@ -52,8 +51,8 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         message,
         agent_id: agent_id || 'cro',
-        user_id: session.userId,
-        session_id: session_id || `${agent_id || 'cro'}-${session.userId}`,
+        user_id: session.user.id,
+        session_id: session_id || `${agent_id || 'cro'}-${session.user.id}`,
         cache: cache || null,
       }),
     })
