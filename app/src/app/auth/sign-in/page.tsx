@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AuthView } from '@neondatabase/auth/react/ui';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle2 } from 'lucide-react';
 
-export default function SignInPage() {
+function SignInContent() {
   const searchParams = useSearchParams();
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -32,12 +32,23 @@ export default function SignInPage() {
         )}
 
         <div>
-          <AuthView
-            pathname="sign-in"
-            credentials={{ forgotPassword: true }}
-          />
+          <AuthView pathname="sign-in" />
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
+        <div className="w-full max-w-md">
+          <AuthView pathname="sign-in" />
+        </div>
+      </div>
+    }>
+      <SignInContent />
+    </Suspense>
   );
 }
