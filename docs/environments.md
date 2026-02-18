@@ -60,3 +60,48 @@ PriceOS uses Neon Auth for user authentication.
 | `NEON_AUTH_COOKIE_SECRET` | Session cookie secret | Generate: `openssl rand -base64 32` |
 
 **Important:** Use different `NEON_AUTH_COOKIE_SECRET` values for production, preview, and development environments.
+
+## Password Reset
+
+PriceOS uses Neon Auth for secure password reset via email.
+
+### Prerequisites
+
+- Email authentication must be enabled in Neon project Settings → Auth
+- Environment variables configured (see Environment Variables section above)
+
+### User Flow
+
+1. Click "Forgot password?" on sign-in page
+2. Enter email address
+3. Receive reset link via email (expires in 15 minutes)
+4. Click link to set new password
+5. Sign in with new credentials
+
+### Routes
+
+- `/auth/sign-in` - Sign in with forgot password link
+- `/auth/forgot-password` - Request reset link
+- `/auth/reset-password` - Set new password (via email link)
+- `/auth/sign-up` - Create new account
+
+### Components Used
+
+- `<AuthView>` - Main auth UI with forgot password option
+- `<ForgotPasswordForm>` - Email submission form
+- `<ResetPasswordForm>` - New password form
+
+### Troubleshooting
+
+**Reset link expired:**
+- Links expire after 15 minutes
+- Request new link from forgot password page
+
+**Email not received:**
+- Check spam folder
+- Verify email authentication enabled in Neon settings
+- Check environment variables are correct
+
+**Password requirements:**
+- Minimum length enforced by Neon Auth
+- Must match confirmation field
