@@ -21,7 +21,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <NeonAuthUIProvider authClient={authClient}>
+        <NeonAuthUIProvider
+          authClient={authClient}
+          redirectTo="/dashboard"
+        >
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
