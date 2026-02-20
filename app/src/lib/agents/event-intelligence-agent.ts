@@ -1,5 +1,5 @@
-import { db, eventSignals } from "@/lib/db";
-import { and, gte, lte } from "drizzle-orm";
+import { db, activityTimeline } from "@/lib/db";
+import { and, gte, lte, eq } from "drizzle-orm";
 import { format, addDays, parseISO } from "date-fns";
 
 export interface EventSignal {
@@ -39,24 +39,28 @@ export class EventIntelligenceAgent {
     // Fetch from database cache
     const cachedEvents = await db
       .select()
-      .from(eventSignals)
+      .from(activityTimeline)
       .where(
         and(
-          gte(eventSignals.endDate, startDateStr),
-          lte(eventSignals.startDate, endDateStr)
+          eq(activityTimeline.type, 'market_event'),
+          gte(activityTimeline.endDate, startDateStr),
+          lte(activityTimeline.startDate, endDateStr)
         )
       );
 
-    return cachedEvents.map((event) => ({
-      name: event.name,
-      startDate: event.startDate,
-      endDate: event.endDate,
-      location: event.location,
-      expectedImpact: (event.expectedImpact || "medium") as "high" | "medium" | "low",
-      confidence: event.confidence || 50,
-      description: event.description || undefined,
-      metadata: (event.metadata as Record<string, unknown>) || undefined,
-    }));
+    return cachedEvents.map((event) => {
+      const mc = (event.marketContext as any) || {};
+      return {
+        name: event.title,
+        startDate: event.startDate!,
+        endDate: event.endDate!,
+        location: mc.location || "Dubai",
+        expectedImpact: (mc.expectedImpact || "medium") as "high" | "medium" | "low",
+        confidence: mc.confidence || 50,
+        description: mc.description || undefined,
+        metadata: mc,
+      };
+    });
   }
 
   /**
@@ -98,11 +102,12 @@ export class EventIntelligenceAgent {
 
     const overlappingEvents = await db
       .select()
-      .from(eventSignals)
+      .from(activityTimeline)
       .where(
         and(
-          lte(eventSignals.startDate, dateStr),
-          gte(eventSignals.endDate, dateStr)
+          eq(activityTimeline.type, 'market_event'),
+          lte(activityTimeline.startDate, dateStr),
+          gte(activityTimeline.endDate, dateStr)
         )
       );
 
@@ -195,27 +200,32 @@ export class EventIntelligenceAgent {
         // Check if event already exists
         const existing = await db
           .select()
-          .from(eventSignals)
+          .from(activityTimeline)
           .where(
             and(
-              eq(eventSignals.name, event.name),
-              eq(eventSignals.startDate, event.startDate)
+              eq(activityTimeline.type, 'market_event'),
+              eq(activityTimeline.title, event.name),
+              eq(activityTimeline.startDate, event.startDate)
             )
           )
           .limit(1);
 
         if (existing.length === 0) {
           // Insert new event
-          await db.insert(eventSignals).values({
-            name: event.name,
+          await db.insert(activityTimeline).values({
+            type: 'market_event',
+            title: event.name,
             startDate: event.startDate,
             endDate: event.endDate,
-            location: event.location,
-            expectedImpact: event.expectedImpact,
-            confidence: event.confidence,
-            description: event.description || null,
-            metadata: event.metadata || {},
-            fetchedAt: new Date(),
+            marketContext: {
+              eventType: 'event',
+              location: event.location,
+              expectedImpact: event.expectedImpact,
+              confidence: event.confidence,
+              description: event.description || undefined,
+              ...event.metadata
+            },
+            createdAt: new Date(),
           });
           cachedCount++;
         }
@@ -277,5 +287,4 @@ export function createEventIntelligenceAgent(): EventIntelligenceAgent {
   return new EventIntelligenceAgent();
 }
 
-// Fix missing import
-import { eq } from "drizzle-orm";
+

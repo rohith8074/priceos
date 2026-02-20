@@ -12,11 +12,11 @@ import {
 import { db } from "@/lib/db";
 import {
   listings,
-  calendarDays,
-  reservations,
+  inventoryMaster,
+  activityTimeline,
   type ListingRow,
-  type ReservationRow,
-  type CalendarDayRow,
+  type ActivityTimelineRow,
+  type InventoryMasterRow,
 } from "@/lib/db";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 import { format, eachDayOfInterval, parseISO } from "date-fns";
@@ -32,44 +32,42 @@ function mapListingRow(row: ListingRow): Listing {
     area: row.area,
     bedroomsNumber: row.bedroomsNumber,
     bathroomsNumber: row.bathroomsNumber,
-    propertyType: row.propertyType as Listing["propertyType"],
     propertyTypeId: row.propertyTypeId ?? undefined,
     price: parseFloat(row.price),
-    currencyCode: row.currencyCode as "AED" | "USD",
     priceFloor: parseFloat(row.priceFloor),
     priceCeiling: parseFloat(row.priceCeiling),
+    currencyCode: row.currencyCode as "AED" | "USD",
     personCapacity: row.personCapacity ?? undefined,
     amenities: (row.amenities as string[]) ?? [],
   };
 }
 
-function mapCalendarDayRow(row: CalendarDayRow): CalendarDay {
+function mapCalendarDayRow(row: InventoryMasterRow): CalendarDay {
   return {
     date: row.date,
     status: row.status as CalendarDay["status"],
-    price: parseFloat(row.price),
-    minimumStay: row.minimumStay ?? 1,
-    maximumStay: row.maximumStay ?? 30,
-    notes: row.notes ?? undefined,
+    price: parseFloat(row.currentPrice),
+    minimumStay: row.minMaxStay?.min ?? 1,
+    maximumStay: row.minMaxStay?.max ?? 30,
   };
 }
 
-function mapReservationRow(row: ReservationRow): Reservation {
+function mapReservationRow(row: ActivityTimelineRow): Reservation {
   return {
     id: row.id,
-    listingMapId: row.listingMapId,
-    guestName: row.guestName,
-    guestEmail: row.guestEmail ?? undefined,
-    channelName: row.channelName as Reservation["channelName"],
-    arrivalDate: row.arrivalDate,
-    departureDate: row.departureDate,
-    nights: row.nights,
-    totalPrice: parseFloat(row.totalPrice),
-    pricePerNight: parseFloat(row.pricePerNight),
-    status: row.status as Reservation["status"],
+    listingMapId: row.listingId!,
+    guestName: row.title,
+    guestEmail: undefined,
+    channelName: (row.financials?.channelName as Reservation["channelName"]) || "Other",
+    arrivalDate: row.startDate,
+    departureDate: row.endDate,
+    nights: Math.floor((new Date(row.endDate).getTime() - new Date(row.startDate).getTime()) / (1000 * 3600 * 24)),
+    totalPrice: row.financials?.totalPrice || 0,
+    pricePerNight: row.financials?.pricePerNight || 0,
+    status: (row.financials?.reservationStatus as Reservation["status"]) || "confirmed",
     createdAt: row.createdAt.toISOString(),
-    checkInTime: row.checkInTime ?? undefined,
-    checkOutTime: row.checkOutTime ?? undefined,
+    checkInTime: undefined,
+    checkOutTime: undefined,
   };
 }
 
@@ -103,10 +101,6 @@ export class DbPMSClient implements PMSClient {
     const setValues: Record<string, unknown> = {};
     if (updates.name !== undefined) setValues.name = updates.name;
     if (updates.price !== undefined) setValues.price = String(updates.price);
-    if (updates.priceFloor !== undefined)
-      setValues.priceFloor = String(updates.priceFloor);
-    if (updates.priceCeiling !== undefined)
-      setValues.priceCeiling = String(updates.priceCeiling);
     if (updates.bedroomsNumber !== undefined)
       setValues.bedroomsNumber = updates.bedroomsNumber;
     if (updates.bathroomsNumber !== undefined)
@@ -114,8 +108,6 @@ export class DbPMSClient implements PMSClient {
     if (updates.personCapacity !== undefined)
       setValues.personCapacity = updates.personCapacity;
     if (updates.amenities !== undefined) setValues.amenities = updates.amenities;
-    if (updates.propertyType !== undefined)
-      setValues.propertyType = updates.propertyType;
 
     if (Object.keys(setValues).length > 0) {
       await db.update(listings).set(setValues).where(eq(listings.id, numId));
@@ -136,12 +128,12 @@ export class DbPMSClient implements PMSClient {
 
     const rows = await db
       .select()
-      .from(calendarDays)
+      .from(inventoryMaster)
       .where(
         and(
-          eq(calendarDays.listingId, numId),
-          gte(calendarDays.date, startStr),
-          lte(calendarDays.date, endStr)
+          eq(inventoryMaster.listingId, numId),
+          gte(inventoryMaster.date, startStr),
+          lte(inventoryMaster.date, endStr)
         )
       );
     return rows.map(mapCalendarDayRow);
@@ -162,12 +154,12 @@ export class DbPMSClient implements PMSClient {
       for (const day of days) {
         const dateStr = format(day, "yyyy-MM-dd");
         await db
-          .update(calendarDays)
-          .set({ price: String(interval.price) })
+          .update(inventoryMaster)
+          .set({ currentPrice: String(interval.price) })
           .where(
             and(
-              eq(calendarDays.listingId, numId),
-              eq(calendarDays.date, dateStr)
+              eq(inventoryMaster.listingId, numId),
+              eq(inventoryMaster.date, dateStr)
             )
           );
         updatedCount++;
@@ -187,11 +179,11 @@ export class DbPMSClient implements PMSClient {
     for (const dateStr of dates) {
       const rows = await db
         .select()
-        .from(calendarDays)
+        .from(inventoryMaster)
         .where(
           and(
-            eq(calendarDays.listingId, numId),
-            eq(calendarDays.date, dateStr)
+            eq(inventoryMaster.listingId, numId),
+            eq(inventoryMaster.date, dateStr)
           )
         );
       if (rows.length > 0) matchedDates++;
@@ -218,12 +210,12 @@ export class DbPMSClient implements PMSClient {
     for (const day of days) {
       const dateStr = format(day, "yyyy-MM-dd");
       await db
-        .update(calendarDays)
-        .set({ status: "blocked", notes: reason, price: "0" })
+        .update(inventoryMaster)
+        .set({ status: "blocked", currentPrice: "0" })
         .where(
           and(
-            eq(calendarDays.listingId, numId),
-            eq(calendarDays.date, dateStr)
+            eq(inventoryMaster.listingId, numId),
+            eq(inventoryMaster.date, dateStr)
           )
         );
       updatedCount++;
@@ -245,54 +237,54 @@ export class DbPMSClient implements PMSClient {
     for (const day of days) {
       const dateStr = format(day, "yyyy-MM-dd");
       await db
-        .update(calendarDays)
-        .set({ status: "available", notes: null })
+        .update(inventoryMaster)
+        .set({ status: "available" })
         .where(
           and(
-            eq(calendarDays.listingId, numId),
-            eq(calendarDays.date, dateStr)
+            eq(inventoryMaster.listingId, numId),
+            eq(inventoryMaster.date, dateStr)
           )
         );
       updatedCount++;
     }
     return { success: true, updatedCount };
   }
-
   // --- Reservations ---
 
   async getReservations(filters?: ReservationFilters): Promise<Reservation[]> {
-    const conditions = [];
+    const conditions = [eq(activityTimeline.type, "reservation")];
 
     if (filters?.listingMapId) {
-      conditions.push(eq(reservations.listingMapId, filters.listingMapId));
+      conditions.push(eq(activityTimeline.listingId, filters.listingMapId));
     }
     if (filters?.startDate) {
       conditions.push(
-        gte(reservations.arrivalDate, format(filters.startDate, "yyyy-MM-dd"))
+        gte(activityTimeline.startDate, format(filters.startDate, "yyyy-MM-dd"))
       );
     }
     if (filters?.endDate) {
       conditions.push(
         lte(
-          reservations.departureDate,
+          activityTimeline.endDate,
           format(filters.endDate, "yyyy-MM-dd")
         )
       );
     }
-    if (filters?.channelName) {
-      conditions.push(eq(reservations.channelName, filters.channelName));
-    }
-    if (filters?.status) {
-      conditions.push(eq(reservations.status, filters.status));
-    }
 
-    let query = db.select().from(reservations);
+    let query = db.select().from(activityTimeline);
     if (conditions.length > 0) {
       query = query.where(and(...conditions)) as typeof query;
     }
 
     const rows = await query;
     let result = rows.map(mapReservationRow);
+
+    if (filters?.channelName) {
+      result = result.filter(r => r.channelName === filters.channelName);
+    }
+    if (filters?.status) {
+      result = result.filter(r => r.status === filters.status);
+    }
 
     if (filters?.offset) result = result.slice(filters.offset);
     if (filters?.limit) result = result.slice(0, filters.limit);
@@ -304,8 +296,13 @@ export class DbPMSClient implements PMSClient {
     const numId = typeof id === "string" ? parseInt(id) : id;
     const rows = await db
       .select()
-      .from(reservations)
-      .where(eq(reservations.id, numId));
+      .from(activityTimeline)
+      .where(
+        and(
+          eq(activityTimeline.id, numId),
+          eq(activityTimeline.type, "reservation")
+        )
+      );
     if (rows.length === 0) throw new Error(`Reservation ${id} not found`);
     return mapReservationRow(rows[0]);
   }
@@ -317,21 +314,23 @@ export class DbPMSClient implements PMSClient {
       reservation.nights > 0
         ? Math.round(reservation.totalPrice / reservation.nights)
         : 0;
+
     const [inserted] = await db
-      .insert(reservations)
+      .insert(activityTimeline)
       .values({
-        listingMapId: reservation.listingMapId,
-        guestName: reservation.guestName,
-        guestEmail: reservation.guestEmail,
-        channelName: reservation.channelName,
-        arrivalDate: reservation.arrivalDate,
-        departureDate: reservation.departureDate,
-        nights: reservation.nights,
-        totalPrice: String(reservation.totalPrice),
-        pricePerNight: String(pricePerNight),
-        status: reservation.status,
-        checkInTime: reservation.checkInTime,
-        checkOutTime: reservation.checkOutTime,
+        listingId: reservation.listingMapId,
+        type: "reservation",
+        startDate: reservation.arrivalDate,
+        endDate: reservation.departureDate,
+        title: reservation.guestName,
+        financials: {
+          totalPrice: reservation.totalPrice,
+          pricePerNight: pricePerNight,
+          channelCommission: reservation.channelCommission || 0,
+          cleaningFee: reservation.cleaningFee || 0,
+          channelName: reservation.channelName,
+          reservationStatus: reservation.status,
+        },
       })
       .returning();
     return mapReservationRow(inserted);

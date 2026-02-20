@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PriceOS — Final Optimized Schema (ERD)</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0a12;
+            color: #e0e0e0;
+            min-height: 100vh;
+            overflow: auto
+        }
+
+        .header {
+            text-align: center;
+            padding: 30px 20px 10px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: #0a0a12
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: -0.5px
+        }
+
+        .header h1 .g1 {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent
+        }
+
+        .header h1 .g2 {
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent
+        }
+
+        .header p {
+            color: #6b7280;
+            font-size: 13px;
+            margin-top: 4px
+        }
+
+        .header .badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #065f46, #047857);
+            color: #34d399;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 12px;
+            border-radius: 20px;
+            margin-top: 8px;
+            letter-spacing: 0.5px
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            padding: 14px;
+            flex-wrap: wrap;
+            position: sticky;
+            top: 86px;
+            z-index: 100;
+            background: #0a0a12;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04)
+        }
+
+        .leg-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: #9ca3af;
+            font-weight: 500
+        }
+
+        .leg-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 4px
+        }
+
+        .leg-dot.sync {
+            background: linear-gradient(135deg, #1e40af, #3b82f6)
+        }
+
+        .leg-dot.int {
+            background: linear-gradient(135deg, #065f46, #10b981)
+        }
+
+        .canvas {
+            position: relative;
+            width: 1500px;
+            height: 1200px;
+            margin: 20px auto
+        }
+
+        svg.lines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1
+        }
+
+        .tbl {
+            position: absolute;
+            border-radius: 12px;
+            overflow: hidden;
+            z-index: 10;
+            transition: transform 0.2s ease, box-shadow 0.2s ease
+        }
+
+        .tbl:hover {
+            transform: translateY(-3px) scale(1.02);
+            z-index: 30
+        }
+
+        .tbl.sync {
+            background: #0c1629;
+            border: 1.5px solid rgba(59, 130, 246, 0.25);
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.08)
+        }
+
+        .tbl.sync:hover {
+            box-shadow: 0 8px 40px rgba(59, 130, 246, 0.2)
+        }
+
+        .tbl.int {
+            background: #0c1a14;
+            border: 1.5px solid rgba(16, 185, 129, 0.25);
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.08)
+        }
+
+        .tbl.int:hover {
+            box-shadow: 0 8px 40px rgba(16, 185, 129, 0.2)
+        }
+
+        .tbl-head {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        .tbl.sync .tbl-head {
+            background: linear-gradient(135deg, #0f2042, #1e3a6e)
+        }
+
+        .tbl.int .tbl-head {
+            background: linear-gradient(135deg, #052e16, #0f4c2e)
+        }
+
+        .tbl-icon {
+            font-size: 18px
+        }
+
+        .tbl-name {
+            font-size: 13px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px
+        }
+
+        .tbl.sync .tbl-name {
+            color: #93c5fd
+        }
+
+        .tbl.int .tbl-name {
+            color: #6ee7b7
+        }
+
+        .tbl-badge {
+            margin-left: auto;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 4px;
+            letter-spacing: 0.5px
+        }
+
+        .tbl.sync .tbl-badge {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa
+        }
+
+        .tbl.int .tbl-badge {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399
+        }
+
+        .tbl-desc {
+            padding: 6px 16px;
+            font-size: 10px;
+            color: #6b7280;
+            font-style: italic;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04)
+        }
+
+        .tbl-body {
+            padding: 4px 0
+        }
+
+        .col {
+            display: flex;
+            align-items: center;
+            padding: 5px 14px;
+            gap: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11.5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02)
+        }
+
+        .col:last-child {
+            border-bottom: none
+        }
+
+        .col-icon {
+            width: 18px;
+            text-align: center;
+            font-size: 10px;
+            flex-shrink: 0
+        }
+
+        .col-icon.pk {
+            color: #f59e0b
+        }
+
+        .col-icon.fk {
+            color: #ec4899
+        }
+
+        .col-icon.reg {
+            color: #374151
+        }
+
+        .col-name {
+            flex: 1;
+            color: #d1d5db;
+            font-weight: 500
+        }
+
+        .col-name.pk {
+            color: #fbbf24;
+            font-weight: 700
+        }
+
+        .col-name.fk {
+            color: #f9a8d4;
+            font-weight: 600
+        }
+
+        .col-type {
+            color: #4b5563;
+            font-size: 10px;
+            font-weight: 500
+        }
+
+        .col-divider {
+            padding: 4px 14px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04)
+        }
+
+        .tbl.sync .col-divider {
+            color: #3b82f6;
+            background: rgba(59, 130, 246, 0.04)
+        }
+
+        .tbl.int .col-divider {
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.04)
+        }
+
+        .ref-box {
+            border-top: 2px solid rgba(245, 158, 11, 0.3);
+            padding: 8px 14px;
+            background: rgba(245, 158, 11, 0.03)
+        }
+
+        .ref-title {
+            font-size: 9px;
+            font-weight: 800;
+            color: #f59e0b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            font-family: 'Inter', sans-serif
+        }
+
+        .ref-row {
+            font-size: 9.5px;
+            font-family: 'JetBrains Mono', monospace;
+            color: #6b7280;
+            padding: 1.5px 0;
+            line-height: 1.6
+        }
+
+        .ref-row .t {
+            color: #f9a8d4
+        }
+
+        .ref-row .c {
+            color: #93c5fd
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: #374151;
+            font-size: 11px
+        }
+
+        .removed {
+            position: absolute;
+            background: #111118;
+            border: 1px solid rgba(239, 68, 68, 0.15);
+            border-radius: 12px;
+            overflow: hidden;
+            z-index: 10
+        }
+
+        .removed:hover {
+            z-index: 30
+        }
+
+        .removed-head {
+            background: linear-gradient(135deg, #2a0a0a, #3d1111);
+            padding: 10px 14px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #fca5a5;
+            text-transform: uppercase;
+            letter-spacing: 0.5px
+        }
+
+        .removed-body {
+            padding: 6px 0
+        }
+
+        .removed-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 3px 14px;
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace
+        }
+
+        .removed-item .x {
+            color: #ef4444;
+            font-weight: 700;
+            width: 14px
+        }
+
+        .removed-item .n {
+            color: #6b7280;
+            text-decoration: line-through
+        }
+
+        .removed-item .r {
+            color: #4b5563;
+            margin-left: auto;
+            font-size: 9px
+        }
+
+        .lifecycle {
+            padding: 8px 14px;
+            border-top: 1px solid rgba(16, 185, 129, 0.15);
+            background: rgba(16, 185, 129, 0.03)
+        }
+
+        .lifecycle-title {
+            font-size: 9px;
+            font-weight: 800;
+            color: #10b981;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            font-family: 'Inter', sans-serif
+        }
+
+        .lifecycle-flow {
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            color: #6b7280;
+            line-height: 1.8
+        }
+
+        .lifecycle-flow .st {
+            color: #fbbf24;
+            font-weight: 600
+        }
+
+        .lifecycle-flow .ar {
+            color: #4b5563
+        }
+
+        .stats {
+            position: absolute;
+            background: #111118;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            z-index: 10;
+            padding: 16px
+        }
+
+        .stats:hover {
+            z-index: 30
+        }
+
+        .stats h3 {
+            font-size: 12px;
+            font-weight: 800;
+            color: #a5b4fc;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            font-size: 11px;
+            font-family: 'JetBrains Mono', monospace
+        }
+
+        .stat-row .sl {
+            color: #6b7280
+        }
+
+        .stat-row .sv {
+            color: #d1d5db;
+            font-weight: 600
+        }
+
+        .stat-row .sv.g {
+            color: #34d399
+        }
+
+        .stat-row .sv.r {
+            color: #ef4444
+        }
+
+        .stat-divider {
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            margin: 6px 0
+        }
+
+        .api-note {
+            position: absolute;
+            background: #111118;
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            z-index: 10;
+            padding: 14px 16px
+        }
+
+        .api-note h4 {
+            font-size: 11px;
+            font-weight: 800;
+            color: #fbbf24;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px
+        }
+
+        .api-note .note-row {
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            color: #6b7280;
+            padding: 2px 0
+        }
+
+        .api-note .note-row .hw {
+            color: #60a5fa
+        }
+
+        .api-note .note-row .db {
+            color: #34d399
+        }
+
+        .api-note .note-row .ar {
+            color: #4b5563
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h1><span class="g1">PriceOS</span> — <span class="g2">Final Schema</span></h1>
+        <p>3 Tables · 30 Columns · Only Hostaway-matched fields · Clean Relational Design</p>
+        <div class="badge">✦ 18 TABLES → 3 TABLES · ONLY HOSTAWAY API FIELDS · PRODUCTION READY</div>
+    </div>
+
+    <div class="legend">
+        <div class="leg-item">
+            <div class="leg-dot sync"></div>Hostaway Synced (2)
+        </div>
+        <div class="leg-item">
+            <div class="leg-dot int"></div>PriceOS Internal (1)
+        </div>
+        <div class="leg-item" style="color:#f59e0b">🔑 PK</div>
+        <div class="leg-item" style="color:#ec4899">🔗 FK</div>
+    </div>
+
+    <div class="canvas" id="canvas">
+        <svg class="lines" id="lines"></svg>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- TABLE 1: LISTINGS (12 cols) — center top       -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div class="tbl sync" id="t-listings" style="left:430px;top:20px;width:420px">
+            <div class="tbl-head">
+                <span class="tbl-icon">🏠</span>
+                <span class="tbl-name">listings</span>
+                <span class="tbl-badge">SYNCED · 13 COLS</span>
+            </div>
+            <div class="tbl-desc">Property registry. Every column synced from Hostaway GET /v1/listings.</div>
+            <div class="tbl-body">
+                <div class="col-divider">Identity</div>
+                <div class="col"><span class="col-icon pk">🔑</span><span class="col-name pk">id</span><span
+                        class="col-type">serial PK</span></div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">hostaway_id</span><span
+                        class="col-type">int UNIQUE NOT NULL — Hostaway: id</span></div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">name</span><span
+                        class="col-type">text NOT NULL — Hostaway: name</span></div>
+                <div class="col-divider">Location</div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">city</span><span
+                        class="col-type">text — Hostaway: city</span></div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">country_code</span><span
+                        class="col-type">varchar(3) — Hostaway: countryCode</span></div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">area</span><span
+                        class="col-type">text — PriceOS enrichment (UI display)</span></div>
+                <div class="col-divider">Property</div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">bedrooms_number</span><span
+                        class="col-type">int NOT NULL — Hostaway: bedroomsNumber</span></div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">bathrooms_number</span><span
+                        class="col-type">int NOT NULL — Hostaway: bathroomsNumber</span></div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">property_type_id</span><span
+                        class="col-type">int NOT NULL — Hostaway: propertyTypeId</span></div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">person_capacity</span><span
+                        class="col-type">int — Hostaway: personCapacity</span></div>
+                <div class="col-divider">Pricing</div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">price</span><span
+                        class="col-type">numeric(10,2) NOT NULL — Hostaway: price</span></div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">currency_code</span><span
+                        class="col-type">varchar(3) — Hostaway: currencyCode</span></div>
+                <div class="col-divider">Amenities</div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">amenities</span><span
+                        class="col-type">text — Hostaway: listingAmenities (mapped)</span></div>
+            </div>
+            <div class="ref-box">
+                <div class="ref-title">🔗 listings.id is referenced by:</div>
+                <div class="ref-row"><span class="t">calendar_days</span>.<span class="c">listing_id</span> →
+                    listings.<span class="c">id</span></div>
+                <div class="ref-row"><span class="t">proposals</span>.<span class="c">listing_id</span> → listings.<span
+                        class="c">id</span></div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- TABLE 2: CALENDAR_DAYS (7 cols) — left          -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div class="tbl sync" id="t-calendar" style="left:40px;top:380px;width:400px">
+            <div class="tbl-head">
+                <span class="tbl-icon">📅</span>
+                <span class="tbl-name">calendar_days</span>
+                <span class="tbl-badge">SYNCED · 7 COLS</span>
+            </div>
+            <div class="tbl-desc">One row per listing per date. Synced from Hostaway GET /v1/listings/{id}/calendar.
+            </div>
+            <div class="tbl-body">
+                <div class="col"><span class="col-icon pk">🔑</span><span class="col-name pk">id</span><span
+                        class="col-type">serial PK</span></div>
+                <div class="col"><span class="col-icon fk">🔗</span><span class="col-name fk">listing_id</span><span
+                        class="col-type">FK → listings.id NOT NULL</span></div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">date</span><span
+                        class="col-type">date NOT NULL — Hostaway: date</span></div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">status</span><span
+                        class="col-type">text — Hostaway: status (available/reserved/blocked)</span></div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">price</span><span
+                        class="col-type">numeric(10,2) NOT NULL — Hostaway: price</span></div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">minimum_stay</span><span
+                        class="col-type">int def:1 — Hostaway: minimumStay</span></div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">maximum_stay</span><span
+                        class="col-type">int def:30 — Hostaway: maximumStay</span></div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- TABLE 3: PROPOSALS (12 cols) — right             -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div class="tbl int" id="t-proposals" style="left:880px;top:380px;width:440px">
+            <div class="tbl-head">
+                <span class="tbl-icon">🎯</span>
+                <span class="tbl-name">proposals</span>
+                <span class="tbl-badge">INTERNAL · 12 COLS</span>
+            </div>
+            <div class="tbl-desc">AI price recommendations + guardrails + push status. PriceOS-only table.</div>
+            <div class="tbl-body">
+                <div class="col-divider">Identity</div>
+                <div class="col"><span class="col-icon pk">🔑</span><span class="col-name pk">id</span><span
+                        class="col-type">serial PK</span></div>
+                <div class="col"><span class="col-icon fk">🔗</span><span class="col-name fk">listing_id</span><span
+                        class="col-type">FK → listings.id NOT NULL</span></div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">date</span><span
+                        class="col-type">date NOT NULL</span></div>
+                <div class="col-divider">Pricing</div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">current_price</span><span
+                        class="col-type">numeric(10,2) NOT NULL</span></div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">proposed_price</span><span
+                        class="col-type">numeric(10,2) NOT NULL</span></div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">change_pct</span><span
+                        class="col-type">int def:0</span></div>
+                <div class="col-divider">Guardrails</div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">price_floor</span><span
+                        class="col-type">numeric(10,2) NOT NULL</span></div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">price_ceiling</span><span
+                        class="col-type">numeric(10,2) NOT NULL</span></div>
+                <div class="col-divider">AI Decision</div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">risk_level</span><span
+                        class="col-type">text def:'low'</span></div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">status</span><span
+                        class="col-type">text def:'pending'</span></div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">reasoning</span><span
+                        class="col-type">text</span></div>
+                <div class="col-divider">Execution</div>
+                <div class="col"><span class="col-icon reg">·</span><span class="col-name">is_pushed</span><span
+                        class="col-type">boolean def:false</span></div>
+            </div>
+            <div class="lifecycle">
+                <div class="lifecycle-title">📊 Status Lifecycle:</div>
+                <div class="lifecycle-flow">
+                    <span class="st">pending</span> <span class="ar">→</span> <span class="st">approved</span> <span
+                        class="ar">→</span> is_pushed: <span class="st">true</span> ✅<br>
+                    <span class="st">pending</span> <span class="ar">→</span> <span class="st">rejected</span> ❌
+                    (is_pushed stays false)
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- API FIELD MAPPING NOTE — center                  -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div class="api-note" style="left:40px;top:720px;width:400px">
+            <h4>🔄 Hostaway API → DB Column Mapping</h4>
+            <div class="note-row"><span class="hw">Hostaway: id</span> <span class="ar">→</span> <span
+                    class="db">listings.hostaway_id</span></div>
+            <div class="note-row"><span class="hw">Hostaway: propertyTypeId</span> <span class="ar">→</span> <span
+                    class="db">listings.property_type_id</span></div>
+            <div class="note-row"><span class="hw">Hostaway: listingAmenities[]</span> <span class="ar">→</span> <span
+                    class="db">listings.amenities</span> (mapped to text)</div>
+            <div class="note-row"><span class="hw">Hostaway: isAvailable</span> <span class="ar">→</span> <span
+                    class="db">calendar_days.status</span> (mapped)</div>
+            <div class="note-row"><span class="hw">Hostaway: minimumStay</span> <span class="ar">→</span> <span
+                    class="db">calendar_days.minimum_stay</span></div>
+            <div class="note-row" style="margin-top:6px;color:#4b5563;font-style:italic">
+                ❌ Removed: area, is_active, synced_at (not from Hostaway API)
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- SUMMARY STATS — right bottom                     -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div class="stats" style="left:500px;top:720px;width:280px">
+            <h3>📊 Schema Summary</h3>
+            <div class="stat-row"><span class="sl">Tables</span><span class="sv g">3</span></div>
+            <div class="stat-row"><span class="sl">Total Columns</span><span class="sv">31</span></div>
+            <div class="stat-row"><span class="sl">JSON Columns</span><span class="sv g">0</span></div>
+            <div class="stat-divider"></div>
+            <div class="stat-row"><span class="sl">listings</span><span class="sv">12 cols (all Hostaway)</span></div>
+            <div class="stat-row"><span class="sl">calendar_days</span><span class="sv">7 cols (all Hostaway)</span>
+            </div>
+            <div class="stat-row"><span class="sl">proposals</span><span class="sv">12 cols (PriceOS)</span></div>
+            <div class="stat-divider"></div>
+            <div class="stat-row"><span class="sl">Tables Removed</span><span class="sv r">15</span></div>
+            <div class="stat-row"><span class="sl">Fields Removed</span><span class="sv r">area, is_active,
+                    synced_at</span></div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!-- REMOVED TABLES — right bottom                    -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <div class="removed" style="left:840px;top:720px;width:380px">
+            <div class="removed-head">❌ 15 Tables Removed</div>
+            <div class="removed-body">
+                <div class="removed-item"><span class="x">✕</span><span class="n">reservations</span><span
+                        class="r">occupancy via calendar_days</span></div>
+                <div class="removed-item"><span class="x">✕</span><span class="n">executions</span><span
+                        class="r">merged into proposals</span></div>
+                <div class="removed-item"><span class="x">✕</span><span class="n">conversations</span><span
+                        class="r">GET /v1/conversations</span></div>
+                <div class="removed-item"><span class="x">✕</span><span class="n">conversation_messages</span><span
+                        class="r">GET /v1/conversationMessages</span></div>
+                <div class="removed-item"><span class="x">✕</span><span class="n">message_templates</span><span
+                        class="r">GET /v1/messageTemplates</span></div>
+                <div class="removed-item"><span class="x">✕</span><span class="n">tasks</span><span class="r">GET
+                        /v1/tasks</span></div>
+                <div class="removed-item"><span class="x">✕</span><span class="n">seasonal_rules</span><span
+                        class="r">GET /v1/seasonalRules</span></div>
+                <div class="removed-item"><span class="x">✕</span><span class="n">expenses</span><span class="r">GET
+                        /v1/finance/...</span></div>
+                <div class="removed-item"><span class="x">✕</span><span class="n">owner_statements</span><span
+                        class="r">GET /v1/ownerStatements</span></div>
+                <div class="removed-item"><span class="x">✕</span><span class="n">reviews</span><span class="r">GET
+                        /v1/reviews</span></div>
+                <div class="removed-item"><span class="x">✕</span><span class="n">events</span><span
+                        class="r">mock-events.ts config</span></div>
+                <div class="removed-item"><span class="x">✕</span><span class="n">competitor_signals</span><span
+                        class="r">mock-signals.ts config</span></div>
+                <div class="removed-item"><span class="x">✕</span><span class="n">chat_messages</span><span
+                        class="r">Lyzr session mgmt</span></div>
+                <div class="removed-item"><span class="x">✕</span><span class="n">revenue_cycles</span><span
+                        class="r">derived from proposals</span></div>
+                <div class="removed-item"><span class="x">✕</span><span class="n">sync_log</span><span
+                        class="r">application logging</span></div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="footer">PriceOS Final Schema · 3 Tables · 31 Columns · Hostaway-matched · Feb 2026</div>
+
+    <script>
+        const svg = document.getElementById('lines');
+        const canvas = document.getElementById('canvas');
+
+        const relationships = [
+            { from: 't-listings', fromSide: 'left', to: 't-calendar', toSide: 'top', color: '#3b82f6', label: 'listing_id → id' },
+            { from: 't-listings', fromSide: 'right', to: 't-proposals', toSide: 'top', color: '#10b981', label: 'listing_id → id' },
+        ];
+
+        function getAnchor(el, side) {
+            const r = el.getBoundingClientRect();
+            const cr = canvas.getBoundingClientRect();
+            const ox = -cr.left, oy = -cr.top;
+            switch (side) {
+                case 'top': return { x: r.left + r.width / 2 + ox, y: r.top + oy };
+                case 'bottom': return { x: r.left + r.width / 2 + ox, y: r.bottom + oy };
+                case 'left': return { x: r.left + ox, y: r.top + r.height / 2 + oy };
+                case 'right': return { x: r.right + ox, y: r.top + r.height / 2 + oy };
+            }
+        }
+
+        function draw() {
+            svg.innerHTML = '';
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            ['3b82f6', '10b981'].forEach(c => {
+                const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+                marker.setAttribute('id', 'arrow-' + c);
+                marker.setAttribute('markerWidth', '10');
+                marker.setAttribute('markerHeight', '7');
+                marker.setAttribute('refX', '10');
+                marker.setAttribute('refY', '3.5');
+                marker.setAttribute('orient', 'auto');
+                const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                poly.setAttribute('points', '0 0,10 3.5,0 7');
+                poly.setAttribute('fill', '#' + c);
+                marker.appendChild(poly);
+                defs.appendChild(marker);
+            });
+            svg.appendChild(defs);
+
+            relationships.forEach(rel => {
+                const fromEl = document.getElementById(rel.from);
+                const toEl = document.getElementById(rel.to);
+                if (!fromEl || !toEl) return;
+                const a = getAnchor(fromEl, rel.fromSide);
+                const b = getAnchor(toEl, rel.toSide);
+                const dx = b.x - a.x, dy = b.y - a.y;
+                let cx1, cy1, cx2, cy2;
+                if (rel.fromSide === 'bottom' || rel.fromSide === 'top') {
+                    cx1 = a.x; cy1 = a.y + dy * 0.4;
+                    cx2 = b.x; cy2 = b.y - dy * 0.4;
+                } else {
+                    cx1 = a.x + dx * 0.4; cy1 = a.y;
+                    cx2 = b.x - dx * 0.4; cy2 = b.y;
+                }
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', `M ${a.x} ${a.y} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${b.x} ${b.y}`);
+                path.setAttribute('stroke', rel.color);
+                path.setAttribute('stroke-width', '2.5');
+                path.setAttribute('fill', 'none');
+                path.setAttribute('stroke-dasharray', '8 4');
+                path.setAttribute('opacity', '0.6');
+                path.setAttribute('marker-end', `url(#arrow-${rel.color.replace('#', '')})`);
+                svg.appendChild(path);
+
+                const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+                const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                bg.setAttribute('x', mx - 65); bg.setAttribute('y', my - 16);
+                bg.setAttribute('width', '130'); bg.setAttribute('height', '18');
+                bg.setAttribute('rx', '4'); bg.setAttribute('fill', '#0a0a12'); bg.setAttribute('opacity', '0.9');
+                svg.appendChild(bg);
+
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', mx); text.setAttribute('y', my - 4);
+                text.setAttribute('fill', rel.color); text.setAttribute('font-size', '11');
+                text.setAttribute('font-family', 'JetBrains Mono, monospace');
+                text.setAttribute('font-weight', '600'); text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('opacity', '0.85');
+                text.textContent = rel.label;
+                svg.appendChild(text);
+            });
+        }
+        window.addEventListener('load', draw);
+        window.addEventListener('resize', draw);
+    </script>
+</body>
+
+</html>

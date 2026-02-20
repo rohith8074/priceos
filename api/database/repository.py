@@ -9,6 +9,7 @@ from api.models.calendar import CalendarDay
 from api.models.reservation import Reservation
 from api.models.proposal import Proposal
 from api.models.user_settings import UserSettings
+from api.models.event_signal import EventSignal
 
 
 class ListingRepository:
@@ -168,3 +169,54 @@ class UserSettingsRepository:
         self.session.commit()
         self.session.refresh(settings)
         return settings
+
+
+class EventSignalsRepository:
+    """Repository for EventSignal operations"""
+
+    def __init__(self, session: Session):
+        self.session = session
+
+    def get_by_date_range(
+        self,
+        start_date: str,
+        end_date: str,
+        location: str = "Dubai"
+    ) -> List[EventSignal]:
+        """
+        Get events that overlap with the given date range
+        
+        Returns events where:
+        - Event starts before or during the range AND
+        - Event ends during or after the range
+        """
+        # Convert strings to date objects
+        from datetime import datetime as dt
+        start = dt.strptime(start_date, "%Y-%m-%d").date()
+        end = dt.strptime(end_date, "%Y-%m-%d").date()
+        
+        statement = select(EventSignal).where(
+            EventSignal.location == location,
+            EventSignal.start_date <= end,  # Event starts before range ends
+            EventSignal.end_date >= start   # Event ends after range starts
+        ).order_by(EventSignal.start_date)
+        
+        return list(self.session.exec(statement).all())
+
+    def get_by_id(self, event_id: int) -> Optional[EventSignal]:
+        """Get event by ID"""
+        return self.session.get(EventSignal, event_id)
+
+    def create(self, event: EventSignal) -> EventSignal:
+        """Create new event signal"""
+        self.session.add(event)
+        self.session.commit()
+        self.session.refresh(event)
+        return event
+
+    def bulk_create(self, events: List[EventSignal]) -> List[EventSignal]:
+        """Create multiple event signals"""
+        for event in events:
+            self.session.add(event)
+        self.session.commit()
+        return events

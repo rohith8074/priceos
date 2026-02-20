@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PriceOS — Schema, 5-Agent Responses & Data Sufficiency</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --surface: #1a1d27;
+            --card: #222633;
+            --border: #2d3348;
+            --text: #e4e7f1;
+            --muted: #8b90a5;
+            --accent: #6c5ce7;
+            --accent2: #00cec9;
+            --green: #00b894;
+            --orange: #fdcb6e;
+            --red: #e17055;
+            --blue: #74b9ff;
+            --pink: #fd79a8
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7
+        }
+
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 40px 24px
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+            margin-bottom: 8px
+        }
+
+        .subtitle {
+            color: var(--muted);
+            font-size: 1rem;
+            margin-bottom: 40px
+        }
+
+        h2 {
+            font-size: 1.55rem;
+            color: var(--accent2);
+            margin: 48px 0 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border)
+        }
+
+        h3 {
+            font-size: 1.15rem;
+            color: var(--blue);
+            margin: 24px 0 12px
+        }
+
+        h4 {
+            font-size: 1rem;
+            color: var(--orange);
+            margin: 16px 0 8px
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin: 16px 0
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-size: .85rem
+        }
+
+        th {
+            background: var(--surface);
+            color: var(--accent2);
+            text-align: left;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            font-weight: 600
+        }
+
+        td {
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            vertical-align: top
+        }
+
+        tr:hover td {
+            background: var(--surface)
+        }
+
+        code {
+            background: var(--surface);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: .82rem;
+            color: var(--orange)
+        }
+
+        pre {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            overflow-x: auto;
+            font-size: .82rem;
+            line-height: 1.5;
+            margin: 12px 0
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: .75rem;
+            font-weight: 600
+        }
+
+        .badge-green {
+            background: #00b89433;
+            color: var(--green)
+        }
+
+        .badge-blue {
+            background: #74b9ff33;
+            color: var(--blue)
+        }
+
+        .badge-accent {
+            background: #6c5ce733;
+            color: var(--accent)
+        }
+
+        .badge-orange {
+            background: #fdcb6e33;
+            color: var(--orange)
+        }
+
+        .badge-red {
+            background: #e1705533;
+            color: var(--red)
+        }
+
+        .badge-pink {
+            background: #fd79a833;
+            color: var(--pink)
+        }
+
+        .new-row td {
+            background: #fd79a808;
+            border-left: 3px solid var(--pink)
+        }
+
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px
+        }
+
+        @media(max-width:900px) {
+            .two-col {
+                grid-template-columns: 1fr
+            }
+        }
+
+        .flow-box {
+            background: var(--surface);
+            padding: 16px;
+            border-radius: 10px;
+            border: 2px solid var(--border);
+            text-align: center
+        }
+
+        .flow-arrow {
+            font-size: 2rem;
+            color: var(--accent2)
+        }
+
+        .key-point {
+            background: var(--surface);
+            border-left: 4px solid var(--accent);
+            padding: 12px 16px;
+            border-radius: 0 8px 8px 0;
+            margin: 12px 0;
+            font-size: .9rem
+        }
+
+        ul {
+            padding-left: 20px;
+            margin: 8px 0
+        }
+
+        li {
+            margin: 6px 0;
+            font-size: .9rem
+        }
+
+        .toc {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px
+        }
+
+        .toc a {
+            color: var(--accent2);
+            text-decoration: none;
+            font-size: .9rem
+        }
+
+        .verdict {
+            padding: 16px;
+            border-radius: 10px;
+            margin: 16px 0;
+            text-align: center;
+            font-size: 1.1rem;
+            background: #00b89420;
+            border: 2px solid var(--green);
+            color: var(--green)
+        }
+
+        .ag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: .72rem;
+            font-weight: 600;
+            margin: 1px 2px
+        }
+
+        .ag-cro {
+            background: #6c5ce720;
+            color: var(--accent)
+        }
+
+        .ag-prop {
+            background: #00b89420;
+            color: var(--green)
+        }
+
+        .ag-book {
+            background: #74b9ff20;
+            color: var(--blue)
+        }
+
+        .ag-mkt {
+            background: #fdcb6e20;
+            color: #f39c12
+        }
+
+        .ag-guard {
+            background: #e1705520;
+            color: var(--red)
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+
+        <h1>PriceOS — Schema, 5-Agent Responses & Data Sufficiency</h1>
+        <p class="subtitle">Aligned with 5-Agent Architecture (priceos-architecture-overview.html) &nbsp;|&nbsp; 19 Feb
+            2026</p>
+
+        <div class="toc">
+            <strong style="color:var(--accent2)">Contents</strong>
+            <ol style="margin-top:8px">
+                <li><a href="#q1">New Columns to Add to Existing Schema</a></li>
+                <li><a href="#q2">How the Proposals Table Gets Updated</a></li>
+                <li><a href="#q3">Agent Response Structures (5 Agents)</a></li>
+                <li><a href="#q4">Is This Data Sufficient for Live Pricing?</a></li>
+            </ol>
+        </div>
+
+        <div class="card" style="border-color:var(--red);margin-top:24px">
+            <strong style="color:var(--red)">⚠️ Note:</strong> The old <code>priceos-agent-architecture.md</code>
+            described 7 agents. That is <strong>DEPRECATED</strong>. The canonical architecture is <strong>5
+                agents</strong> as defined in <code>priceos-architecture-overview.html</code>:
+            <ol style="margin-top:8px">
+                <li><span class="ag ag-cro">CRO Router</span> — Orchestrator, no analysis</li>
+                <li><span class="ag ag-prop">Property Analyst</span> — SQL: calendar_days, listings (gaps, restrictions,
+                    seasonal, revenue)</li>
+                <li><span class="ag ag-book">Booking Intelligence</span> — SQL: reservations (velocity, lead time, LOS,
+                    cancellation)</li>
+                <li><span class="ag ag-mkt">Market Research</span> — Internet only (events, holidays, competitors,
+                    positioning)</li>
+                <li><span class="ag ag-guard">PriceGuard</span> — SQL: proposals, listings (floor/ceiling validation)
+                </li>
+            </ol>
+        </div>
+
+        <!-- ═══════════ SECTION 1 ═══════════ -->
+        <h2 id="q1">1. New Columns to Add to Existing Schema</h2>
+
+        <div class="key-point">
+            <strong>Current state:</strong> 6 tables in schema.ts. The core 4 working tables (<code>listings</code>,
+            <code>calendar_days</code>, <code>reservations</code>, <code>proposals</code>) have 46 columns total. These
+            8 new columns unlock better analysis from live Hostaway data.
+        </div>
+
+        <div class="card" style="border-color:var(--pink)">
+            <h3 style="color:var(--pink);margin-top:0">8 New Columns to Add</h3>
+            <table>
+                <tr>
+                    <th>#</th>
+                    <th>Table</th>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Nullable</th>
+                    <th>Hostaway Source</th>
+                    <th>Agent That Benefits</th>
+                    <th>Why</th>
+                </tr>
+                <tr class="new-row">
+                    <td>1</td>
+                    <td><code>listings</code></td>
+                    <td><code>address</code></td>
+                    <td>TEXT</td>
+                    <td>Yes</td>
+                    <td><code>address</code></td>
+                    <td><span class="ag ag-mkt">Market</span></td>
+                    <td>Auto-derive <code>area</code>. Hostaway doesn't provide sub-area.</td>
+                </tr>
+                <tr class="new-row">
+                    <td>2</td>
+                    <td><code>listings</code></td>
+                    <td><code>latitude</code></td>
+                    <td>NUMERIC(10,7)</td>
+                    <td>Yes</td>
+                    <td><code>latitude</code></td>
+                    <td><span class="ag ag-mkt">Market</span></td>
+                    <td>Radius-based competitor search</td>
+                </tr>
+                <tr class="new-row">
+                    <td>3</td>
+                    <td><code>listings</code></td>
+                    <td><code>longitude</code></td>
+                    <td>NUMERIC(10,7)</td>
+                    <td>Yes</td>
+                    <td><code>longitude</code></td>
+                    <td><span class="ag ag-mkt">Market</span></td>
+                    <td>Pair with latitude for geolocation</td>
+                </tr>
+                <tr class="new-row">
+                    <td>4</td>
+                    <td><code>reservations</code></td>
+                    <td><code>number_of_guests</code></td>
+                    <td>INT</td>
+                    <td>Yes</td>
+                    <td><code>numberOfGuests</code></td>
+                    <td><span class="ag ag-book">Booking</span></td>
+                    <td>Revenue-per-guest analysis</td>
+                </tr>
+                <tr class="new-row">
+                    <td>5</td>
+                    <td><code>reservations</code></td>
+                    <td><code>channel_commission</code></td>
+                    <td>NUMERIC(10,2)</td>
+                    <td>Yes</td>
+                    <td><code>channelCommission</code></td>
+                    <td><span class="ag ag-book">Booking</span> <span class="ag ag-guard">Guard</span></td>
+                    <td><strong>Critical:</strong> Net revenue = total − commission</td>
+                </tr>
+                <tr class="new-row">
+                    <td>6</td>
+                    <td><code>reservations</code></td>
+                    <td><code>cleaning_fee</code></td>
+                    <td>NUMERIC(10,2)</td>
+                    <td>Yes</td>
+                    <td><code>cleaningFee</code></td>
+                    <td><span class="ag ag-guard">Guard</span></td>
+                    <td>Accurate price breakdown</td>
+                </tr>
+                <tr class="new-row">
+                    <td>7</td>
+                    <td><code>reservations</code></td>
+                    <td><code>cancelled_at</code></td>
+                    <td>TIMESTAMP</td>
+                    <td>Yes</td>
+                    <td><code>cancelledAt</code></td>
+                    <td><span class="ag ag-book">Booking</span></td>
+                    <td><strong>Critical:</strong> Cancellation timing patterns</td>
+                </tr>
+                <tr class="new-row">
+                    <td>8</td>
+                    <td><code>calendar_days</code></td>
+                    <td><code>note</code></td>
+                    <td>TEXT</td>
+                    <td>Yes</td>
+                    <td><code>note</code></td>
+                    <td><span class="ag ag-prop">Property</span></td>
+                    <td>Why a date is blocked (owner stay, maintenance)</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="card" style="border-color:var(--green)">
+            <h3 style="color:var(--green);margin-top:0">Drizzle Schema Additions</h3>
+            <pre style="color:var(--text)"><span style="color:var(--muted)">// ── listings: add after 'amenities' ──</span>
+<span style="color:var(--green)">address: text("address"),
+latitude: numeric("latitude", { precision: 10, scale: 7 }),
+longitude: numeric("longitude", { precision: 10, scale: 7 }),</span>
+
+<span style="color:var(--muted)">// ── reservations: add after 'checkOutTime' ──</span>
+<span style="color:var(--green)">numberOfGuests: integer("number_of_guests"),
+channelCommission: numeric("channel_commission", { precision: 10, scale: 2 }),
+cleaningFee: numeric("cleaning_fee", { precision: 10, scale: 2 }),
+cancelledAt: timestamp("cancelled_at"),</span>
+
+<span style="color:var(--muted)">// ── calendar_days: add after 'maximumStay' ──</span>
+<span style="color:var(--green)">note: text("note"),</span></pre>
+        </div>
+
+        <div class="card" style="border-color:var(--accent)">
+            <h3 style="color:var(--accent);margin-top:0">SQL Migration</h3>
+            <pre style="color:var(--text)"><span style="color:var(--muted)">-- Migration: 0003_add_hostaway_fields.sql</span>
+ALTER TABLE "listings" ADD COLUMN "address" text;
+ALTER TABLE "listings" ADD COLUMN "latitude" numeric(10, 7);
+ALTER TABLE "listings" ADD COLUMN "longitude" numeric(10, 7);
+
+ALTER TABLE "reservations" ADD COLUMN "number_of_guests" integer;
+ALTER TABLE "reservations" ADD COLUMN "channel_commission" numeric(10, 2);
+ALTER TABLE "reservations" ADD COLUMN "cleaning_fee" numeric(10, 2);
+ALTER TABLE "reservations" ADD COLUMN "cancelled_at" timestamp;
+
+ALTER TABLE "calendar_days" ADD COLUMN "note" text;</pre>
+        </div>
+
+        <!-- ═══════════ SECTION 2 ═══════════ -->
+        <h2 id="q2">2. How the Proposals Table Gets Updated</h2>
+
+        <div class="key-point">
+            <code>proposals</code> is the <strong>ONLY table agents WRITE to</strong>. All other tables are READ-only.
+            Lifecycle: Created → Validated → Pushed to Hostaway.
+        </div>
+
+        <div class="card">
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:center;text-align:center">
+                <div class="flow-box" style="border-color:var(--accent)"><strong style="color:var(--accent)">① Agents
+                        Analyze</strong><br><small style="color:var(--muted)">Property + Booking + Market query
+                        data</small></div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box" style="border-color:var(--pink)"><strong style="color:var(--pink)">② CRO Router
+                        Creates</strong><br><small style="color:var(--muted)">INSERT proposals<br>status =
+                        'pending'</small></div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box" style="border-color:var(--red)"><strong style="color:var(--red)">③ PriceGuard
+                        Validates</strong><br><small style="color:var(--muted)">Checks floor/ceiling<br>→ approved /
+                        rejected</small></div>
+            </div>
+            <div style="text-align:center;margin:12px 0">
+                <div style="font-size:1.5rem;color:var(--accent2)">↓</div>
+            </div>
+            <div
+                style="display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:8px;align-items:center;text-align:center">
+                <div class="flow-box" style="border-color:var(--green)"><strong style="color:var(--green)">④ User
+                        Reviews</strong><br><small style="color:var(--muted)">UI: approve/reject</small></div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box" style="border-color:var(--orange)"><strong style="color:var(--orange)">⑤ Push to
+                        Hostaway</strong><br><small style="color:var(--muted)">ChannelSyncAgent<br>PUT /calendar</small>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box" style="border-color:var(--green)"><strong style="color:var(--green)">⑥
+                        Verified</strong><br><small style="color:var(--muted)">is_pushed = true</small></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-top:0">Who Writes What</h3>
+            <table>
+                <tr>
+                    <th>Step</th>
+                    <th>Who</th>
+                    <th>Action</th>
+                    <th>Columns Set</th>
+                </tr>
+                <tr>
+                    <td>① CREATE</td>
+                    <td>CRO Router</td>
+                    <td><code>INSERT</code></td>
+                    <td><code>listing_id, date, current_price, proposed_price, change_pct, price_floor, price_ceiling, risk_level, reasoning</code><br>status
+                        = <span class="badge badge-orange">pending</span>, is_pushed = <span
+                            class="badge badge-red">false</span></td>
+                </tr>
+                <tr>
+                    <td>② VALIDATE</td>
+                    <td>PriceGuard (#5)</td>
+                    <td><code>UPDATE status</code></td>
+                    <td>status → <span class="badge badge-green">approved</span> or <span
+                            class="badge badge-red">rejected</span>, may escalate risk_level</td>
+                </tr>
+                <tr>
+                    <td>③ PUSH</td>
+                    <td>ChannelSyncAgent</td>
+                    <td><code>UPDATE</code></td>
+                    <td>is_pushed = <span class="badge badge-green">true</span>, also updates
+                        <code>calendar_days.price</code>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="card" style="border-color:var(--accent)">
+            <h3 style="margin-top:0">Floor & Ceiling — Dynamic Calculation</h3>
+            <pre style="color:var(--text)">const basePrice = parseFloat(listing.price); <span style="color:var(--muted)">// from listings table</span>
+const priceFloor = Math.round(basePrice * 0.5);  <span style="color:var(--muted)">// 50% of base</span>
+const priceCeiling = Math.round(basePrice * 3.0); <span style="color:var(--muted)">// 300% of base</span></pre>
+            <p style="margin-top:8px;color:var(--muted);font-size:.85rem">Not stored in <code>listings</code>.
+                Calculated at proposal time. Ratios should become configurable via
+                <code>user_settings.preferences</code>.
+            </p>
+        </div>
+
+        <!-- ═══════════ SECTION 3 ═══════════ -->
+        <h2 id="q3">3. Agent Response Structures (5 Agents)</h2>
+
+        <div class="key-point">
+            Each agent returns <strong>structured JSON</strong> to the CRO Router. The Router combines them into
+            proposals + chat response. Aligned with the <strong>5-agent architecture</strong>.
+        </div>
+
+        <!-- Agent 1: CRO Router -->
+        <div class="card" style="border-color:var(--accent)">
+            <h3 style="margin-top:0"><span class="ag ag-cro">Agent 1</span> CRO Router — Orchestrator</h3>
+            <p style="color:var(--muted);margin-bottom:12px">DB: None | Internet: None | Tool: Calls other agents</p>
+            <pre style="color:var(--text)"><span style="color:var(--muted)">// CRO Router does NOT return analysis.
+// It ROUTES the user's question → collects agent responses → formats final output.</span>
+{
+  "routing": {
+    "userIntent": "low occupancy concern",
+    "agentsInvoked": ["PropertyAnalyst", "BookingIntelligence", "MarketResearch"],
+    "priceGuardRequired": true  <span style="color:var(--muted)">// always true when proposals are generated</span>
+  },
+  "finalOutput": {
+    "proposals": [ <span style="color:var(--muted)">/* merged from agent signals → INSERT into proposals table */</span> ],
+    "chatResponse": "Hey! Your Marina property is at 43% occupancy..."
+  }
+}</pre>
+        </div>
+
+        <!-- Agent 2: Property Analyst -->
+        <div class="card" style="border-color:var(--green)">
+            <h3 style="margin-top:0"><span class="ag ag-prop">Agent 2</span> Property Analyst — SQL Only</h3>
+            <p style="color:var(--muted);margin-bottom:12px">Tables: <code>calendar_days</code>, <code>listings</code> |
+                Merges: GapNight + Restrictions + Seasonal + RevenueForecast</p>
+            <pre style="color:var(--text)">{
+  "agent": "PropertyAnalyst",
+  "listingId": 1,
+  "analysisDate": "2026-02-19",
+
+  <span style="color:var(--green)">// SECTION 1: Gap Detection (was GapNightAgent)</span>
+  "gaps": [
+    {
+      "dates": ["2026-02-25", "2026-02-26"],
+      "gapNights": 2,
+      "beforeCheckout": "2026-02-25",
+      "afterCheckin": "2026-02-28",
+      "suggestedPrice": 380,
+      "currentPrice": 500,
+      "reasoning": "2-night orphan gap. Discount to fill — empty = 0 revenue."
+    }
+  ],
+
+  <span style="color:var(--green)">// SECTION 2: Restriction Analysis (was RestrictionsAgent)</span>
+  "restrictionIssues": [
+    {
+      "type": "MIN_STAY_BLOCKING",
+      "dates": ["2026-03-01", "2026-03-02"],
+      "currentMinStay": 3,
+      "suggestedMinStay": 1,
+      "reasoning": "3-night min blocks a 2-night gap."
+    }
+  ],
+
+  <span style="color:var(--green)">// SECTION 3: Seasonal Analysis (was SeasonalPatternAgent)</span>
+  "seasonal": {
+    "currentSeason": "Peak (Winter)",
+    "avgPriceThisMonth": 520,
+    "avgPriceLastMonth": 510,
+    "trend": "stable_high",
+    "seasonalMultiplier": 1.2
+  },
+
+  <span style="color:var(--green)">// SECTION 4: Revenue Forecast (was RevenueForecastAgent)</span>
+  "revenue": {
+    "confirmedNext30": 15200,
+    "projectedNext30": 22800,
+    "avgNightlyRate": 520,
+    "currency": "AED"
+  },
+
+  <span style="color:var(--green)">// OCCUPANCY SUMMARY</span>
+  "occupancy": {
+    "next30Days": 68,
+    "next7Days": 72,
+    "availableNights": 9,
+    "blockedNights": 2,
+    "bookedNights": 19
+  }
+}</pre>
+        </div>
+
+        <!-- Agent 3: Booking Intelligence -->
+        <div class="card" style="border-color:var(--blue)">
+            <h3 style="margin-top:0"><span class="ag ag-book">Agent 3</span> Booking Intelligence — SQL Only</h3>
+            <p style="color:var(--muted);margin-bottom:12px">Tables: <code>reservations</code> | Merges: BookingVelocity
+                + LastMinuteDemand + LeadTime + LengthOfStay + CancellationRisk</p>
+            <pre style="color:var(--text)">{
+  "agent": "BookingIntelligence",
+  "listingId": 1,
+  "analysisDate": "2026-02-19",
+
+  <span style="color:var(--blue)">// SECTION 1: Booking Velocity (was BookingVelocityAgent)</span>
+  "velocity": {
+    "last7Days": 3,
+    "last30Days": 8,
+    "trend": "accelerating",
+    "signal": "INCREASE_PRICE",
+    "confidence": 0.85
+  },
+
+  <span style="color:var(--blue)">// SECTION 2: Last-Minute Demand (was LastMinuteDemandAgent)</span>
+  "lastMinute": {
+    "openDatesWithin7Days": 2,
+    "suggestion": "DISCOUNT",
+    "suggestedDiscountPct": 15,
+    "reasoning": "2 open nights within 7 days. 15% discount to capture."
+  },
+
+  <span style="color:var(--blue)">// SECTION 3: Lead Time (was LeadTimeAgent)</span>
+  "leadTime": {
+    "medianDays": 14,
+    "p25": 7, "p50": 14, "p75": 28, "p90": 45,
+    "sampleSize": 42,
+    "pricingWindows": [
+      { "window": "EARLY_BIRD", "daysOut": "30-90", "avgPrice": 480, "share": "30%" },
+      { "window": "STANDARD", "daysOut": "7-30", "avgPrice": 520, "share": "45%" },
+      { "window": "LAST_MINUTE", "daysOut": "0-7", "avgPrice": 450, "share": "25%" }
+    ]
+  },
+
+  <span style="color:var(--blue)">// SECTION 4: Length of Stay (was LengthOfStayAgent)</span>
+  "lengthOfStay": {
+    "averageNights": 3.2,
+    "distribution": { "1-2": 25, "3-4": 45, "5-7": 20, "8+": 10 },
+    "recommendation": "Most bookings 3-4 nights. Set min-stay to 2."
+  },
+
+  <span style="color:var(--blue)">// SECTION 5: Cancellation Risk (was CancellationRiskAgent)</span>
+  "cancellation": {
+    "overallRate": 14.3,
+    "byChannel": [
+      { "channel": "Booking.com", "rate": 22 },
+      { "channel": "Airbnb", "rate": 8 },
+      { "channel": "Direct", "rate": 9 }
+    ],
+    "revenueAtRisk": 8400,
+    "recommendation": "Tighten Booking.com policy — 22% cancel rate."
+  }
+}</pre>
+        </div>
+
+        <!-- Agent 4: Market Research -->
+        <div class="card" style="border-color:var(--orange)">
+            <h3 style="margin-top:0"><span class="ag ag-mkt">Agent 4</span> Market Research — Internet Only</h3>
+            <p style="color:var(--muted);margin-bottom:12px">Tables: None | Tool: Web Search | Merges: EventDetection +
+                HolidayPremium + CompetitorPrice + MarketDemand + PropertyPositioning</p>
+            <pre style="color:var(--text)">{
+  "agent": "MarketResearch",
+  "listingId": 1,
+  "analysisDate": "2026-02-19",
+
+  <span style="color:var(--orange)">// SECTION 1: Event Detection (was EventDetectionAgent)</span>
+  "events": [
+    {
+      "name": "Art Dubai 2026",
+      "startDate": "2026-03-06", "endDate": "2026-03-09",
+      "demandImpact": "high", "confidence": 0.9,
+      "suggestedPremium": 15,
+      "reasoning": "International art fair. 15% premium justified."
+    }
+  ],
+
+  <span style="color:var(--orange)">// SECTION 2: Holiday Premium (was HolidayPremiumAgent)</span>
+  "holidays": [
+    { "name": "Ramadan Start", "date": "2026-03-17", "impact": "mixed",
+      "reasoning": "Tourist dips, but family tourism increases." }
+  ],
+
+  <span style="color:var(--orange)">// SECTION 3: Competitor Prices (was CompetitorPriceAgent)</span>
+  "competitors": {
+    "area": "Dubai Marina", "bedrooms": 2, "sampleSize": 12,
+    "priceRange": { "min": 550, "max": 900, "median": 720 },
+    "source": "Airbnb + Booking.com search"
+  },
+
+  <span style="color:var(--orange)">// SECTION 4: Market Demand (was MarketDemandAgent)</span>
+  "marketDemand": {
+    "trend": "strong", "season": "peak_winter",
+    "insight": "Dubai tourism above average for February."
+  },
+
+  <span style="color:var(--orange)">// SECTION 5: Property Positioning (was PropertyPositioningAgent)</span>
+  "positioning": {
+    "currentPrice": 800, "marketMedian": 720, "percentile": 72,
+    "verdict": "SLIGHTLY_ABOVE",
+    "qualityTier": "premium",
+    "reasoning": "At 800 AED, 72nd percentile. Justified for sea-view premium."
+  },
+
+  "fetchedAt": "2026-02-19T12:00:00Z"
+}</pre>
+        </div>
+
+        <!-- Agent 5: PriceGuard -->
+        <div class="card" style="border-color:var(--red)">
+            <h3 style="margin-top:0"><span class="ag ag-guard">Agent 5</span> PriceGuard — Validator (Runs LAST)</h3>
+            <p style="color:var(--muted);margin-bottom:12px">Tables: <code>proposals</code>, <code>listings</code> |
+                Runs after all other agents</p>
+            <pre style="color:var(--text)">{
+  "agent": "PriceGuard",
+  "listingId": 1,
+
+  "results": [
+    {
+      "proposalDate": "2026-02-25",
+      "proposedPrice": 380, "priceFloor": 250, "priceCeiling": 1500,
+      "changePct": -24,
+      "verdict": "APPROVED",
+      "guardrails": ["floor_check_passed"],
+      "reasoning": "Gap-fill discount. -24% within floor (250). Approved."
+    },
+    {
+      "proposalDate": "2026-03-06",
+      "proposedPrice": 750, "priceFloor": 250, "priceCeiling": 1500,
+      "changePct": 50,
+      "verdict": "FLAGGED",
+      "guardrails": ["high_volatility_check"],
+      "reasoning": "+50% aggressive. Event-backed but needs manual review."
+    }
+  ],
+
+  "calibration": {
+    "currentFloor": 250, "suggestedFloor": 300,
+    "currentCeiling": 1500, "suggestedCeiling": 1200,
+    "reasoning": "Lowest booking was 320. Highest was 1100."
+  },
+
+  "summary": { "approved": 3, "rejected": 0, "flagged": 2 }
+}</pre>
+        </div>
+
+        <!-- ═══════════ SECTION 4 ═══════════ -->
+        <h2 id="q4">4. Is This Data Sufficient for Live Pricing?</h2>
+
+        <div class="verdict"><strong style="font-size:1.3rem">✅ YES — Internal DB (facts) + Live Internet (context) +
+                PriceGuard (safety) = sufficient.</strong></div>
+
+        <div class="two-col">
+            <div class="card" style="border-color:var(--green)">
+                <h4 style="color:var(--green);margin-top:0">📊 Internal DB — Hard Facts</h4>
+                <table>
+                    <tr>
+                        <th>Data</th>
+                        <th>Table</th>
+                        <th>Signal</th>
+                    </tr>
+                    <tr>
+                        <td>Current prices</td>
+                        <td>calendar_days</td>
+                        <td>Baseline</td>
+                    </tr>
+                    <tr>
+                        <td>Occupancy</td>
+                        <td>calendar_days</td>
+                        <td>High → raise, Low → lower</td>
+                    </tr>
+                    <tr>
+                        <td>Gap nights</td>
+                        <td>calendar_days</td>
+                        <td>Discount to fill</td>
+                    </tr>
+                    <tr>
+                        <td>Booking velocity</td>
+                        <td>reservations</td>
+                        <td>Accelerating → raise</td>
+                    </tr>
+                    <tr>
+                        <td>Lead time</td>
+                        <td>reservations</td>
+                        <td>Pricing windows</td>
+                    </tr>
+                    <tr>
+                        <td>Cancellation rate</td>
+                        <td>reservations</td>
+                        <td>Risk mitigation</td>
+                    </tr>
+                    <tr>
+                        <td>LOS patterns</td>
+                        <td>reservations</td>
+                        <td>Min-stay optimization</td>
+                    </tr>
+                    <tr>
+                        <td>Property details</td>
+                        <td>listings</td>
+                        <td>Comp matching</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="card" style="border-color:var(--blue)">
+                <h4 style="color:var(--blue);margin-top:0">🌐 Live Internet — Soft Signals</h4>
+                <table>
+                    <tr>
+                        <th>Data</th>
+                        <th>Source</th>
+                        <th>Signal</th>
+                    </tr>
+                    <tr>
+                        <td>Dubai events</td>
+                        <td>Web search</td>
+                        <td>Event premium 10-30%</td>
+                    </tr>
+                    <tr>
+                        <td>Holidays</td>
+                        <td>Web search</td>
+                        <td>Surge pricing</td>
+                    </tr>
+                    <tr>
+                        <td>Competitor prices</td>
+                        <td>Airbnb/Booking</td>
+                        <td>Market positioning</td>
+                    </tr>
+                    <tr>
+                        <td>Tourism trends</td>
+                        <td>News</td>
+                        <td>Demand direction</td>
+                    </tr>
+                    <tr>
+                        <td>Ramadan/school breaks</td>
+                        <td>Web search</td>
+                        <td>Demand shifts</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="card" style="border-color:var(--orange)">
+            <h3 style="color:var(--orange);margin-top:0">⚠️ Caveats</h3>
+            <ol>
+                <li><strong>Mock data won't produce accurate results.</strong> Need real Hostaway data with real
+                    timestamps.</li>
+                <li><strong><code>area</code> is PriceOS-specific.</strong> Must manually map or auto-derive from
+                    <code>address</code>.
+                </li>
+                <li><strong>Competitor pricing is directional,</strong> not exact (internet search gives ranges).</li>
+                <li><strong>Floor/ceiling ratios (0.5× to 3.0×) are hardcoded.</strong> Should be user-configurable.
+                </li>
+            </ol>
+        </div>
+
+        <!-- FINAL SUMMARY -->
+        <div class="card" style="border-color:var(--accent2);background:var(--surface);margin-top:32px">
+            <h3 style="color:var(--accent2);margin-top:0">Final Summary</h3>
+            <table>
+                <tr>
+                    <th>Question</th>
+                    <th>Answer</th>
+                </tr>
+                <tr>
+                    <td><strong>New columns?</strong></td>
+                    <td><strong>8 columns</strong> across 3 tables. All nullable, all from Hostaway. Non-breaking
+                        migration.</td>
+                </tr>
+                <tr>
+                    <td><strong>How proposals update?</strong></td>
+                    <td>CRO Router <strong>INSERTS</strong> (pending) → PriceGuard <strong>VALIDATES</strong> →
+                        ChannelSync <strong>PUSHES</strong> (is_pushed=true).</td>
+                </tr>
+                <tr>
+                    <td><strong>Agent responses?</strong></td>
+                    <td><strong>5 agents</strong>, each returns structured JSON. CRO Router combines into proposals +
+                        chat.</td>
+                </tr>
+                <tr>
+                    <td><strong>Data sufficient?</strong></td>
+                    <td><strong style="color:var(--green)">YES</strong> — DB facts + live internet + PriceGuard safety =
+                        comprehensive pricing.</td>
+                </tr>
+            </table>
+        </div>
+
+        <div
+            style="text-align:center;margin-top:40px;padding:16px;background:var(--surface);border-radius:12px;border:1px solid var(--border)">
+            <p style="color:var(--muted)">PriceOS v2.0 — 5-Agent Architecture</p>
+            <p style="color:var(--accent2);font-size:.9rem">4 tables + 8 new columns + 5 agents + live internet =
+                production-ready pricing</p>
+        </div>
+
+    </div>
+</body>
+
+</html>

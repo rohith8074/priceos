@@ -40,7 +40,7 @@ export function useChat() {
         const ctx = [
           `Property: ${activeProperty.name}`,
           `Area: ${activeProperty.area}`,
-          `Type: ${activeProperty.propertyType}`,
+          `Type ID: ${activeProperty.propertyTypeId}`,
           `Bedrooms: ${activeProperty.bedroomsNumber}`,
           `Base Price: ${activeProperty.price} ${activeProperty.currencyCode}`,
           `Price Range: ${activeProperty.priceFloor}-${activeProperty.priceCeiling} ${activeProperty.currencyCode}`,

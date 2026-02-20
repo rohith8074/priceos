@@ -9,8 +9,7 @@ import { format } from "date-fns";
 interface Props {
   proposal: {
     id: number;
-    dateRangeStart: string;
-    dateRangeEnd: string;
+    date: string;
     currentPrice: number;
     proposedPrice: number;
     changePct: number;
@@ -37,7 +36,7 @@ export function ProposalCard({ proposal, onApprove, onReject, isLoading }: Props
           {/* Header: Date Range + Risk Badge */}
           <div className="flex items-center justify-between">
             <div className="text-sm font-medium">
-              {format(new Date(proposal.dateRangeStart), "MMM d")} - {format(new Date(proposal.dateRangeEnd), "MMM d, yyyy")}
+              {format(new Date(proposal.date), "EEE, MMM d, yyyy")}
             </div>
             <Badge className={riskColor}>
               {proposal.riskLevel.toUpperCase()} RISK

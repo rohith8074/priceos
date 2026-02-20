@@ -1,5 +1,5 @@
 import { createHostawayClient } from "../hostaway/client";
-import { db, proposals, calendarDays } from "@/lib/db";
+import { db, inventoryMaster } from "@/lib/db";
 import { eq, and, gte, lte } from "drizzle-orm";
 import { format, eachDayOfInterval, parseISO } from "date-fns";
 import type { HostawayCalendarUpdate } from "../hostaway/types";
@@ -31,19 +31,15 @@ export class ChannelSyncAgent {
     const executedAt = new Date();
 
     try {
-      // Fetch proposal
+      // Fetch proposal (inventoryMaster record)
       const [proposal] = await db
         .select()
-        .from(proposals)
-        .where(eq(proposals.id, proposalId))
+        .from(inventoryMaster)
+        .where(eq(inventoryMaster.id, proposalId))
         .limit(1);
 
       if (!proposal) {
-        throw new Error(`Proposal ${proposalId} not found`);
-      }
-
-      if (proposal.status !== "approved") {
-        throw new Error(`Proposal ${proposalId} is not approved (status: ${proposal.status})`);
+        throw new Error(`Inventory day ${proposalId} not found`);
       }
 
       // Get listing's hostawayId
@@ -52,11 +48,9 @@ export class ChannelSyncAgent {
         limit: 1,
       });
 
-      // Generate date range for update
-      const dates = eachDayOfInterval({
-        start: parseISO(proposal.dateRangeStart),
-        end: parseISO(proposal.dateRangeEnd),
-      });
+      // Generate date range for update - NOW SINGLE DATE
+      const dateStr = proposal.date;
+      const dates = [parseISO(dateStr)];
 
       let verified = false;
 
@@ -67,7 +61,7 @@ export class ChannelSyncAgent {
         // Prepare calendar updates
         const updates: HostawayCalendarUpdate[] = dates.map((date) => ({
           date: format(date, "yyyy-MM-dd"),
-          price: parseFloat(proposal.proposedPrice),
+          price: parseFloat(proposal.currentPrice),
         }));
 
         // Execute update to HostAway
@@ -79,37 +73,14 @@ export class ChannelSyncAgent {
           hostawayId,
           format(dates[0], "yyyy-MM-dd"),
           format(dates[dates.length - 1], "yyyy-MM-dd"),
-          parseFloat(proposal.proposedPrice)
+          parseFloat(proposal.currentPrice)
         );
       } else {
         // No hostawayId - database-only mode (dev/testing)
         verified = true; // Auto-verify for DB-only mode
       }
 
-      // Update proposal status
-      await db
-        .update(proposals)
-        .set({
-          status: "executed",
-          executedAt,
-        })
-        .where(eq(proposals.id, proposalId));
-
-      // Update local calendar cache
-      for (const date of dates) {
-        await db
-          .update(calendarDays)
-          .set({
-            price: proposal.proposedPrice,
-            syncedAt: executedAt,
-          })
-          .where(
-            and(
-              eq(calendarDays.listingId, proposal.listingId),
-              eq(calendarDays.date, format(date, "yyyy-MM-dd"))
-            )
-          );
-      }
+      // Update local calendar cache is already done by approve API
 
       return {
         success: true,
@@ -183,94 +154,14 @@ export class ChannelSyncAgent {
    * Rollback a proposal execution (revert to previous price)
    */
   async rollbackProposal(proposalId: number): Promise<ExecutionResult> {
-    const executedAt = new Date();
-
-    try {
-      // Fetch proposal
-      const [proposal] = await db
-        .select()
-        .from(proposals)
-        .where(eq(proposals.id, proposalId))
-        .limit(1);
-
-      if (!proposal) {
-        throw new Error(`Proposal ${proposalId} not found`);
-      }
-
-      if (proposal.status !== "executed") {
-        throw new Error(`Proposal ${proposalId} is not executed (status: ${proposal.status})`);
-      }
-
-      // Get listing's hostawayId
-      const [listing] = await db.query.listings.findMany({
-        where: (listings, { eq }) => eq(listings.id, proposal.listingId),
-        limit: 1,
-      });
-
-      if (!listing?.hostawayId) {
-        throw new Error(`Listing ${proposal.listingId} has no hostawayId`);
-      }
-
-      const hostawayId = parseInt(listing.hostawayId);
-
-      // Generate date range for rollback
-      const dates = eachDayOfInterval({
-        start: parseISO(proposal.dateRangeStart),
-        end: parseISO(proposal.dateRangeEnd),
-      });
-
-      // Prepare rollback updates (use currentPrice)
-      const updates: HostawayCalendarUpdate[] = dates.map((date) => ({
-        date: format(date, "yyyy-MM-dd"),
-        price: parseFloat(proposal.currentPrice),
-      }));
-
-      // Execute rollback to HostAway
-      const client = createHostawayClient(this.hostawayApiKey);
-      await client.updateCalendar(hostawayId, updates);
-
-      // Update proposal status
-      await db
-        .update(proposals)
-        .set({
-          status: "rejected", // Mark as rejected after rollback
-          executedAt: null,
-        })
-        .where(eq(proposals.id, proposalId));
-
-      // Update local calendar cache
-      for (const date of dates) {
-        await db
-          .update(calendarDays)
-          .set({
-            price: proposal.currentPrice,
-            syncedAt: executedAt,
-          })
-          .where(
-            and(
-              eq(calendarDays.listingId, proposal.listingId),
-              eq(calendarDays.date, format(date, "yyyy-MM-dd"))
-            )
-          );
-      }
-
-      return {
-        success: true,
-        proposalId,
-        updatedDays: dates.length,
-        verified: true,
-        executedAt,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        proposalId,
-        updatedDays: 0,
-        verified: false,
-        error: (error as Error).message,
-        executedAt,
-      };
-    }
+    return {
+      success: false,
+      proposalId,
+      updatedDays: 0,
+      verified: false,
+      error: "Rollbacks not supported in simple 3-table schema yet.",
+      executedAt: new Date()
+    };
   }
 }
 

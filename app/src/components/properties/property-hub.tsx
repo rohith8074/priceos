@@ -23,6 +23,18 @@ interface PropertyHubProps {
   statements: OwnerStatement[];
 }
 
+// Helper to map Hostaway property type IDs
+function getPropertyTypeLabel(id: number): string {
+  const map: Record<number, string> = {
+    1: "Apartment",
+    2: "House",
+    3: "Villa",
+    4: "Studio",
+    5: "Townhouse",
+  };
+  return map[id] || "Property";
+}
+
 export function PropertyHub({
   property,
   calendar,
@@ -50,7 +62,7 @@ export function PropertyHub({
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">Type</p>
-            <p className="text-lg font-semibold">{property.propertyType}</p>
+            <p className="text-lg font-semibold">{getPropertyTypeLabel(property.propertyTypeId)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -76,14 +88,7 @@ export function PropertyHub({
             <p className="text-lg font-semibold">{property.price} AED</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Price Range</p>
-            <p className="text-lg font-semibold">
-              {property.priceFloor}-{property.priceCeiling} AED
-            </p>
-          </CardContent>
-        </Card>
+
       </div>
 
       {/* Tabs */}

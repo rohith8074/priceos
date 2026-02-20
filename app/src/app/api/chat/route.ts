@@ -1,204 +1,318 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, listings, proposals } from "@/lib/db";
-import { eq } from "drizzle-orm";
-import type { AgentCacheContext } from "@/lib/cache/types";
-import { buildAgentContext, isCacheFresh } from "@/lib/cache/utils";
+import { MANAGER_AGENT_ID } from "@/lib/agents/constants";
+import { db } from "@/lib/db";
+import { chatMessages } from "@/lib/db/schema";
+
+/**
+ * POST /api/chat
+ *
+ * Unified chat API that forwards user messages to the Lyzr pricing agent.
+ * Follows the exact calling pattern from lyzr_client.py:
+ *
+ *   POST https://agent-prod.studio.lyzr.ai/v3/inference/chat/
+ *   Headers: { "Content-Type": "application/json", "x-api-key": <key> }
+ *   Body:    { user_id, agent_id, session_id, message }
+ */
+
+const LYZR_API_URL =
+  process.env.LYZR_API_URL ||
+  "https://agent-prod.studio.lyzr.ai/v3/inference/chat/";
+const LYZR_API_KEY = process.env.LYZR_API_KEY || "";
+const AGENT_ID = process.env.AGENT_ID || MANAGER_AGENT_ID;
 
 interface ChatContext {
   type: "portfolio" | "property";
   propertyId?: number;
+  propertyName?: string;
 }
 
 interface ChatRequest {
   message: string;
   context: ChatContext;
-  cache?: AgentCacheContext;
-  sessionId: string;
+  sessionId?: string;
+  dateRange?: {
+    from: string;
+    to: string;
+  };
+  isChatActive?: boolean;
 }
 
 export async function POST(req: NextRequest) {
+  const requestTimestamp = new Date().toISOString();
+  const startTime = performance.now();
+
   try {
     const body: ChatRequest = await req.json();
-    const { message, context, cache } = body;
+    const { message, context, sessionId, dateRange, isChatActive } = body;
 
-    // Log cache usage for monitoring
-    if (cache) {
-      const cacheStatus = isCacheFresh(cache) ? "FRESH" : "STALE";
-      console.log(`[Cache ${cacheStatus}] Context: ${cache.context.type}, Listings: ${cache.data.listings.count}, Reservations: ${cache.data.reservations.count}`);
+    // ═══════════════════════════════════════════
+    // 📩 LOG: USER INPUT RECEIVED
+    // ═══════════════════════════════════════════
+    console.log(`\n${'═'.repeat(60)}`);
+    console.log(`📩 USER INPUT — ${requestTimestamp}`);
+    console.log(`${'═'.repeat(60)}`);
+    console.log(`  Context:     ${context.type}`);
+    console.log(`  Property:    ${context.propertyName || '(portfolio)'}`);
+    console.log(`  Range:       ${dateRange ? `${dateRange.from} to ${dateRange.to}` : '(none)'}`);
+    console.log(`  Active:      ${isChatActive ? 'YES' : 'NO'}`);
+    console.log(`  Message:     "${message}"`);
+    console.log(`${'─'.repeat(60)}`);
+
+    if (!message?.trim() && !isChatActive) {
+      console.log(`  ❌ REJECTED: Empty message`);
+      return NextResponse.json(
+        { error: "Message is required" },
+        { status: 400 }
+      );
     }
 
-    // Route to appropriate handler based on context type
-    if (context.type === "portfolio") {
-      return handlePortfolioChat(message, cache);
-    } else if (context.type === "property" && context.propertyId) {
-      return handlePropertyChat(message, context.propertyId, cache);
+    if (!LYZR_API_KEY) {
+      console.log(`  ❌ REJECTED: LYZR_API_KEY not configured`);
+      return NextResponse.json(
+        {
+          error: "LYZR_API_KEY not configured",
+          message:
+            "The AI agent is not configured. Please add your LYZR_API_KEY in Settings or .env file.",
+        },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json(
-      { error: "Invalid context" },
-      { status: 400 }
-    );
+    if (!AGENT_ID) {
+      console.log(`  ❌ REJECTED: AGENT_ID not configured`);
+      return NextResponse.json(
+        {
+          error: "AGENT_ID not configured",
+          message:
+            "The AI agent ID is not configured. Please add AGENT_ID to your .env file.",
+        },
+        { status: 500 }
+      );
+    }
+
+    // Build the message to send to the agent
+    let agentMessage = message;
+    const rangeTag = dateRange ? `Analysis Range: ${dateRange.from} to ${dateRange.to}` : "";
+
+    if (context.type === "property" && context.propertyName) {
+      agentMessage = `Property: ${context.propertyName}\n${rangeTag}\nUser query: ${message || "Please analyze this property for the selected dates."}`;
+    } else if (context.type === "portfolio") {
+      agentMessage = `Portfolio view (all properties)\n${rangeTag}\nUser query: ${message || "Please analyze my portfolio for the selected dates."}`;
+    }
+
+    // Generate a stable session ID per context
+    const lyzrSessionId =
+      sessionId ||
+      (context.type === "portfolio"
+        ? "portfolio-session"
+        : `property-${context.propertyId}-session`);
+
+    // Save user message to database
+    try {
+      if (message?.trim()) {
+        await db.insert(chatMessages).values({
+          userId: "user-1",
+          sessionId: lyzrSessionId,
+          role: "user",
+          content: message,
+          listingId: context.propertyId || null,
+          structured: { context, dateRange },
+        });
+      }
+    } catch (err) {
+      console.error("Failed to save user message to DB:", err);
+    }
+
+    // Prepare the Lyzr request payload
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "x-api-key": LYZR_API_KEY,
+    };
+
+    const payload = {
+      user_id: "priceos-user",
+      agent_id: AGENT_ID,
+      session_id: lyzrSessionId,
+      message: agentMessage,
+    };
+
+    // Mask API key for logging
+    const maskedKey =
+      LYZR_API_KEY.length > 8
+        ? `${LYZR_API_KEY.slice(0, 4)}...${LYZR_API_KEY.slice(-4)}`
+        : "****";
+
+    // ═══════════════════════════════════════════
+    // 📤 LOG: REQUEST TO LYZR AGENT
+    // ═══════════════════════════════════════════
+    console.log(`\n📤 LYZR REQUEST — Sending to agent`);
+    console.log(`${'─'.repeat(60)}`);
+    console.log(`  URL:         ${LYZR_API_URL}`);
+    console.log(`  API Key:     ${maskedKey}`);
+    console.log(`  Agent ID:    ${AGENT_ID}`);
+    console.log(`  User ID:     priceos-user`);
+    console.log(`  Session ID:  ${lyzrSessionId}`);
+    console.log(`  Message:     "${agentMessage}"`);
+    console.log(`${'─'.repeat(60)}`);
+
+    // Call the Lyzr inference chat endpoint
+    const response = await fetch(LYZR_API_URL, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    const rawText = await response.text();
+    const duration = Math.round(performance.now() - startTime);
+
+    // ═══════════════════════════════════════════
+    // 📥 LOG: RAW RESPONSE FROM LYZR AGENT
+    // ═══════════════════════════════════════════
+    console.log(`\n📥 LYZR RESPONSE — ${response.status} (${duration}ms)`);
+    console.log(`${'─'.repeat(60)}`);
+    console.log(`  Status:      ${response.status} ${response.statusText}`);
+    console.log(`  Duration:    ${duration}ms`);
+    console.log(`  Raw Body:    ${rawText.substring(0, 800)}`);
+    console.log(`${'─'.repeat(60)}`);
+
+    if (!response.ok) {
+      // ═══════════════════════════════════════════
+      // ❌ LOG: LYZR API ERROR
+      // ═══════════════════════════════════════════
+      console.error(`\n❌ LYZR API ERROR — ${response.status}`);
+      console.error(`${'─'.repeat(60)}`);
+      console.error(`  HTTP Status: ${response.status}`);
+      console.error(`  Error Body:  ${rawText.substring(0, 500)}`);
+      console.error(`  User Msg:    "${message}"`);
+      console.error(`  Context:     ${context.type} / ${context.propertyName || 'portfolio'}`);
+      console.error(`  Duration:    ${duration}ms`);
+      console.error(`${'─'.repeat(60)}`);
+
+      return NextResponse.json(
+        {
+          message:
+            "I'm having trouble connecting to the AI agent right now. Please try again in a moment.",
+          error: `Lyzr API returned ${response.status}: ${rawText.substring(0, 200)}`,
+        },
+        { status: 502 }
+      );
+    }
+
+    // Parse the Lyzr response
+    let lyzrResponse: any;
+    try {
+      lyzrResponse = JSON.parse(rawText);
+    } catch {
+      lyzrResponse = { response: rawText };
+    }
+
+    // Extract the agent's message
+    const agentReply = extractAgentMessage(lyzrResponse);
+
+    // Save assistant message to database
+    try {
+      await db.insert(chatMessages).values({
+        userId: "user-1",
+        sessionId: lyzrSessionId,
+        role: "assistant",
+        content: agentReply,
+        listingId: context.propertyId || null,
+        structured: { context, dateRange },
+      });
+    } catch (err) {
+      console.error("Failed to save assistant message to DB:", err);
+    }
+
+    // ═══════════════════════════════════════════
+    // ✅ LOG: AGENT REPLY SENT TO USER
+    // ═══════════════════════════════════════════
+    console.log(`\n✅ AGENT REPLY — ${new Date().toISOString()}`);
+    console.log(`${'─'.repeat(60)}`);
+    console.log(`  User asked:  "${message}"`);
+    console.log(`  Context:     ${context.type} / ${context.propertyName || 'portfolio'}`);
+    console.log(`  Reply (${agentReply.length} chars):`);
+    console.log(`  "${agentReply.substring(0, 500)}${agentReply.length > 500 ? '...' : ''}"`);
+    console.log(`  Duration:    ${duration}ms`);
+    console.log(`${'═'.repeat(60)}\n`);
+
+    return NextResponse.json({
+      message: agentReply,
+    });
   } catch (error) {
-    console.error("Chat API error:", error);
+    const duration = Math.round(performance.now() - startTime);
+
+    // ═══════════════════════════════════════════
+    // 💥 LOG: UNHANDLED ERROR
+    // ═══════════════════════════════════════════
+    console.error(`\n💥 UNHANDLED ERROR — ${requestTimestamp}`);
+    console.error(`${'─'.repeat(60)}`);
+    console.error(`  Error:       ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error(`  Stack:       ${error instanceof Error ? error.stack?.substring(0, 300) : 'N/A'}`);
+    console.error(`  Duration:    ${duration}ms`);
+    console.error(`${'═'.repeat(60)}\n`);
+
     return NextResponse.json(
-      { error: "Internal server error" },
+      {
+        message: "Sorry, something went wrong. Please try again.",
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 }
     );
   }
 }
 
-async function handlePortfolioChat(message: string, cache?: AgentCacheContext) {
-  // Log cache usage
-  if (cache && isCacheFresh(cache)) {
-    console.log("✓ Using fresh cache for portfolio context");
-  } else if (cache?.meta.isStale) {
-    console.log("⚠ Cache stale, querying database for portfolio");
+/**
+ * Extract the agent's text message from the Lyzr response.
+ *
+ * The Lyzr `/v3/inference/chat/` endpoint returns a JSON response.
+ * Based on lyzr_client.py, the response is used directly via `response.json()`.
+ * We handle multiple possible response formats for robustness.
+ */
+function extractAgentMessage(response: any): string {
+  // Format 1: Direct response string (common from Lyzr chat endpoint)
+  if (typeof response.response === "string") {
+    return response.response;
   }
 
-  // Fetch all properties for portfolio analysis
-  // Note: In a production system with large datasets, we'd optimize this further
-  // by using cache counts for simple queries and only fetching full data when needed
-  const allListings = await db.select().from(listings);
-
-  // Simple keyword-based responses (in real app, use AI agent)
-  const lowerMessage = message.toLowerCase();
-
-  if (
-    lowerMessage.includes("underperform") ||
-    lowerMessage.includes("low occupancy")
-  ) {
-    // Mock response showing underperforming properties
-    const underperforming = allListings.filter(
-      (l) => parseFloat(l.price as string) < 500
-    );
-
-    return NextResponse.json({
-      message: `I've identified ${underperforming.length} properties that may be underperforming:\n\n${underperforming.map((p) => `• ${p.name} - Current price: ${p.currencyCode} ${p.price}`).join("\n")}\n\nWould you like me to generate pricing proposals for these properties?`,
-      metadata: {
-        propertyCount: underperforming.length,
-      },
-    });
+  // Format 2: Response with nested message
+  if (response.response?.message) {
+    return response.response.message;
   }
 
-  if (lowerMessage.includes("revenue") || lowerMessage.includes("total")) {
-    const totalRevenue = allListings.reduce(
-      (sum, l) => sum + parseFloat(l.price as string),
-      0
-    );
-    const avgPrice =
-      totalRevenue / allListings.length || 0;
-
-    return NextResponse.json({
-      message: `Here's your portfolio overview:\n\n• Total properties: ${allListings.length}\n• Total daily revenue: ${allListings[0]?.currencyCode || "AED"} ${totalRevenue.toLocaleString("en-US")}\n• Average price: ${allListings[0]?.currencyCode || "AED"} ${Math.round(avgPrice).toLocaleString("en-US")}\n\nWhat would you like to analyze next?`,
-      metadata: {
-        propertyCount: allListings.length,
-        totalRevenue,
-        avgOccupancy: 68,
-      },
-    });
+  // Format 3: Response with nested result containing message
+  if (response.response?.result?.message) {
+    return response.response.result.message;
   }
 
-  // Default portfolio response
-  return NextResponse.json({
-    message: `I can help you with portfolio-wide analysis. Try asking:\n\n• "Which properties are underperforming?"\n• "Show me total revenue"\n• "Compare all properties"\n\nWhat would you like to know?`,
-  });
-}
-
-async function handlePropertyChat(message: string, propertyId: number, cache?: AgentCacheContext) {
-  // Use cache if fresh, otherwise query database
-  let property;
-
-  if (cache && isCacheFresh(cache)) {
-    console.log(`✓ Using fresh cache for property ${propertyId}`);
-  } else {
-    if (cache?.meta.isStale) {
-      console.log(`⚠ Cache stale for property ${propertyId}, querying database`);
-    } else {
-      console.log(`⚠ No cache available for property ${propertyId}, querying database`);
-    }
+  // Format 4: Response with nested result containing text
+  if (response.response?.result?.text) {
+    return response.response.result.text;
   }
 
-  // Fetch specific property (always needed for property chat)
-  property = await db
-    .select()
-    .from(listings)
-    .where(eq(listings.id, propertyId))
-    .limit(1);
-
-  if (!property || property.length === 0) {
-    return NextResponse.json(
-      { error: "Property not found" },
-      { status: 404 }
-    );
+  // Format 5: Response with nested result containing answer
+  if (response.response?.result?.answer) {
+    return response.response.result.answer;
   }
 
-  const listing = property[0];
-  const lowerMessage = message.toLowerCase();
-
-  // Handle pricing analysis
-  if (
-    lowerMessage.includes("analyz") ||
-    lowerMessage.includes("pricing") ||
-    lowerMessage.includes("proposal")
-  ) {
-    // Generate mock proposals
-    const currentPrice = parseFloat(listing.price as string);
-    const mockProposals = [
-      {
-        id: Date.now(),
-        dateRangeStart: new Date(
-          Date.now() + 7 * 24 * 60 * 60 * 1000
-        ).toISOString(),
-        dateRangeEnd: new Date(
-          Date.now() + 14 * 24 * 60 * 60 * 1000
-        ).toISOString(),
-        currentPrice,
-        proposedPrice: Math.round(currentPrice * 1.15),
-        changePct: 15,
-        riskLevel: "low",
-        reasoning:
-          "High demand period detected. Dubai Shopping Festival upcoming. Competitor prices trending up.",
-      },
-      {
-        id: Date.now() + 1,
-        dateRangeStart: new Date(
-          Date.now() + 14 * 24 * 60 * 60 * 1000
-        ).toISOString(),
-        dateRangeEnd: new Date(
-          Date.now() + 21 * 24 * 60 * 60 * 1000
-        ).toISOString(),
-        currentPrice,
-        proposedPrice: Math.round(currentPrice * 1.08),
-        changePct: 8,
-        riskLevel: "low",
-        reasoning:
-          "Moderate demand. Weekend pricing opportunity. Similar properties at +10%.",
-      },
-    ];
-
-    return NextResponse.json({
-      message: `I've analyzed ${listing.name} and generated 2 pricing proposals based on market conditions and upcoming events:`,
-      proposals: mockProposals,
-    });
+  // Format 6: Direct message field
+  if (typeof response.message === "string") {
+    return response.message;
   }
 
-  // Handle general property questions
-  if (
-    lowerMessage.includes("info") ||
-    lowerMessage.includes("detail") ||
-    lowerMessage.includes("about")
-  ) {
-    const price = parseFloat(listing.price as string);
-    const priceFloor = parseFloat(listing.priceFloor as string);
-    const priceCeiling = parseFloat(listing.priceCeiling as string);
-
-    return NextResponse.json({
-      message: `Here are the details for ${listing.name}:\n\n• Location: ${listing.area || "N/A"}\n• Bedrooms: ${listing.bedroomsNumber || "N/A"}\n• Bathrooms: ${listing.bathroomsNumber || "N/A"}\n• Capacity: ${listing.personCapacity || "N/A"} guests\n• Current price: ${listing.currencyCode} ${price.toLocaleString("en-US")}\n• Price floor: ${listing.currencyCode} ${priceFloor.toLocaleString("en-US")}\n• Price ceiling: ${listing.currencyCode} ${priceCeiling.toLocaleString("en-US")}\n\nWhat would you like to do next?`,
-    });
+  // Format 7: OpenAI-style choices (from the /chat/completions variant)
+  if (response.choices?.[0]?.message?.content) {
+    return response.choices[0].message.content;
   }
 
-  // Default property response
-  return NextResponse.json({
-    message: `I'm here to help with ${listing.name}. Try asking:\n\n• "Analyze pricing for next week"\n• "Generate pricing proposals"\n• "Show me property details"\n\nWhat would you like to know?`,
-  });
+  // Format 8: Direct result string
+  if (typeof response.result === "string") {
+    return response.result;
+  }
+
+  // Fallback: stringify the response
+  console.warn(
+    "[Chat API] Unknown Lyzr response format:",
+    JSON.stringify(response).substring(0, 500)
+  );
+  return "I received your message but couldn't parse my response. Please try again.";
 }

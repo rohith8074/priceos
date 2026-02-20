@@ -32,13 +32,10 @@ export function ListingEditForm({ property }: ListingEditFormProps) {
   const [saving, setSaving] = useState(false);
 
   const [name, setName] = useState(property.name);
-  const [propertyType, setPropertyType] = useState(property.propertyType);
   const [bedroomsNumber, setBedroomsNumber] = useState(property.bedroomsNumber);
   const [bathroomsNumber, setBathroomsNumber] = useState(property.bathroomsNumber);
   const [personCapacity, setPersonCapacity] = useState(property.personCapacity ?? 2);
   const [price, setPrice] = useState(property.price);
-  const [priceFloor, setPriceFloor] = useState(property.priceFloor);
-  const [priceCeiling, setPriceCeiling] = useState(property.priceCeiling);
 
   const handleSave = async () => {
     setSaving(true);
@@ -48,13 +45,10 @@ export function ListingEditForm({ property }: ListingEditFormProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
-          propertyType,
           bedroomsNumber,
           bathroomsNumber,
           personCapacity,
           price,
-          priceFloor,
-          priceCeiling,
         }),
       });
       if (res.ok) {
@@ -88,21 +82,7 @@ export function ListingEditForm({ property }: ListingEditFormProps) {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Property Type</Label>
-            <Select value={propertyType} onValueChange={(v) => setPropertyType(v as Listing["propertyType"])}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Studio">Studio</SelectItem>
-                <SelectItem value="Apartment">Apartment</SelectItem>
-                <SelectItem value="Villa">Villa</SelectItem>
-                <SelectItem value="House">House</SelectItem>
-                <SelectItem value="Townhouse">Townhouse</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
@@ -149,28 +129,7 @@ export function ListingEditForm({ property }: ListingEditFormProps) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="floor">Price Floor</Label>
-              <Input
-                id="floor"
-                type="number"
-                min={0}
-                value={priceFloor}
-                onChange={(e) => setPriceFloor(Number(e.target.value))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ceiling">Price Ceiling</Label>
-              <Input
-                id="ceiling"
-                type="number"
-                min={0}
-                value={priceCeiling}
-                onChange={(e) => setPriceCeiling(Number(e.target.value))}
-              />
-            </div>
-          </div>
+
 
           <Button
             onClick={handleSave}

@@ -9,6 +9,7 @@ import {
   LogOut,
   Sparkles,
   Settings,
+  Database,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -109,6 +110,10 @@ export function HeaderNav() {
             <DropdownMenuItem onClick={handleProfile} className="cursor-pointer">
               <Settings className="mr-2 h-4 w-4" />
               Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push("/db-viewer")} className="cursor-pointer">
+              <Database className="mr-2 h-4 w-4" />
+              Database
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleProfile} className="cursor-pointer">
               <User className="mr-2 h-4 w-4" />

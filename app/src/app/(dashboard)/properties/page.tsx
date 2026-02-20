@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 
-import { db, listings, reservations, calendarDays } from "@/lib/db";
+import { db, listings, activityTimeline, inventoryMaster } from "@/lib/db";
 import { eq, and, gte, sql } from "drizzle-orm";
 import { format, addDays } from "date-fns";
 import Link from "next/link";
@@ -16,11 +16,11 @@ async function getPropertyMetrics(listingId: number) {
   // Get calendar for last 30 days
   const calendar = await db
     .select()
-    .from(calendarDays)
+    .from(inventoryMaster)
     .where(
       and(
-        eq(calendarDays.listingId, listingId),
-        gte(calendarDays.date, format(thirtyDaysAgo, "yyyy-MM-dd"))
+        eq(inventoryMaster.listingId, listingId),
+        gte(inventoryMaster.date, format(thirtyDaysAgo, "yyyy-MM-dd"))
       )
     );
 
@@ -31,23 +31,24 @@ async function getPropertyMetrics(listingId: number) {
   // Get reservations for last 30 days
   const recentReservations = await db
     .select()
-    .from(reservations)
+    .from(activityTimeline)
     .where(
       and(
-        eq(reservations.listingMapId, listingId),
-        gte(reservations.arrivalDate, format(thirtyDaysAgo, "yyyy-MM-dd"))
+        eq(activityTimeline.listingId, listingId),
+        eq(activityTimeline.type, "reservation"),
+        gte(activityTimeline.startDate, format(thirtyDaysAgo, "yyyy-MM-dd"))
       )
     );
 
   const revenue = recentReservations.reduce(
-    (sum, res) => sum + parseFloat(res.totalPrice),
+    (sum, res) => sum + Number(res.financials?.totalPrice || 0),
     0
   );
 
   // Calculate average lead time (days between booking and arrival)
   const leadTimes = recentReservations
     .map((res) => {
-      const arrival = new Date(res.arrivalDate);
+      const arrival = new Date(res.startDate);
       const booked = new Date(res.createdAt);
       return Math.floor((arrival.getTime() - booked.getTime()) / (1000 * 60 * 60 * 24));
     })

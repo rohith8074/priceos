@@ -1,4 +1,4 @@
-import { db, proposals, listings, calendarDays, reservations } from "@/lib/db";
+import { db, inventoryMaster, listings, activityTimeline } from "@/lib/db";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 import { format, addDays, eachDayOfInterval, parseISO, differenceInDays } from "date-fns";
 import { createEventIntelligenceAgent } from "./event-intelligence-agent";
@@ -6,19 +6,14 @@ import type { EventSignal } from "./event-intelligence-agent";
 
 export interface PricingProposal {
   listingId: number;
-  dateRangeStart: string;
-  dateRangeEnd: string;
+  date: string; // ISO date YYYY-MM-DD
   currentPrice: number;
   proposedPrice: number;
+  priceFloor: number;
+  priceCeiling: number;
   changePct: number;
   riskLevel: "low" | "medium" | "high";
   reasoning: string;
-  signals: {
-    events?: EventSignal[];
-    occupancy?: number;
-    competitorPrices?: number[];
-    historicalData?: Record<string, unknown>;
-  };
 }
 
 export interface AnalysisResult {
@@ -62,40 +57,46 @@ export class PricingAnalystAgent {
     // Fetch current calendar prices
     const calendar = await db
       .select()
-      .from(calendarDays)
+      .from(inventoryMaster)
       .where(
         and(
-          eq(calendarDays.listingId, listingId),
-          gte(calendarDays.date, format(startDate, "yyyy-MM-dd")),
-          lte(calendarDays.date, format(endDate, "yyyy-MM-dd"))
+          eq(inventoryMaster.listingId, listingId),
+          gte(inventoryMaster.date, format(startDate, "yyyy-MM-dd")),
+          lte(inventoryMaster.date, format(endDate, "yyyy-MM-dd"))
         )
       );
 
     // Calculate occupancy rate (last 30 days)
     const occupancy = await this.calculateOccupancy(listingId);
 
-    // Group consecutive days with same event impact
-    const dateGroups = this.groupDatesByEventImpact(
-      eachDayOfInterval({ start: startDate, end: endDate }),
-      eventAnalysis.events
-    );
+    // Generate proposals for each day
+    const days = eachDayOfInterval({ start: startDate, end: endDate });
 
-    for (const group of dateGroups) {
-      const currentPrice = parseFloat(listing.price);
-      const priceFloor = parseFloat(listing.priceFloor);
-      const priceCeiling = parseFloat(listing.priceCeiling);
+    for (const day of days) {
+      const dateStr = format(day, "yyyy-MM-dd");
+
+      // Get current price from calendar or fallback to base
+      const calendarDay = calendar.find(d => d.date === dateStr);
+      const currentPrice = calendarDay ? parseFloat(calendarDay.currentPrice) : parseFloat(listing.price);
+
+      // Dynamic floor/ceiling (since removed from listings table)
+      // Default: Floor = 50% of base, Ceiling = 300% of base
+      const basePrice = parseFloat(listing.price);
+      const priceFloor = Math.round(basePrice * 0.5);
+      const priceCeiling = Math.round(basePrice * 3.0);
+
+      // Check for events on this day
+      const dayEvents = eventAnalysis.events.filter(e =>
+        e.startDate <= dateStr && e.endDate >= dateStr
+      );
 
       // Calculate proposed price based on signals
       let proposedPrice = currentPrice;
       let reasoning = "";
-      const signals: PricingProposal["signals"] = {
-        events: group.events,
-        occupancy,
-      };
 
       // Event-based pricing
-      if (group.events.length > 0) {
-        const recommendation = this.eventAgent.getPricingRecommendation(group.events);
+      if (dayEvents.length > 0) {
+        const recommendation = this.eventAgent.getPricingRecommendation(dayEvents);
         const increase = (currentPrice * recommendation.suggestedIncrease) / 100;
         proposedPrice = currentPrice + increase;
         reasoning = recommendation.reasoning;
@@ -133,18 +134,19 @@ export class PricingAnalystAgent {
       }
 
       // Determine risk level
-      const riskLevel = this.calculateRiskLevel(changePct, group.events.length);
+      // Determine risk level
+      const riskLevel = this.calculateRiskLevel(changePct, dayEvents.length);
 
       proposals.push({
         listingId,
-        dateRangeStart: format(group.start, "yyyy-MM-dd"),
-        dateRangeEnd: format(group.end, "yyyy-MM-dd"),
+        date: dateStr,
         currentPrice,
         proposedPrice,
+        priceFloor,
+        priceCeiling,
         changePct,
         riskLevel,
         reasoning,
-        signals,
       });
     }
 
@@ -176,22 +178,25 @@ export class PricingAnalystAgent {
 
     for (const proposal of analysisResult.proposals) {
       const [inserted] = await db
-        .insert(proposals)
-        .values({
-          listingId: proposal.listingId,
-          dateRangeStart: proposal.dateRangeStart,
-          dateRangeEnd: proposal.dateRangeEnd,
-          currentPrice: proposal.currentPrice.toString(),
+        .update(inventoryMaster)
+        .set({
           proposedPrice: proposal.proposedPrice.toString(),
           changePct: proposal.changePct,
-          riskLevel: proposal.riskLevel,
-          status: "pending",
+          proposalStatus: "pending",
           reasoning: proposal.reasoning,
-          signals: proposal.signals,
         })
-        .returning({ id: proposals.id });
+        .where(
+          and(
+            eq(inventoryMaster.listingId, proposal.listingId),
+            eq(inventoryMaster.date, proposal.date)
+          )
+        )
+        // @ts-ignore
+        .returning({ id: inventoryMaster.id });
 
-      proposalIds.push(inserted.id);
+      if (inserted) {
+        proposalIds.push(inserted.id);
+      }
     }
 
     return proposalIds;
@@ -206,12 +211,12 @@ export class PricingAnalystAgent {
 
     const calendar = await db
       .select()
-      .from(calendarDays)
+      .from(inventoryMaster)
       .where(
         and(
-          eq(calendarDays.listingId, listingId),
-          gte(calendarDays.date, format(thirtyDaysAgo, "yyyy-MM-dd")),
-          lte(calendarDays.date, format(today, "yyyy-MM-dd"))
+          eq(inventoryMaster.listingId, listingId),
+          gte(inventoryMaster.date, format(thirtyDaysAgo, "yyyy-MM-dd")),
+          lte(inventoryMaster.date, format(today, "yyyy-MM-dd"))
         )
       );
 

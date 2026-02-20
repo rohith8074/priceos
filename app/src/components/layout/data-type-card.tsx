@@ -3,12 +3,13 @@
 import { Card } from "@/components/ui/card";
 import { Check, Loader2, AlertTriangle, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatRelativeTime, isStale, getDataTypeLabel } from "@/lib/sync-utils";
+import { formatRelativeTime, isStale } from "@/lib/sync-utils";
 
 interface DataTypeCardProps {
   icon: LucideIcon;
   label: string;
   count: number;
+  countLabel?: string;
   lastSynced: Date | null;
   isLoading: boolean;
   error?: string;
@@ -18,6 +19,7 @@ export function DataTypeCard({
   icon: Icon,
   label,
   count,
+  countLabel,
   lastSynced,
   isLoading,
   error,
@@ -58,7 +60,7 @@ export function DataTypeCard({
       ) : (
         <>
           <p className="text-sm font-semibold">
-            {count} {getDataTypeLabel(label, count)}
+            {count} {countLabel || label.toLowerCase()}
           </p>
           <p
             className={cn(

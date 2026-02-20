@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PriceOS — Schema &amp; Agent Data Map</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --card: #1a1d27;
+            --border: #2a2d3a;
+            --text: #e4e4e7;
+            --dim: #71717a;
+            --accent: #6366f1;
+            --green: #22c55e;
+            --amber: #f59e0b;
+            --red: #ef4444;
+            --blue: #3b82f6;
+            --purple: #a855f7;
+            --cyan: #06b6d4;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+        }
+
+        h1 span {
+            color: var(--accent);
+        }
+
+        .subtitle {
+            color: var(--dim);
+            font-size: 1.1rem;
+            margin-bottom: 40px;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            margin: 48px 0 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h2 .emoji {
+            margin-right: 8px;
+        }
+
+        h3 {
+            font-size: 1.2rem;
+            margin: 28px 0 12px;
+            color: var(--accent);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 0.95rem;
+        }
+
+        th,
+        td {
+            padding: 10px 14px;
+            text-align: left;
+            border: 1px solid var(--border);
+        }
+
+        th {
+            background: var(--card);
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            background: #12141c;
+        }
+
+        tr:hover td {
+            background: #1a1d27;
+        }
+
+        td code {
+            background: #2a2d3a;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            color: var(--green);
+        }
+
+        td.new {
+            background: #1a2e1a;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-context {
+            background: #1a2e3a;
+            color: var(--cyan);
+        }
+
+        .badge-none {
+            background: #2a2a2a;
+            color: var(--dim);
+        }
+
+        .badge-new {
+            background: #1a2e1a;
+            color: var(--green);
+        }
+
+        .badge-internet {
+            background: #2e1a2e;
+            color: var(--purple);
+        }
+
+        .badge-backend {
+            background: #2e2e1a;
+            color: var(--amber);
+        }
+
+        .agent-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 12px 0;
+            border-left: 4px solid;
+        }
+
+        .agent-card.router {
+            border-left-color: var(--accent);
+        }
+
+        .agent-card.property {
+            border-left-color: var(--green);
+        }
+
+        .agent-card.booking {
+            border-left-color: var(--blue);
+        }
+
+        .agent-card.market {
+            border-left-color: var(--purple);
+        }
+
+        .agent-card.guard {
+            border-left-color: var(--red);
+        }
+
+        .agent-card.backend {
+            border-left-color: var(--amber);
+        }
+
+        .agent-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .agent-name {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .agent-role {
+            color: var(--dim);
+            font-size: 0.9rem;
+        }
+
+        pre {
+            background: #12141c;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            margin: 12px 0;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        }
+
+        .flow-diagram {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .flow-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin: 12px 0;
+            flex-wrap: wrap;
+        }
+
+        .flow-box {
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .flow-arrow {
+            color: var(--dim);
+            font-size: 1.2rem;
+        }
+
+        .highlight-box {
+            background: #1a1d27;
+            border: 1px solid var(--accent);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 16px 0;
+        }
+
+        .highlight-box h4 {
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+
+        .highlight-box.warn {
+            border-color: var(--red);
+        }
+
+        .highlight-box.warn h4 {
+            color: var(--red);
+        }
+
+        .highlight-box.success {
+            border-color: var(--green);
+        }
+
+        .highlight-box.success h4 {
+            color: var(--green);
+        }
+
+        .stat-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            color: var(--dim);
+            font-size: 0.85rem;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .grid-4 {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+
+        <h1>PriceOS — <span>Schema &amp; Agent Data Map</span></h1>
+        <p class="subtitle">4 tables &bull; 5 agents &bull; Zero agent DB access &bull; Updated 2026-02-19</p>
+
+        <div class="highlight-box warn">
+            <h4>🚨 Critical Architecture Rule: Agents Have ZERO Database Access</h4>
+            <p>No agent reads from or writes to the database. The <strong>backend</strong> (Next.js API) is the only
+                component that touches the database. It queries data, passes it as context to agents, receives
+                structured JSON back, and saves results to the DB.</p>
+        </div>
+
+        <!-- ───────── Section 1 ───────── -->
+        <h2 id="s1"><span class="emoji">🗃️</span> 1. Database Schema — 4 Tables</h2>
+
+        <div class="grid-4">
+            <div class="stat-card">
+                <div class="stat-value" style="color:var(--accent)">4</div>
+                <div class="stat-label">Tables</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="color:var(--green)">48</div>
+                <div class="stat-label">Columns</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="color:var(--blue)">5</div>
+                <div class="stat-label">Agents</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="color:var(--amber)">8</div>
+                <div class="stat-label">New Columns</div>
+            </div>
+        </div>
+
+        <table style="margin-top:20px">
+            <tr>
+                <th>Table</th>
+                <th>Purpose</th>
+                <th>Backend Queries For</th>
+                <th>Backend Writes From</th>
+            </tr>
+            <tr>
+                <td><code>listings</code></td>
+                <td>Property metadata, location, base pricing</td>
+                <td>Property Analyst context, PriceGuard context, Market Research context</td>
+                <td>Hostaway Sync</td>
+            </tr>
+            <tr>
+                <td><code>calendar_days</code></td>
+                <td>Daily availability, pricing, stay restrictions</td>
+                <td>Property Analyst context</td>
+                <td>Hostaway Sync</td>
+            </tr>
+            <tr>
+                <td><code>reservations</code></td>
+                <td>Booking history and financial details</td>
+                <td>Booking Intelligence context</td>
+                <td>Hostaway Sync</td>
+            </tr>
+            <tr>
+                <td><code>proposals</code></td>
+                <td>Price recommendations with guard verdicts</td>
+                <td>PriceGuard context (existing proposals)</td>
+                <td>Backend parses CRO Router response → INSERTs</td>
+            </tr>
+        </table>
+
+        <!-- ───────── Section 2 ───────── -->
+        <h2 id="s2"><span class="emoji">📋</span> 2. Complete Column Reference</h2>
+
+        <h3>2.1 — <code>listings</code> (16 columns)</h3>
+        <table>
+            <tr>
+                <th>#</th>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Nullable</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>1</td>
+                <td><code>id</code></td>
+                <td>SERIAL PK</td>
+                <td>❌</td>
+                <td>Auto-increment ID</td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td><code>hostaway_id</code></td>
+                <td>TEXT UNIQUE</td>
+                <td>✅</td>
+                <td>Hostaway listing ID</td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td><code>name</code></td>
+                <td>TEXT</td>
+                <td>❌</td>
+                <td>Property name</td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td><code>city</code></td>
+                <td>TEXT</td>
+                <td>❌</td>
+                <td>City (default: Dubai)</td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td><code>country_code</code></td>
+                <td>VARCHAR(3)</td>
+                <td>❌</td>
+                <td>ISO country code</td>
+            </tr>
+            <tr>
+                <td>6</td>
+                <td><code>area</code></td>
+                <td>TEXT</td>
+                <td>❌</td>
+                <td>Sub-area (e.g., Dubai Marina)</td>
+            </tr>
+            <tr>
+                <td>7</td>
+                <td><code>bedrooms_number</code></td>
+                <td>INT</td>
+                <td>❌</td>
+                <td>Bedrooms (0=studio)</td>
+            </tr>
+            <tr>
+                <td>8</td>
+                <td><code>bathrooms_number</code></td>
+                <td>INT</td>
+                <td>❌</td>
+                <td>Bathrooms</td>
+            </tr>
+            <tr>
+                <td>9</td>
+                <td><code>property_type_id</code></td>
+                <td>INT</td>
+                <td>❌</td>
+                <td>1=Apt, 2=House, 3=Villa, 4=Studio, 5=Townhouse</td>
+            </tr>
+            <tr>
+                <td>10</td>
+                <td><code>price</code></td>
+                <td>NUMERIC(10,2)</td>
+                <td>❌</td>
+                <td>Base nightly price (AED)</td>
+            </tr>
+            <tr>
+                <td>11</td>
+                <td><code>currency_code</code></td>
+                <td>VARCHAR(3)</td>
+                <td>❌</td>
+                <td>Currency (default: AED)</td>
+            </tr>
+            <tr>
+                <td>12</td>
+                <td><code>person_capacity</code></td>
+                <td>INT</td>
+                <td>✅</td>
+                <td>Max guests</td>
+            </tr>
+            <tr>
+                <td>13</td>
+                <td><code>amenities</code></td>
+                <td>JSONB</td>
+                <td>✅</td>
+                <td>Array of amenity strings</td>
+            </tr>
+            <tr>
+                <td>14</td>
+                <td class="new"><code>address</code> <span class="badge badge-new">NEW</span></td>
+                <td>TEXT</td>
+                <td>✅</td>
+                <td>Full street address</td>
+            </tr>
+            <tr>
+                <td>15</td>
+                <td class="new"><code>latitude</code> <span class="badge badge-new">NEW</span></td>
+                <td>NUMERIC(10,7)</td>
+                <td>✅</td>
+                <td>GPS latitude</td>
+            </tr>
+            <tr>
+                <td>16</td>
+                <td class="new"><code>longitude</code> <span class="badge badge-new">NEW</span></td>
+                <td>NUMERIC(10,7)</td>
+                <td>✅</td>
+                <td>GPS longitude</td>
+            </tr>
+        </table>
+
+        <h3>2.2 — <code>calendar_days</code> (8 columns)</h3>
+        <table>
+            <tr>
+                <th>#</th>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Nullable</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>1</td>
+                <td><code>id</code></td>
+                <td>SERIAL PK</td>
+                <td>❌</td>
+                <td>Auto-increment ID</td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td><code>listing_id</code></td>
+                <td>INT → listings.id</td>
+                <td>❌</td>
+                <td>FK to listings</td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td><code>date</code></td>
+                <td>DATE</td>
+                <td>❌</td>
+                <td>Calendar date</td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td><code>status</code></td>
+                <td>TEXT</td>
+                <td>❌</td>
+                <td>available / booked / blocked</td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td><code>price</code></td>
+                <td>NUMERIC(10,2)</td>
+                <td>❌</td>
+                <td>Nightly price</td>
+            </tr>
+            <tr>
+                <td>6</td>
+                <td><code>minimum_stay</code></td>
+                <td>INT</td>
+                <td>✅</td>
+                <td>Min nights (default: 1)</td>
+            </tr>
+            <tr>
+                <td>7</td>
+                <td><code>maximum_stay</code></td>
+                <td>INT</td>
+                <td>✅</td>
+                <td>Max nights (default: 30)</td>
+            </tr>
+            <tr>
+                <td>8</td>
+                <td class="new"><code>note</code> <span class="badge badge-new">NEW</span></td>
+                <td>TEXT</td>
+                <td>✅</td>
+                <td>Block reason (Owner stay, Maintenance)</td>
+            </tr>
+        </table>
+
+        <h3>2.3 — <code>reservations</code> (21 columns)</h3>
+        <table>
+            <tr>
+                <th>#</th>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Nullable</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>1</td>
+                <td><code>id</code></td>
+                <td>SERIAL PK</td>
+                <td>❌</td>
+                <td>Auto-increment ID</td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td><code>hostaway_id</code></td>
+                <td>TEXT UNIQUE</td>
+                <td>✅</td>
+                <td>Hostaway reservation ID</td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td><code>listing_map_id</code></td>
+                <td>INT → listings.id</td>
+                <td>❌</td>
+                <td>FK to listings</td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td><code>guest_name</code></td>
+                <td>TEXT</td>
+                <td>❌</td>
+                <td>Guest name</td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td><code>guest_email</code></td>
+                <td>TEXT</td>
+                <td>✅</td>
+                <td>Guest email</td>
+            </tr>
+            <tr>
+                <td>6</td>
+                <td><code>channel_name</code></td>
+                <td>TEXT</td>
+                <td>❌</td>
+                <td>Airbnb / Booking.com / Direct</td>
+            </tr>
+            <tr>
+                <td>7</td>
+                <td><code>arrival_date</code></td>
+                <td>DATE</td>
+                <td>❌</td>
+                <td>Check-in date</td>
+            </tr>
+            <tr>
+                <td>8</td>
+                <td><code>departure_date</code></td>
+                <td>DATE</td>
+                <td>❌</td>
+                <td>Check-out date</td>
+            </tr>
+            <tr>
+                <td>9</td>
+                <td><code>nights</code></td>
+                <td>INT</td>
+                <td>❌</td>
+                <td>Length of stay</td>
+            </tr>
+            <tr>
+                <td>10</td>
+                <td><code>total_price</code></td>
+                <td>NUMERIC(10,2)</td>
+                <td>❌</td>
+                <td>Gross revenue</td>
+            </tr>
+            <tr>
+                <td>11</td>
+                <td><code>price_per_night</code></td>
+                <td>NUMERIC(10,2)</td>
+                <td>❌</td>
+                <td>Per-night rate</td>
+            </tr>
+            <tr>
+                <td>12</td>
+                <td><code>status</code></td>
+                <td>TEXT</td>
+                <td>❌</td>
+                <td>confirmed / pending / cancelled / completed</td>
+            </tr>
+            <tr>
+                <td>13</td>
+                <td><code>check_in_time</code></td>
+                <td>TEXT</td>
+                <td>✅</td>
+                <td>Check-in time</td>
+            </tr>
+            <tr>
+                <td>14</td>
+                <td><code>check_out_time</code></td>
+                <td>TEXT</td>
+                <td>✅</td>
+                <td>Check-out time</td>
+            </tr>
+            <tr>
+                <td>15</td>
+                <td class="new"><code>number_of_guests</code> <span class="badge badge-new">NEW</span></td>
+                <td>INT</td>
+                <td>✅</td>
+                <td>Actual guest count</td>
+            </tr>
+            <tr>
+                <td>16</td>
+                <td class="new"><code>channel_commission</code> <span class="badge badge-new">NEW</span></td>
+                <td>NUMERIC(10,2)</td>
+                <td>✅</td>
+                <td>Platform fee (AED)</td>
+            </tr>
+            <tr>
+                <td>17</td>
+                <td class="new"><code>cleaning_fee</code> <span class="badge badge-new">NEW</span></td>
+                <td>NUMERIC(10,2)</td>
+                <td>✅</td>
+                <td>Cleaning fee per booking</td>
+            </tr>
+            <tr>
+                <td>18</td>
+                <td class="new"><code>cancelled_at</code> <span class="badge badge-new">NEW</span></td>
+                <td>TIMESTAMP</td>
+                <td>✅</td>
+                <td>When cancelled (null if active)</td>
+            </tr>
+            <tr>
+                <td>19</td>
+                <td><code>external_data</code></td>
+                <td>JSONB</td>
+                <td>✅</td>
+                <td>Raw Hostaway payload</td>
+            </tr>
+            <tr>
+                <td>20</td>
+                <td><code>synced_at</code></td>
+                <td>TIMESTAMP</td>
+                <td>✅</td>
+                <td>Last sync time</td>
+            </tr>
+            <tr>
+                <td>21</td>
+                <td><code>created_at</code></td>
+                <td>TIMESTAMP</td>
+                <td>❌</td>
+                <td>Row creation time</td>
+            </tr>
+        </table>
+
+        <h3>2.4 — <code>proposals</code> (12 columns)</h3>
+        <table>
+            <tr>
+                <th>#</th>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Nullable</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>1</td>
+                <td><code>id</code></td>
+                <td>SERIAL PK</td>
+                <td>❌</td>
+                <td>Auto-increment ID</td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td><code>listing_id</code></td>
+                <td>INT → listings.id</td>
+                <td>❌</td>
+                <td>FK to listings</td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td><code>date</code></td>
+                <td>DATE</td>
+                <td>❌</td>
+                <td>Target date</td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td><code>current_price</code></td>
+                <td>NUMERIC(10,2)</td>
+                <td>❌</td>
+                <td>Price before change</td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td><code>proposed_price</code></td>
+                <td>NUMERIC(10,2)</td>
+                <td>❌</td>
+                <td>Suggested new price</td>
+            </tr>
+            <tr>
+                <td>6</td>
+                <td><code>change_pct</code></td>
+                <td>INT</td>
+                <td>❌</td>
+                <td>% change</td>
+            </tr>
+            <tr>
+                <td>7</td>
+                <td><code>price_floor</code></td>
+                <td>NUMERIC(10,2)</td>
+                <td>❌</td>
+                <td>Minimum allowed</td>
+            </tr>
+            <tr>
+                <td>8</td>
+                <td><code>price_ceiling</code></td>
+                <td>NUMERIC(10,2)</td>
+                <td>❌</td>
+                <td>Maximum allowed</td>
+            </tr>
+            <tr>
+                <td>9</td>
+                <td><code>risk_level</code></td>
+                <td>TEXT</td>
+                <td>❌</td>
+                <td>low / medium / high</td>
+            </tr>
+            <tr>
+                <td>10</td>
+                <td><code>status</code></td>
+                <td>TEXT</td>
+                <td>❌</td>
+                <td>pending / approved / rejected</td>
+            </tr>
+            <tr>
+                <td>11</td>
+                <td><code>reasoning</code></td>
+                <td>TEXT</td>
+                <td>✅</td>
+                <td>Agent's justification</td>
+            </tr>
+            <tr>
+                <td>12</td>
+                <td><code>is_pushed</code></td>
+                <td>BOOLEAN</td>
+                <td>❌</td>
+                <td>Pushed to Hostaway?</td>
+            </tr>
+        </table>
+
+        <!-- ───────── Section 3 ───────── -->
+        <h2 id="s3"><span class="emoji">🔄</span> 3. Data Flow — Backend is the Only DB Caller</h2>
+
+        <div class="flow-diagram">
+            <p style="color:var(--dim); margin-bottom: 16px; font-size: 0.9rem;">Backend queries DB → passes context to
+                agents → agents return JSON → backend saves to DB</p>
+            <div class="flow-row">
+                <div class="flow-box" style="background:#6366f120; border:1px solid var(--accent); color:var(--accent)">
+                    👤 User</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box" style="background:#f59e0b20; border:1px solid var(--amber); color:var(--amber)">⚙️
+                    Backend (Next.js API)<br><small>queries listings, calendar_days, reservations, proposals</small>
+                </div>
+            </div>
+            <div class="flow-arrow" style="font-size:1.5rem">↓ passes data as context</div>
+            <div class="flow-row">
+                <div class="flow-box" style="background:#6366f130; border:1px solid var(--accent); color:var(--accent)">
+                    🧠 CRO Router<br><small>orchestrates agents</small></div>
+            </div>
+            <div class="flow-arrow" style="font-size:1.5rem">↓ calls sub-agents</div>
+            <div class="flow-row">
+                <div class="flow-box" style="background:#22c55e20; border:1px solid var(--green); color:var(--green)">📊
+                    Property Analyst<br><small>receives: calendar + listing data</small></div>
+                <div class="flow-box" style="background:#3b82f620; border:1px solid var(--blue); color:var(--blue)">📈
+                    Booking Intelligence<br><small>receives: reservation data</small></div>
+                <div class="flow-box" style="background:#a855f720; border:1px solid var(--purple); color:var(--purple)">
+                    🌐 Market Research<br><small>searches: Internet</small></div>
+            </div>
+            <div class="flow-arrow" style="font-size:1.5rem">↓ structured JSON responses</div>
+            <div class="flow-row">
+                <div class="flow-box" style="background:#6366f130; border:1px solid var(--accent); color:var(--accent)">
+                    🧠 CRO Router<br><small>merges → creates proposals</small></div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box" style="background:#ef444420; border:1px solid var(--red); color:var(--red)">🛡️
+                    PriceGuard<br><small>receives: proposals + listing context</small></div>
+            </div>
+            <div class="flow-arrow" style="font-size:1.5rem">↓ returns structured JSON</div>
+            <div class="flow-row">
+                <div class="flow-box" style="background:#f59e0b20; border:1px solid var(--amber); color:var(--amber)">⚙️
+                    Backend<br><small>parses response → INSERTs proposals → returns to user</small></div>
+            </div>
+        </div>
+
+        <div class="highlight-box">
+            <h4>🔑 Key Rules</h4>
+            <ul style="padding-left:20px; margin-top:8px">
+                <li><strong>Only the backend</strong> calls the CRO Router agent</li>
+                <li><strong>Only the CRO Router</strong> calls the other 4 agents (as sub-agents)</li>
+                <li><strong>No agent</strong> has read or write access to the database</li>
+                <li><strong>Backend queries</strong> the DB, passes data as context to agents</li>
+                <li><strong>Backend parses</strong> structured JSON from CRO Router and saves proposals to DB</li>
+            </ul>
+        </div>
+
+        <!-- ───────── Section 4 ───────── -->
+        <h2 id="s4"><span class="emoji">📊</span> 4. What Each Agent Receives &amp; Returns</h2>
+
+        <div class="agent-card backend">
+            <div class="agent-header">
+                <div><span class="agent-name">Backend (Next.js API)</span></div>
+                <span class="badge badge-backend">DB READ + WRITE</span>
+            </div>
+            <p class="agent-role">The ONLY component that touches the database</p>
+            <p style="margin-top:12px"><strong>Reads:</strong> <code>listings</code>, <code>calendar_days</code>,
+                <code>reservations</code>, <code>proposals</code></p>
+            <p><strong>Writes:</strong> <code>proposals</code> (from CRO Router JSON output)</p>
+            <pre><code>// Backend pseudocode
+const listing = await db.select().from(listings).where(eq(listings.id, listingId));
+const calendar = await db.select().from(calendarDays).where(eq(calendarDays.listingId, listingId));
+const bookings = await db.select().from(reservations).where(eq(reservations.listingMapId, listingId));
+const existing = await db.select().from(proposals).where(eq(proposals.listingId, listingId));
+
+// Call CRO Router with context
+const response = await callCRORouter({
+  user_message, system_date,
+  property_context: listing,
+  calendar_data: calendar,
+  reservation_data: bookings,
+  existing_proposals: existing
+});
+
+// Parse structured output → save to DB
+for (const proposal of response.proposals) {
+  if (proposal.guard_verdict === 'APPROVED') {
+    await db.insert(proposals).values(proposal);
+  }
+}</code></pre>
+        </div>
+
+        <div class="agent-card router">
+            <div class="agent-header">
+                <div><span class="agent-name">Agent 1: CRO Router</span></div>
+                <span class="badge badge-context">RECEIVES CONTEXT</span>
+            </div>
+            <p class="agent-role">Orchestrator — routes queries, calls sub-agents, merges responses</p>
+            <p style="margin-top:12px"><strong>Receives from backend:</strong> <code>property_context</code>,
+                <code>calendar_data</code>, <code>reservation_data</code>, <code>existing_proposals</code></p>
+            <p><strong>Returns:</strong> <code>proposals[]</code> (JSON) + <code>chat_response</code> (markdown)</p>
+            <p><strong>DB access:</strong> ❌ NONE</p>
+        </div>
+
+        <div class="agent-card property">
+            <div class="agent-header">
+                <div><span class="agent-name">Agent 2: Property Analyst</span></div>
+                <span class="badge badge-context">RECEIVES CONTEXT</span>
+            </div>
+            <p class="agent-role">Calendar analysis — gaps, restrictions, seasonal trends, revenue</p>
+            <p style="margin-top:12px"><strong>Receives from CRO Router:</strong> <code>calendar_data</code> (date,
+                status, price, minimum_stay, maximum_stay, <span style="color:var(--green)">note</span>) +
+                <code>listing_context</code> (name, area, base_price, <span style="color:var(--green)">address</span>)
+            </p>
+            <p><strong>Returns:</strong> gap_nights, restrictions, seasonal, revenue_forecast</p>
+            <p><strong>DB access:</strong> ❌ NONE</p>
+        </div>
+
+        <div class="agent-card booking">
+            <div class="agent-header">
+                <div><span class="agent-name">Agent 3: Booking Intelligence</span></div>
+                <span class="badge badge-context">RECEIVES CONTEXT</span>
+            </div>
+            <p class="agent-role">Booking patterns — velocity, lead time, LOS, cancellations, net revenue</p>
+            <p style="margin-top:12px"><strong>Receives from CRO Router:</strong> <code>reservation_data</code>
+                (arrival_date, nights, total_price, channel_name, status, created_at, <span
+                    style="color:var(--green)">number_of_guests</span>, <span
+                    style="color:var(--green)">channel_commission</span>, <span
+                    style="color:var(--green)">cleaning_fee</span>, <span
+                    style="color:var(--green)">cancelled_at</span>)</p>
+            <p><strong>Returns:</strong> velocity, lead_time, length_of_stay, cancellation_risk, net_revenue</p>
+            <p><strong>DB access:</strong> ❌ NONE</p>
+        </div>
+
+        <div class="agent-card market">
+            <div class="agent-header">
+                <div><span class="agent-name">Agent 4: Market Research</span></div>
+                <span class="badge badge-internet">INTERNET SEARCH</span>
+            </div>
+            <p class="agent-role">Live market intel — events, holidays, competitors, positioning</p>
+            <p style="margin-top:12px"><strong>Receives from CRO Router:</strong> area, bedrooms, base_price, <span
+                    style="color:var(--green)">address</span>, <span style="color:var(--green)">latitude</span>, <span
+                    style="color:var(--green)">longitude</span></p>
+            <p><strong>Returns:</strong> events, holidays, competitors, market_demand, positioning</p>
+            <p><strong>DB access:</strong> ❌ NONE — Internet only</p>
+        </div>
+
+        <div class="agent-card guard">
+            <div class="agent-header">
+                <div><span class="agent-name">Agent 5: PriceGuard</span></div>
+                <span class="badge badge-context">RECEIVES CONTEXT</span>
+            </div>
+            <p class="agent-role">Final validator — floor/ceiling, swing limits, duplicate detection</p>
+            <p style="margin-top:12px"><strong>Receives from CRO Router:</strong> <code>proposals</code> +
+                <code>listing_context</code> (base_price) + <code>existing_proposals</code></p>
+            <p><strong>Returns:</strong> APPROVED / REJECTED / FLAGGED per proposal</p>
+            <p><strong>DB access:</strong> ❌ NONE</p>
+        </div>
+
+        <!-- ───────── Section 5 ───────── -->
+        <h2 id="s5"><span class="emoji">✨</span> 5. New Columns (8 Total) — Agent Usage</h2>
+
+        <table>
+            <tr>
+                <th>#</th>
+                <th>Table</th>
+                <th>Column</th>
+                <th>Type</th>
+                <th>Injected Into Agent</th>
+                <th>Purpose</th>
+            </tr>
+            <tr class="new">
+                <td>1</td>
+                <td><code>listings</code></td>
+                <td><code>address</code></td>
+                <td>TEXT</td>
+                <td>Market Research (via context)</td>
+                <td>Geo-search for competitors</td>
+            </tr>
+            <tr class="new">
+                <td>2</td>
+                <td><code>listings</code></td>
+                <td><code>latitude</code></td>
+                <td>NUMERIC</td>
+                <td>Market Research (via context)</td>
+                <td>Proximity-based competitor search</td>
+            </tr>
+            <tr class="new">
+                <td>3</td>
+                <td><code>listings</code></td>
+                <td><code>longitude</code></td>
+                <td>NUMERIC</td>
+                <td>Market Research (via context)</td>
+                <td>Proximity-based competitor search</td>
+            </tr>
+            <tr class="new">
+                <td>4</td>
+                <td><code>reservations</code></td>
+                <td><code>number_of_guests</code></td>
+                <td>INT</td>
+                <td>Booking Intelligence (via context)</td>
+                <td>Revenue-per-guest analysis</td>
+            </tr>
+            <tr class="new">
+                <td>5</td>
+                <td><code>reservations</code></td>
+                <td><code>channel_commission</code></td>
+                <td>NUMERIC</td>
+                <td>Booking Intelligence (via context)</td>
+                <td>Net revenue = total − commission</td>
+            </tr>
+            <tr class="new">
+                <td>6</td>
+                <td><code>reservations</code></td>
+                <td><code>cleaning_fee</code></td>
+                <td>NUMERIC</td>
+                <td>Booking Intelligence (via context)</td>
+                <td>Booking cost breakdown</td>
+            </tr>
+            <tr class="new">
+                <td>7</td>
+                <td><code>reservations</code></td>
+                <td><code>cancelled_at</code></td>
+                <td>TIMESTAMP</td>
+                <td>Booking Intelligence (via context)</td>
+                <td>Cancellation timing patterns</td>
+            </tr>
+            <tr class="new">
+                <td>8</td>
+                <td><code>calendar_days</code></td>
+                <td><code>note</code></td>
+                <td>TEXT</td>
+                <td>Property Analyst (via context)</td>
+                <td>Block reason (owner stay, etc.)</td>
+            </tr>
+        </table>
+
+        <!-- ───────── Section 6 ───────── -->
+        <h2 id="s6"><span class="emoji">🔁</span> 6. Proposal Lifecycle</h2>
+
+        <table>
+            <tr>
+                <th>Stage</th>
+                <th>Who</th>
+                <th>What Happens</th>
+            </tr>
+            <tr>
+                <td><strong>1. Query DB</strong></td>
+                <td>Backend</td>
+                <td>Queries listings, calendar_days, reservations, proposals</td>
+            </tr>
+            <tr>
+                <td><strong>2. Call Router</strong></td>
+                <td>Backend → CRO Router</td>
+                <td>Passes all data as context + user message</td>
+            </tr>
+            <tr>
+                <td><strong>3. Analyze</strong></td>
+                <td>CRO Router → Sub-agents</td>
+                <td>Property Analyst, Booking Intelligence, Market Research analyze data</td>
+            </tr>
+            <tr>
+                <td><strong>4. Propose</strong></td>
+                <td>CRO Router</td>
+                <td>Merges agent responses → generates proposals JSON</td>
+            </tr>
+            <tr>
+                <td><strong>5. Validate</strong></td>
+                <td>CRO Router → PriceGuard</td>
+                <td>PriceGuard validates → returns APPROVED/REJECTED/FLAGGED</td>
+            </tr>
+            <tr>
+                <td><strong>6. Return</strong></td>
+                <td>CRO Router → Backend</td>
+                <td>Returns structured JSON with proposals + chat_response</td>
+            </tr>
+            <tr>
+                <td><strong>7. Save</strong></td>
+                <td>Backend</td>
+                <td>Parses JSON → INSERTs approved proposals into <code>proposals</code> table</td>
+            </tr>
+            <tr>
+                <td><strong>8. Present</strong></td>
+                <td>Backend → User</td>
+                <td>Shows chat_response to user</td>
+            </tr>
+            <tr>
+                <td><strong>9. Push</strong></td>
+                <td>Backend (on user approval)</td>
+                <td>Updates Hostaway calendar → sets <code>is_pushed = true</code></td>
+            </tr>
+        </table>
+
+        <div class="highlight-box success" style="margin-top:32px">
+            <h4>✅ Schema Status: Migrated + Seeded</h4>
+            <p>All 8 columns added to Drizzle schema, pushed to DB via <code>drizzle-kit push</code>, and seeded with
+                realistic mock data (15 properties, 1,190 calendar days, 70 reservations).</p>
+        </div>
+
+    </div>
+</body>
+
+</html>

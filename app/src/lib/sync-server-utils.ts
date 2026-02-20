@@ -1,4 +1,4 @@
-import { db, listings, reservations, calendarDays } from "./db";
+import { db, listings, activityTimeline, inventoryMaster } from "./db";
 import type { PMSClient } from "./pms/types";
 
 /**
@@ -26,15 +26,12 @@ export async function syncListingsToDb(
     area: string;
     bedroomsNumber: number;
     bathroomsNumber: number;
-    propertyType: string;
+    propertyTypeId: number;
     price: number;
     currencyCode: string;
-    priceFloor: number;
-    priceCeiling: number;
     personCapacity?: number;
     amenities?: string[];
-  }>,
-  syncedAt: Date
+  }>
 ) {
   for (const listing of pmsListings) {
     await db
@@ -45,14 +42,11 @@ export async function syncListingsToDb(
         area: listing.area,
         bedroomsNumber: listing.bedroomsNumber,
         bathroomsNumber: listing.bathroomsNumber,
-        propertyType: listing.propertyType,
+        propertyTypeId: listing.propertyTypeId,
         price: listing.price.toString(),
         currencyCode: listing.currencyCode,
-        priceFloor: listing.priceFloor.toString(),
-        priceCeiling: listing.priceCeiling.toString(),
         personCapacity: listing.personCapacity,
         amenities: listing.amenities,
-        syncedAt,
       })
       .onConflictDoUpdate({
         target: listings.hostawayId, // Match on hostawayId instead of id
@@ -61,14 +55,11 @@ export async function syncListingsToDb(
           area: listing.area,
           bedroomsNumber: listing.bedroomsNumber,
           bathroomsNumber: listing.bathroomsNumber,
-          propertyType: listing.propertyType,
+          propertyTypeId: listing.propertyTypeId,
           price: listing.price.toString(),
           currencyCode: listing.currencyCode,
-          priceFloor: listing.priceFloor.toString(),
-          priceCeiling: listing.priceCeiling.toString(),
           personCapacity: listing.personCapacity,
           amenities: listing.amenities,
-          syncedAt,
         },
       });
   }
@@ -97,39 +88,37 @@ export async function syncReservationsToDb(
 ) {
   for (const reservation of pmsReservations) {
     await db
-      .insert(reservations)
+      .insert(activityTimeline)
       .values({
         id: reservation.id,
-        listingMapId: reservation.listingMapId,
-        guestName: reservation.guestName,
-        guestEmail: reservation.guestEmail,
-        channelName: reservation.channelName,
-        arrivalDate: reservation.arrivalDate,
-        departureDate: reservation.departureDate,
-        nights: reservation.nights,
-        totalPrice: reservation.totalPrice.toString(),
-        pricePerNight: reservation.pricePerNight.toString(),
-        status: reservation.status || "confirmed",
-        checkInTime: reservation.checkInTime,
-        checkOutTime: reservation.checkOutTime,
-        syncedAt,
+        listingId: reservation.listingMapId,
+        type: 'reservation',
+        title: reservation.guestName,
+        startDate: reservation.arrivalDate,
+        endDate: reservation.departureDate,
+        createdAt: syncedAt,
+        financials: {
+          totalPrice: reservation.totalPrice,
+          pricePerNight: reservation.pricePerNight,
+          channelName: reservation.channelName,
+          reservationStatus: reservation.status || "confirmed"
+        }
       })
       .onConflictDoUpdate({
-        target: reservations.id,
+        target: activityTimeline.id,
         set: {
-          listingMapId: reservation.listingMapId,
-          guestName: reservation.guestName,
-          guestEmail: reservation.guestEmail,
-          channelName: reservation.channelName,
-          arrivalDate: reservation.arrivalDate,
-          departureDate: reservation.departureDate,
-          nights: reservation.nights,
-          totalPrice: reservation.totalPrice.toString(),
-          pricePerNight: reservation.pricePerNight.toString(),
-          status: reservation.status || "confirmed",
-          checkInTime: reservation.checkInTime,
-          checkOutTime: reservation.checkOutTime,
-          syncedAt,
+          listingId: reservation.listingMapId,
+          type: 'reservation',
+          title: reservation.guestName,
+          startDate: reservation.arrivalDate,
+          endDate: reservation.departureDate,
+          createdAt: syncedAt,
+          financials: {
+            totalPrice: reservation.totalPrice,
+            pricePerNight: reservation.pricePerNight,
+            channelName: reservation.channelName,
+            reservationStatus: reservation.status || "confirmed"
+          }
         },
       });
   }
@@ -143,7 +132,6 @@ export async function syncCalendarToDb(
   listingIds: number[],
   startDate: Date,
   endDate: Date,
-  syncedAt: Date,
   hostawayId?: number
 ) {
   for (const listingId of listingIds) {
@@ -157,26 +145,20 @@ export async function syncCalendarToDb(
 
     for (const day of calendarData) {
       await db
-        .insert(calendarDays)
+        .insert(inventoryMaster)
         .values({
           listingId,
           date: day.date,
           status: day.status,
-          price: day.price.toString(),
-          minimumStay: day.minimumStay,
-          maximumStay: day.maximumStay,
-          notes: day.notes,
-          syncedAt,
+          currentPrice: day.price.toString(),
+          minMaxStay: { min: day.minimumStay, max: day.maximumStay },
         })
         .onConflictDoUpdate({
-          target: [calendarDays.listingId, calendarDays.date],
+          target: [inventoryMaster.listingId, inventoryMaster.date],
           set: {
             status: day.status,
-            price: day.price.toString(),
-            minimumStay: day.minimumStay,
-            maximumStay: day.maximumStay,
-            notes: day.notes,
-            syncedAt,
+            currentPrice: day.price.toString(),
+            minMaxStay: { min: day.minimumStay, max: day.maximumStay },
           },
         });
     }

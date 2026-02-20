@@ -14,6 +14,18 @@ interface PropertyCardProps {
   detailed?: boolean;
 }
 
+// Helper to map Hostaway property type IDs
+function getPropertyTypeLabel(id: number): string {
+  const map: Record<number, string> = {
+    1: "Apartment",
+    2: "House",
+    3: "Villa",
+    4: "Studio",
+    5: "Townhouse",
+  };
+  return map[id] || "Property";
+}
+
 export function PropertyCard({ property, detailed = false }: PropertyCardProps) {
   const { open } = useChatStore();
   const { setActiveProperty } = usePropertyStore();
@@ -36,7 +48,7 @@ export function PropertyCard({ property, detailed = false }: PropertyCardProps) 
             <p className="text-xs text-muted-foreground">{property.area}</p>
           </div>
           <Badge variant="secondary" className="text-xs">
-            {property.propertyType}
+            {getPropertyTypeLabel(property.propertyTypeId)}
           </Badge>
         </div>
       </CardHeader>
@@ -60,9 +72,7 @@ export function PropertyCard({ property, detailed = false }: PropertyCardProps) 
                 AED/night
               </span>
             </p>
-            <p className="text-xs text-muted-foreground">
-              Range: {property.priceFloor}-{property.priceCeiling} AED
-            </p>
+            <p className="text-xs text-muted-foreground">Base Price</p>
           </div>
         </div>
 

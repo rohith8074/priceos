@@ -7,7 +7,7 @@ import {
 /**
  * Mock Calendar Data Generation
  * Generates 90 days of realistic Dubai calendar data with:
- * - ~65% occupancy across portfolio
+ * - Varied occupancy per property (45%–85%)
  * - Seasonal pricing (20% variation)
  * - Day-of-week premium (Thu-Fri)
  * - Owner blocks scattered throughout
@@ -28,14 +28,6 @@ const DUBAI_SEASONS: DubaiSeasonConfig[] = [
   { startMonth: 10, endMonth: 11, multiplier: 1.15, name: "High (Festive)" }, // Nov-Dec
 ];
 
-function isHighSeason(date: Date): boolean {
-  const month = date.getMonth();
-  const season = DUBAI_SEASONS.find(
-    (s) => month >= s.startMonth && month <= s.endMonth
-  );
-  return season ? season.multiplier >= 1.15 : false;
-}
-
 function getSeasonMultiplier(date: Date): number {
   const month = date.getMonth();
   const season = DUBAI_SEASONS.find(
@@ -50,15 +42,40 @@ function getDayOfWeekMultiplier(date: Date): number {
   return dayOfWeek === 4 || dayOfWeek === 5 ? 1.15 : 1.0;
 }
 
-function shouldBeBooked(seed: number): boolean {
-  // Use seeded random to get ~65% occupancy across portfolio
-  // This is deterministic based on date + property combo
-  return seed % 100 < 65;
+/**
+ * Simple seeded pseudo-random number generator
+ * Returns a value between 0 and 1
+ */
+function seededRandom(seed: number): number {
+  // Use a simple hash to produce varied values
+  let x = Math.sin(seed * 12.9898 + seed * 78.233) * 43758.5453;
+  return x - Math.floor(x);
 }
 
-function shouldBeBlocked(seed: number): boolean {
-  // Owner blocks: ~2% of days
-  return seed % 100 >= 97;
+/**
+ * Property-specific occupancy rate
+ * Each property gets a different base occupancy (45%–85%)
+ */
+function getPropertyOccupancyRate(listingId: number): number {
+  // Generate a consistent occupancy rate per property
+  const rates: Record<number, number> = {
+    1001: 68, // Marina Heights 1BR
+    1002: 72, // Downtown Residences 2BR
+    1003: 55, // JBR Beach Studio
+    1004: 85, // Palm Villa 3BR
+    1005: 63, // Bay View 1BR
+    1006: 58, // Creek Harbour Studio
+    1007: 78, // DIFC Tower 2BR
+    1008: 45, // JVC Family 3BR
+    1009: 62, // Marina Walk Studio
+    1010: 70, // Springs Villa 4BR
+    1011: 75, // City Walk 1BR
+    1012: 48, // Silicon Oasis 2BR
+    1013: 52, // Al Barsha Heights 1BR
+    1014: 82, // Bluewaters 2BR Penthouse
+    1015: 67, // Arabian Ranches 5BR
+  };
+  return rates[listingId] ?? Math.round(50 + seededRandom(listingId) * 35);
 }
 
 export function generateMockCalendar(
@@ -71,24 +88,28 @@ export function generateMockCalendar(
   const floor = propertyInfo?.priceFloor ?? Math.round(basePrice * 0.5);
   const ceiling = propertyInfo?.priceCeiling ?? Math.round(basePrice * 2);
 
+  const occupancyRate = getPropertyOccupancyRate(listingId);
   const calendar: CalendarDay[] = [];
   const days = eachDayOfInterval({ start: startDate, end: endDate });
 
   days.forEach((date, index) => {
-    // Seeded randomness per property per day
-    const seed = (listingId * 1000 + index) % 100;
+    // Use seeded random for each property+day combination
+    const rand = seededRandom(listingId * 137 + index * 17 + 42);
+    const randBlock = seededRandom(listingId * 271 + index * 31 + 7);
 
     const seasonMultiplier = getSeasonMultiplier(date);
     const dayOfWeekMultiplier = getDayOfWeekMultiplier(date);
-    const randomVariation = 0.95 + (seed % 10) / 100; // ±5% variation
+    const randomVariation = 0.92 + rand * 0.16; // ±8% variation
 
     let status: "available" | "booked" | "blocked" = "available";
     let price = basePrice;
 
-    if (shouldBeBlocked(seed)) {
+    // Owner blocks: ~3% of days
+    if (randBlock > 0.97) {
       status = "blocked";
       price = 0;
-    } else if (shouldBeBooked(seed)) {
+    } else if (rand * 100 < occupancyRate) {
+      // Use property-specific occupancy rate
       status = "booked";
       price = Math.round(
         basePrice * seasonMultiplier * dayOfWeekMultiplier * randomVariation
@@ -100,7 +121,16 @@ export function generateMockCalendar(
     }
 
     // Clamp to floor/ceiling
-    price = Math.max(floor, Math.min(ceiling, price));
+    if (status !== "blocked") {
+      price = Math.max(floor, Math.min(ceiling, price));
+    }
+
+    // Determine block note
+    let note: string | undefined = undefined;
+    if (status === "blocked") {
+      const blockReasons = ["Owner stay", "Maintenance", "Deep cleaning"];
+      note = blockReasons[Math.floor(seededRandom(listingId * 53 + index * 11) * blockReasons.length)];
+    }
 
     calendar.push({
       date: date.toISOString().split("T")[0],
@@ -108,6 +138,7 @@ export function generateMockCalendar(
       price,
       minimumStay: status === "available" ? 1 : 0,
       maximumStay: status === "available" ? 30 : 0,
+      note,
     });
   });
 

@@ -8,6 +8,7 @@ from .repository import (
     ReservationRepository,
     ProposalRepository,
     UserSettingsRepository,
+    EventSignalsRepository,
 )
 
 __all__ = [
@@ -19,4 +20,5 @@ __all__ = [
     "ReservationRepository",
     "ProposalRepository",
     "UserSettingsRepository",
+    "EventSignalsRepository",
 ]

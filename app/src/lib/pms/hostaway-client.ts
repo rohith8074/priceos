@@ -73,12 +73,11 @@ export function mapHostawayListing(raw: HostawayListingResponse): Listing {
     area: "", // PriceOS-specific — must be enriched separately
     bedroomsNumber: raw.bedroomsNumber,
     bathroomsNumber: raw.bathroomsNumber,
-    propertyType: mapPropertyTypeId(raw.propertyTypeId),
     propertyTypeId: raw.propertyTypeId,
     price: raw.price,
+    priceFloor: raw.price * 0.8,
+    priceCeiling: raw.price * 1.5,
     currencyCode: raw.currencyCode as "AED" | "USD",
-    priceFloor: 0, // PriceOS-specific — must be set by user
-    priceCeiling: 0, // PriceOS-specific — must be set by user
     personCapacity: raw.personCapacity,
     amenities: raw.listingAmenities?.map((a) => a.name) ?? [],
   };
@@ -118,17 +117,6 @@ export function mapHostawayReservation(raw: HostawayReservationResponse): Reserv
     checkInTime: raw.checkInTime || undefined,
     checkOutTime: raw.checkOutTime || undefined,
   };
-}
-
-function mapPropertyTypeId(id: number): Listing["propertyType"] {
-  const map: Record<number, Listing["propertyType"]> = {
-    1: "Apartment",
-    2: "House",
-    3: "Villa",
-    4: "Studio",
-    5: "Townhouse",
-  };
-  return map[id] ?? "Apartment";
 }
 
 function mapChannelName(name: string): Reservation["channelName"] {

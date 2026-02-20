@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, listings, reservations, calendarDays } from "@/lib/db";
-import { eq } from "drizzle-orm";
-import { getMaxSyncedAt } from "@/lib/sync-server-utils";
+import { db, listings, activityTimeline, inventoryMaster } from "@/lib/db";
+import { eq, and } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   try {
@@ -19,22 +18,21 @@ export async function GET(req: NextRequest) {
     if (context === "portfolio") {
       // Query all data
       const allListings = await db.select().from(listings);
-      const allReservations = await db.select().from(reservations);
-      const allCalendar = await db.select().from(calendarDays);
+      const allReservations = await db.select().from(activityTimeline).where(eq(activityTimeline.type, "reservation"));
+      const allCalendar = await db.select().from(inventoryMaster);
 
       return NextResponse.json({
         listings: {
           count: allListings.length,
-          lastSyncedAt: getMaxSyncedAt(allListings)?.toISOString() || null,
+          lastSyncedAt: null, // syncedAt removed from schema
         },
-        reservations: {
+        activity_timeline: {
           count: allReservations.length,
-          lastSyncedAt:
-            getMaxSyncedAt(allReservations)?.toISOString() || null,
+          lastSyncedAt: null,
         },
-        calendar: {
+        inventory_master: {
           daysCount: allCalendar.length,
-          lastSyncedAt: getMaxSyncedAt(allCalendar)?.toISOString() || null,
+          lastSyncedAt: null,
         },
       });
     } else {
@@ -55,28 +53,31 @@ export async function GET(req: NextRequest) {
 
       const propertyReservations = await db
         .select()
-        .from(reservations)
-        .where(eq(reservations.listingMapId, listingId));
+        .from(activityTimeline)
+        .where(
+          and(
+            eq(activityTimeline.listingId, listingId),
+            eq(activityTimeline.type, "reservation")
+          )
+        );
 
       const propertyCalendar = await db
         .select()
-        .from(calendarDays)
-        .where(eq(calendarDays.listingId, listingId));
+        .from(inventoryMaster)
+        .where(eq(inventoryMaster.listingId, listingId));
 
       return NextResponse.json({
         listings: {
           count: listing.length,
-          lastSyncedAt: listing[0]?.syncedAt?.toISOString() || null,
+          lastSyncedAt: null, // syncedAt removed from schema
         },
-        reservations: {
+        activity_timeline: {
           count: propertyReservations.length,
-          lastSyncedAt:
-            getMaxSyncedAt(propertyReservations)?.toISOString() || null,
+          lastSyncedAt: null,
         },
-        calendar: {
+        inventory_master: {
           daysCount: propertyCalendar.length,
-          lastSyncedAt:
-            getMaxSyncedAt(propertyCalendar)?.toISOString() || null,
+          lastSyncedAt: null,
         },
       });
     }

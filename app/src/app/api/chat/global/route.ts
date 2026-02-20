@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, listings, chatMessages, calendarDays, reservations } from "@/lib/db";
+import { db, listings, chatMessages, inventoryMaster, activityTimeline } from "@/lib/db";
 import { eq, and, gte, sql } from "drizzle-orm";
 import { addDays, format } from "date-fns";
 
@@ -33,11 +33,11 @@ export async function POST(req: NextRequest) {
         allListings.map(async (listing) => {
           const calendar = await db
             .select()
-            .from(calendarDays)
+            .from(inventoryMaster)
             .where(
               and(
-                eq(calendarDays.listingId, listing.id),
-                gte(calendarDays.date, format(thirtyDaysAgo, "yyyy-MM-dd"))
+                eq(inventoryMaster.listingId, listing.id),
+                gte(inventoryMaster.date, format(thirtyDaysAgo, "yyyy-MM-dd"))
               )
             );
 
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
           propertyCount: underperforming.length,
           avgOccupancy: Math.round(
             underperforming.reduce((sum, p) => sum + p.occupancy, 0) /
-              underperforming.length
+            underperforming.length
           ),
         };
       } else {
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
           propertyCount: allListings.length,
           avgOccupancy: Math.round(
             listingsWithMetrics.reduce((sum, p) => sum + p.occupancy, 0) /
-              listingsWithMetrics.length
+            listingsWithMetrics.length
           ),
         };
       }
@@ -86,11 +86,16 @@ export async function POST(req: NextRequest) {
 
       const recentReservations = await db
         .select()
-        .from(reservations)
-        .where(gte(reservations.arrivalDate, format(thirtyDaysAgo, "yyyy-MM-dd")));
+        .from(activityTimeline)
+        .where(
+          and(
+            gte(activityTimeline.startDate, format(thirtyDaysAgo, "yyyy-MM-dd")),
+            eq(activityTimeline.type, "reservation")
+          )
+        );
 
       const totalRevenue = recentReservations.reduce(
-        (sum, res) => sum + parseFloat(res.totalPrice),
+        (sum, res) => sum + Number(res.financials?.totalPrice || 0),
         0
       );
 
@@ -116,11 +121,11 @@ export async function POST(req: NextRequest) {
       const metricsPromises = allListings.map(async (listing) => {
         const calendar = await db
           .select()
-          .from(calendarDays)
+          .from(inventoryMaster)
           .where(
             and(
-              eq(calendarDays.listingId, listing.id),
-              gte(calendarDays.date, format(thirtyDaysAgo, "yyyy-MM-dd"))
+              eq(inventoryMaster.listingId, listing.id),
+              gte(inventoryMaster.date, format(thirtyDaysAgo, "yyyy-MM-dd"))
             )
           );
 
@@ -138,11 +143,16 @@ export async function POST(req: NextRequest) {
 
       const recentReservations = await db
         .select()
-        .from(reservations)
-        .where(gte(reservations.arrivalDate, format(thirtyDaysAgo, "yyyy-MM-dd")));
+        .from(activityTimeline)
+        .where(
+          and(
+            gte(activityTimeline.startDate, format(thirtyDaysAgo, "yyyy-MM-dd")),
+            eq(activityTimeline.type, "reservation")
+          )
+        );
 
       const totalRevenue = recentReservations.reduce(
-        (sum, res) => sum + parseFloat(res.totalPrice),
+        (sum, res) => sum + Number(res.financials?.totalPrice || 0),
         0
       );
 

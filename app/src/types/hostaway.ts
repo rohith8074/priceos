@@ -22,14 +22,17 @@ export interface Listing {
   area: string; // PriceOS-specific: Dubai sub-area (e.g., "Dubai Marina")
   bedroomsNumber: number;
   bathroomsNumber: number;
-  propertyType: "Studio" | "Apartment" | "Villa" | "House" | "Townhouse";
-  propertyTypeId?: number; // Hostaway API integer ID
+  propertyTypeId: number; // Hostaway API integer ID
   price: number;
   currencyCode: "AED" | "USD";
-  priceFloor: number; // PriceOS-specific
-  priceCeiling: number; // PriceOS-specific
+  priceFloor: number;
+  priceCeiling: number;
   personCapacity?: number;
   amenities?: string[];
+  // New fields from Hostaway
+  address?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface CalendarDay {
@@ -38,7 +41,8 @@ export interface CalendarDay {
   price: number;
   minimumStay: number;
   maximumStay: number;
-  notes?: string;
+  note?: string; // Why a date is blocked (owner stay, maintenance, etc.)
+  notes?: string; // Legacy alias
   blockReason?: "owner_stay" | "maintenance" | "other";
 }
 
@@ -57,6 +61,11 @@ export interface Reservation {
   createdAt: string;
   checkInTime?: string;
   checkOutTime?: string;
+  // New fields from Hostaway
+  numberOfGuests?: number;
+  channelCommission?: number;
+  cleaningFee?: number;
+  cancelledAt?: string | null;
 }
 
 export interface CalendarInterval {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, listings, chatMessages, proposals } from "@/lib/db";
+import { db, listings, chatMessages, inventoryMaster } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { addDays } from "date-fns";
 import { DataSyncAgent } from "@/lib/agents/data-sync-agent";
@@ -98,20 +98,20 @@ export async function POST(
     // Fetch the saved proposals from DB to return
     const savedProposals = await db
       .select()
-      .from(proposals)
-      .where(eq(proposals.listingId, listingId));
+      .from(inventoryMaster)
+      .where(eq(inventoryMaster.listingId, listingId));
 
     // Format proposals for frontend
     const formattedProposals = savedProposals
-      .filter(p => p.status === "pending")
+      .filter(p => p.proposalStatus === "pending")
       .map(p => ({
         id: p.id,
-        dateRangeStart: p.dateRangeStart,
-        dateRangeEnd: p.dateRangeEnd,
+        dateRangeStart: p.date,
+        dateRangeEnd: p.date, // Same day
         currentPrice: parseFloat(p.currentPrice),
-        proposedPrice: parseFloat(p.proposedPrice),
-        changePct: p.changePct, // Already a number
-        riskLevel: p.riskLevel,
+        proposedPrice: parseFloat(p.proposedPrice || "0"),
+        changePct: p.changePct,
+        riskLevel: "medium", // Default or extract based on pct later
         reasoning: p.reasoning,
       }));
 

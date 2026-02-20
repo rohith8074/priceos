@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PriceOS — Complete Database Schema (ERD)</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0d1117;
+            color: #e0e0e0;
+            overflow: auto
+        }
+
+        .hdr {
+            text-align: center;
+            padding: 20px 10px 6px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: linear-gradient(180deg, #0d1117 80%, transparent)
+        }
+
+        .hdr h1 {
+            font-size: 24px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #58a6ff, #bc8cff, #3fb950);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent
+        }
+
+        .hdr p {
+            font-size: 12px;
+            color: #8b949e;
+            margin-top: 2px
+        }
+
+        .leg {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding: 8px;
+            flex-wrap: wrap;
+            position: sticky;
+            top: 56px;
+            z-index: 50;
+            background: #0d1117
+        }
+
+        .li {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            color: #8b949e
+        }
+
+        .ld {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px
+        }
+
+        .ld.b {
+            background: linear-gradient(135deg, #1f6feb, #58a6ff)
+        }
+
+        .ld.g {
+            background: linear-gradient(135deg, #238636, #3fb950)
+        }
+
+        .ld.y {
+            background: linear-gradient(135deg, #9e6a03, #d29922)
+        }
+
+        .canvas {
+            position: relative;
+            width: 4200px;
+            height: 3400px;
+            margin: 0 auto
+        }
+
+        svg.conn {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1
+        }
+
+        .t {
+            position: absolute;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, .5);
+            z-index: 5;
+            min-width: 220px;
+            transition: transform .15s, box-shadow .15s
+        }
+
+        .t:hover {
+            transform: scale(1.03);
+            box-shadow: 0 4px 24px rgba(88, 166, 255, .25);
+            z-index: 20
+        }
+
+        .t.hw {
+            border: 1px solid rgba(31, 111, 235, .3);
+            background: #0d1926
+        }
+
+        .t.in {
+            border: 1px solid rgba(35, 134, 54, .3);
+            background: #0d1912
+        }
+
+        .t.sy {
+            border: 1px solid rgba(158, 106, 3, .3);
+            background: #1a1500
+        }
+
+        .th {
+            padding: 7px 10px;
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            display: flex;
+            align-items: center;
+            gap: 6px
+        }
+
+        .t.hw .th {
+            background: linear-gradient(135deg, #0d2240, #1f3d6f);
+            color: #79c0ff
+        }
+
+        .t.in .th {
+            background: linear-gradient(135deg, #04260d, #0f3a1a);
+            color: #7ee787
+        }
+
+        .t.sy .th {
+            background: linear-gradient(135deg, #2a1f00, #3d2e00);
+            color: #d29922
+        }
+
+        .th .bd {
+            margin-left: auto;
+            font-size: 8px;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-weight: 600
+        }
+
+        .t.hw .bd {
+            background: rgba(31, 111, 235, .2);
+            color: #58a6ff
+        }
+
+        .t.in .bd {
+            background: rgba(35, 134, 54, .2);
+            color: #3fb950
+        }
+
+        .t.sy .bd {
+            background: rgba(158, 106, 3, .2);
+            color: #d29922
+        }
+
+        .tc {
+            padding: 2px 0
+        }
+
+        .cr {
+            display: flex;
+            align-items: center;
+            padding: 2px 8px;
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            gap: 4px;
+            border-bottom: 1px solid rgba(255, 255, 255, .02)
+        }
+
+        .cr:last-child {
+            border-bottom: none
+        }
+
+        .ci {
+            width: 14px;
+            text-align: center;
+            font-size: 9px;
+            flex-shrink: 0
+        }
+
+        .ci.pk {
+            color: #d29922
+        }
+
+        .ci.fk {
+            color: #f778ba
+        }
+
+        .ci.r {
+            color: #484f58
+        }
+
+        .cn {
+            flex: 1;
+            color: #c9d1d9;
+            white-space: nowrap
+        }
+
+        .cn.pk {
+            color: #e3b341;
+            font-weight: 600
+        }
+
+        .cn.fk {
+            color: #f9a8d4
+        }
+
+        .ct {
+            color: #6e7681;
+            font-size: 9px;
+            white-space: nowrap
+        }
+
+        .new {
+            background: rgba(35, 134, 54, .08)
+        }
+
+        .ft {
+            text-align: center;
+            padding: 20px;
+            color: #484f58;
+            font-size: 11px
+        }
+
+        .ref-section {
+            border-top: 2px solid rgba(210, 153, 34, .4);
+            padding: 4px 8px;
+            background: rgba(210, 153, 34, .06);
+        }
+
+        .ref-title {
+            font-size: 9px;
+            font-weight: 700;
+            color: #d29922;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            padding: 2px 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .ref-item {
+            font-size: 9px;
+            font-family: 'JetBrains Mono', monospace;
+            color: #8b949e;
+            padding: 1px 0;
+        }
+
+        .ref-item .tbl {
+            color: #f9a8d4;
+        }
+
+        .ref-item .col {
+            color: #79c0ff;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="hdr">
+        <h1>PriceOS — Complete Database Schema (ERD)</h1>
+        <p>18 Tables · All Columns · From DATABASE_SCHEMA_DESIGN.md · Color-coded by Source</p>
+    </div>
+    <div class="leg">
+        <div class="li">
+            <div class="ld b"></div>Hostaway Synced
+        </div>
+        <div class="li">
+            <div class="ld g"></div>PriceOS Internal
+        </div>
+        <div class="li">
+            <div class="ld y"></div>System
+        </div>
+        <div class="li" style="color:#d29922">🔑 PK</div>
+        <div class="li" style="color:#f778ba">🔗 FK</div>
+        <div class="li" style="color:#3fb950">● = 🆕 new column</div>
+    </div>
+    <div class="canvas" id="canvas">
+        <svg class="conn" id="conn"></svg>
+
+        <!-- 1. LISTINGS — center top -->
+        <div class="t hw" id="t-listings" style="left:1600px;top:20px;width:320px">
+            <div class="th">🏠 listings (34 cols)<span class="bd">Hostaway</span></div>
+            <div class="tc">
+                <div class="cr"><span class="ci pk">🔑</span><span class="cn pk">id</span><span class="ct">serial
+                        PK</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">hostaway_id</span><span class="ct">int
+                        unique 🆕</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">name</span><span class="ct">text</span>
+                </div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">internal_name</span><span
+                        class="ct">text 🆕</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">description</span><span class="ct">text
+                        🆕</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">city</span><span class="ct">text
+                        def:'Dubai'</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">country_code</span><span
+                        class="ct">varchar(3)</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">area</span><span class="ct">text</span>
+                </div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">address</span><span class="ct">text
+                        🆕</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">lat</span><span class="ct">numeric(10,7)
+                        🆕</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">lng</span><span class="ct">numeric(10,7)
+                        🆕</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">bedrooms_number</span><span
+                        class="ct">int</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">bathrooms_number</span><span
+                        class="ct">int</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">property_type</span><span
+                        class="ct">text</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">property_type_id</span><span
+                        class="ct">int</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">person_capacity</span><span
+                        class="ct">int</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">price</span><span
+                        class="ct">numeric(10,2)</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">currency_code</span><span
+                        class="ct">varchar(3)</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">price_floor</span><span
+                        class="ct">numeric(10,2)</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">price_ceiling</span><span
+                        class="ct">numeric(10,2)</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">cleaning_fee</span><span
+                        class="ct">numeric(10,2) 🆕</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">min_nights / max_nights</span><span
+                        class="ct">int</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">check_in_time /
+                        check_out_time</span><span class="ct">int 🆕</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">star_rating</span><span
+                        class="ct">numeric(2,1) 🆕</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">avg_review_rating</span><span
+                        class="ct">numeric(3,2) 🆕</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">amenities</span><span
+                        class="ct">jsonb</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">images</span><span class="ct">jsonb
+                        🆕</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">cancellation_policy</span><span
+                        class="ct">text 🆕</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">channel_urls</span><span
+                        class="ct">jsonb 🆕</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">external_data</span><span
+                        class="ct">jsonb</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">is_active</span><span class="ct">boolean
+                        🆕</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">last_synced_at</span><span
+                        class="ct">timestamp</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">created_at</span><span
+                        class="ct">timestamp</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">updated_at</span><span
+                        class="ct">timestamp 🆕</span></div>
+            </div>
+            <div class="ref-section">
+                <div class="ref-title">🔗 listings.id is Referenced By:</div>
+                <div class="ref-item"><span class="tbl">calendar_days</span>.<span class="col">listing_id</span> →
+                    listings.<span class="col">id</span></div>
+                <div class="ref-item"><span class="tbl">reservations</span>.<span class="col">listing_map_id</span> →
+                    listings.<span class="col">id</span></div>
+                <div class="ref-item"><span class="tbl">reviews</span>.<span class="col">listing_map_id</span> →
+                    listings.<span class="col">id</span></div>
+                <div class="ref-item"><span class="tbl">conversations</span>.<span class="col">listing_id</span> →
+                    listings.<span class="col">id</span></div>
+                <div class="ref-item"><span class="tbl">tasks</span>.<span class="col">listing_id</span> →
+                    listings.<span class="col">id</span></div>
+                <div class="ref-item"><span class="tbl">seasonal_rules</span>.<span class="col">listing_id</span> →
+                    listings.<span class="col">id</span></div>
+                <div class="ref-item"><span class="tbl">expenses</span>.<span class="col">listing_id</span> →
+                    listings.<span class="col">id</span></div>
+                <div class="ref-item"><span class="tbl">owner_statements</span>.<span class="col">listing_id</span> →
+                    listings.<span class="col">id</span></div>
+                <div class="ref-item"><span class="tbl">proposals</span>.<span class="col">listing_id</span> →
+                    listings.<span class="col">id</span></div>
+                <div class="ref-item"><span class="tbl">executions</span>.<span class="col">listing_id</span> →
+                    listings.<span class="col">id</span></div>
+                <div class="ref-item"><span class="tbl">chat_messages</span>.<span class="col">listing_id</span> →
+                    listings.<span class="col">id</span></div>
+            </div>
+        </div>
+
+        <!-- 2. CALENDAR_DAYS -->
+        <div class="t hw" id="t-calendar" style="left:40px;top:80px;width:260px">
+            <div class="th">📅 calendar_days (12)<span class="bd">Hostaway</span></div>
+            <div class="tc">
+                <div class="cr"><span class="ci pk">🔑</span><span class="cn pk">id</span><span class="ct">serial
+                        PK</span></div>
+                <div class="cr"><span class="ci fk">🔗</span><span class="cn fk">listing_id</span><span class="ct">→
+                        listings</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">date</span><span class="ct">date</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">status</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">price</span><span
+                        class="ct">numeric(10,2)</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">minimum_stay</span><span
+                        class="ct">int</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">maximum_stay</span><span
+                        class="ct">int</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">is_available</span><span
+                        class="ct">boolean 🆕</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">block_reason</span><span class="ct">text
+                        🆕</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">notes</span><span class="ct">text</span>
+                </div>
+                <div class="cr new"><span class="ci fk">🔗</span><span class="cn fk">reservation_id</span><span
+                        class="ct">→ reservations 🆕</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">synced_at</span><span
+                        class="ct">timestamp</span></div>
+            </div>
+        </div>
+
+        <!-- 3. RESERVATIONS -->
+        <div class="t hw" id="t-reserv" style="left:600px;top:900px;width:300px">
+            <div class="th">🏨 reservations (22)<span class="bd">Hostaway</span></div>
+            <div class="tc">
+                <div class="cr"><span class="ci pk">🔑</span><span class="cn pk">id</span><span class="ct">serial
+                        PK</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">hostaway_id</span><span class="ct">int
+                        unique 🆕</span></div>
+                <div class="cr"><span class="ci fk">🔗</span><span class="cn fk">listing_map_id</span><span class="ct">→
+                        listings</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">guest_name</span><span
+                        class="ct">text</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">guest_email</span><span
+                        class="ct">text</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">guest_phone</span><span class="ct">text
+                        🆕</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">channel_name</span><span
+                        class="ct">text</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">channel_id</span><span class="ct">int
+                        🆕</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">confirmation_code</span><span
+                        class="ct">text 🆕</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">arrival_date</span><span
+                        class="ct">date</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">departure_date</span><span
+                        class="ct">date</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">nights</span><span class="ct">int</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">total_price</span><span
+                        class="ct">numeric(10,2)</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">price_per_night</span><span
+                        class="ct">numeric(10,2)</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">number_of_guests</span><span
+                        class="ct">int 🆕</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">adults / children</span><span
+                        class="ct">int 🆕</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">status</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">check_in_time / check_out_time</span><span
+                        class="ct">text</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">cleaning_fee</span><span
+                        class="ct">numeric 🆕</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">tax_amount</span><span
+                        class="ct">numeric 🆕</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">channel_commission</span><span
+                        class="ct">numeric 🆕</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">finance_breakdown</span><span
+                        class="ct">jsonb 🆕</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">host_note</span><span class="ct">text
+                        🆕</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">external_data</span><span
+                        class="ct">jsonb</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">reservation_date</span><span
+                        class="ct">timestamp 🆕</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">synced_at / created_at</span><span
+                        class="ct">timestamp</span></div>
+            </div>
+        </div>
+
+        <!-- 4. REVIEWS (NEW) -->
+        <div class="t hw" id="t-reviews" style="left:40px;top:1200px;width:280px">
+            <div class="th">⭐ reviews (17) 🆕<span class="bd">Hostaway</span></div>
+            <div class="tc">
+                <div class="cr"><span class="ci pk">🔑</span><span class="cn pk">id</span><span class="ct">serial
+                        PK</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">hostaway_id</span><span class="ct">int
+                        unique</span></div>
+                <div class="cr"><span class="ci fk">🔗</span><span class="cn fk">listing_map_id</span><span class="ct">→
+                        listings</span></div>
+                <div class="cr"><span class="ci fk">🔗</span><span class="cn fk">reservation_id</span><span class="ct">→
+                        reservations</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">channel_id</span><span class="ct">int</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">type</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">status</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">rating</span><span
+                        class="ct">numeric(3,1)</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">public_review</span><span
+                        class="ct">text</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">private_feedback</span><span
+                        class="ct">text</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">host_response</span><span
+                        class="ct">text</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">review_categories</span><span
+                        class="ct">jsonb</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">arrival_date</span><span
+                        class="ct">date</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">departure_date</span><span
+                        class="ct">date</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">guest_name</span><span
+                        class="ct">text</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">synced_at</span><span
+                        class="ct">timestamp</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">created_at</span><span
+                        class="ct">timestamp</span></div>
+            </div>
+        </div>
+
+        <!-- 5. CONVERSATIONS -->
+        <div class="t hw" id="t-convos" style="left:2100px;top:900px;width:260px">
+            <div class="th">💬 conversations (12)<span class="bd">Hostaway</span></div>
+            <div class="tc">
+                <div class="cr"><span class="ci pk">🔑</span><span class="cn pk">id</span><span class="ct">serial
+                        PK</span></div>
+                <div class="cr"><span class="ci fk">🔗</span><span class="cn fk">listing_id</span><span class="ct">→
+                        listings</span></div>
+                <div class="cr"><span class="ci fk">🔗</span><span class="cn fk">reservation_id</span><span class="ct">→
+                        reservations</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">guest_name</span><span
+                        class="ct">text</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">guest_email</span><span
+                        class="ct">text</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">channel</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">last_message</span><span
+                        class="ct">text</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">last_message_at</span><span
+                        class="ct">timestamp</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">unread_count</span><span
+                        class="ct">int</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">status</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">created_at</span><span
+                        class="ct">timestamp</span></div>
+            </div>
+        </div>
+
+        <!-- 6. CONVERSATION_MESSAGES -->
+        <div class="t hw" id="t-cmsg" style="left:2500px;top:1250px;width:250px">
+            <div class="th">📩 conv_messages (5)<span class="bd">Hostaway</span></div>
+            <div class="tc">
+                <div class="cr"><span class="ci pk">🔑</span><span class="cn pk">id</span><span class="ct">serial
+                        PK</span></div>
+                <div class="cr"><span class="ci fk">🔗</span><span class="cn fk">conversation_id</span><span
+                        class="ct">→ conversations</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">sender</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">content</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">sent_at</span><span
+                        class="ct">timestamp</span></div>
+            </div>
+        </div>
+
+        <!-- 7. TASKS -->
+        <div class="t hw" id="t-tasks" style="left:2400px;top:80px;width:240px">
+            <div class="th">📝 tasks (10)<span class="bd">Hostaway</span></div>
+            <div class="tc">
+                <div class="cr"><span class="ci pk">🔑</span><span class="cn pk">id</span><span class="ct">serial
+                        PK</span></div>
+                <div class="cr"><span class="ci fk">🔗</span><span class="cn fk">listing_id</span><span class="ct">→
+                        listings</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">title</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">description</span><span
+                        class="ct">text</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">category</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">priority</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">status</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">due_date</span><span class="ct">date</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">assignee</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">created_at</span><span
+                        class="ct">timestamp</span></div>
+            </div>
+        </div>
+
+        <!-- 8. SEASONAL_RULES -->
+        <div class="t hw" id="t-rules" style="left:2800px;top:400px;width:250px">
+            <div class="th">📐 seasonal_rules (10)<span class="bd">Hostaway</span></div>
+            <div class="tc">
+                <div class="cr"><span class="ci pk">🔑</span><span class="cn pk">id</span><span class="ct">serial
+                        PK</span></div>
+                <div class="cr"><span class="ci fk">🔗</span><span class="cn fk">listing_id</span><span class="ct">→
+                        listings</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">name</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">start_date</span><span
+                        class="ct">date</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">end_date</span><span class="ct">date</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">price_modifier</span><span
+                        class="ct">int</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">minimum_stay</span><span
+                        class="ct">int</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">maximum_stay</span><span
+                        class="ct">int</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">enabled</span><span
+                        class="ct">boolean</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">created_at</span><span
+                        class="ct">timestamp</span></div>
+            </div>
+        </div>
+
+        <!-- 9. EXPENSES -->
+        <div class="t hw" id="t-exp" style="left:40px;top:550px;width:240px">
+            <div class="th">💸 expenses (9)<span class="bd">Hostaway</span></div>
+            <div class="tc">
+                <div class="cr"><span class="ci pk">🔑</span><span class="cn pk">id</span><span class="ct">serial
+                        PK</span></div>
+                <div class="cr"><span class="ci fk">🔗</span><span class="cn fk">listing_id</span><span class="ct">→
+                        listings</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">hostaway_id</span><span class="ct">int
+                        🆕</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">type</span><span class="ct">text
+                        🆕</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">category</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">amount</span><span
+                        class="ct">numeric(10,2)</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">currency_code</span><span
+                        class="ct">varchar(3)</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">description</span><span
+                        class="ct">text</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">date</span><span class="ct">date</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 10. OWNER_STATEMENTS -->
+        <div class="t hw" id="t-owner" style="left:380px;top:550px;width:260px">
+            <div class="th">📊 owner_statements (10)<span class="bd">Hostaway</span></div>
+            <div class="tc">
+                <div class="cr"><span class="ci pk">🔑</span><span class="cn pk">id</span><span class="ct">serial
+                        PK</span></div>
+                <div class="cr"><span class="ci fk">🔗</span><span class="cn fk">listing_id</span><span class="ct">→
+                        listings</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">hostaway_id</span><span class="ct">int
+                        🆕</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">statement_name</span><span
+                        class="ct">text 🆕</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">month</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">total_revenue</span><span
+                        class="ct">numeric(10,2)</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">total_expenses</span><span
+                        class="ct">numeric(10,2)</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">net_income</span><span
+                        class="ct">numeric(10,2)</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">occupancy_rate</span><span
+                        class="ct">int</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">reservation_count</span><span
+                        class="ct">int</span></div>
+            </div>
+        </div>
+
+        <!-- 11. MESSAGE_TEMPLATES -->
+        <div class="t hw" id="t-tpl" style="left:3100px;top:750px;width:230px">
+            <div class="th">📋 message_templates (4)<span class="bd">Hostaway</span></div>
+            <div class="tc">
+                <div class="cr"><span class="ci pk">🔑</span><span class="cn pk">id</span><span class="ct">serial
+                        PK</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">name</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">content</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">category</span><span class="ct">text</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 12. PROPOSALS -->
+        <div class="t in" id="t-prop" style="left:1200px;top:1500px;width:280px">
+            <div class="th">🎯 proposals (14)<span class="bd">Internal</span></div>
+            <div class="tc">
+                <div class="cr"><span class="ci pk">🔑</span><span class="cn pk">id</span><span class="ct">serial
+                        PK</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">cycle_id</span><span class="ct">text
+                        🆕</span></div>
+                <div class="cr"><span class="ci fk">🔗</span><span class="cn fk">listing_id</span><span class="ct">→
+                        listings</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">date</span><span class="ct">date</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">current_price</span><span
+                        class="ct">numeric(10,2)</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">proposed_price</span><span
+                        class="ct">numeric(10,2)</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">change_pct</span><span class="ct">int</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">risk_level</span><span
+                        class="ct">text</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">status</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">reasoning</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">signals</span><span class="ct">jsonb</span>
+                </div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">guardrails_applied</span><span
+                        class="ct">jsonb 🆕</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">approved_by</span><span class="ct">text
+                        🆕</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">approved_at / created_at</span><span
+                        class="ct">timestamp</span></div>
+            </div>
+        </div>
+
+        <!-- 13. EXECUTIONS -->
+        <div class="t in" id="t-exec" style="left:1200px;top:1950px;width:280px">
+            <div class="th">✅ executions (11)<span class="bd">Internal</span></div>
+            <div class="tc">
+                <div class="cr"><span class="ci pk">🔑</span><span class="cn pk">id</span><span class="ct">serial
+                        PK</span></div>
+                <div class="cr"><span class="ci fk">🔗</span><span class="cn fk">proposal_id</span><span class="ct">→
+                        proposals</span></div>
+                <div class="cr"><span class="ci fk">🔗</span><span class="cn fk">listing_id</span><span class="ct">→
+                        listings</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">date_range_start</span><span
+                        class="ct">date 🆕</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">date_range_end</span><span
+                        class="ct">date 🆕</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">old_price</span><span
+                        class="ct">numeric(10,2)</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">new_price</span><span
+                        class="ct">numeric(10,2)</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">sync_status</span><span
+                        class="ct">text</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">hostaway_response</span><span
+                        class="ct">jsonb 🆕</span></div>
+                <div class="cr new"><span class="ci r">●</span><span class="cn">verified_at</span><span
+                        class="ct">timestamp 🆕</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">created_at</span><span
+                        class="ct">timestamp</span></div>
+            </div>
+        </div>
+
+        <!-- 14. REVENUE_CYCLES (NEW) -->
+        <div class="t in" id="t-rcycle" style="left:1600px;top:2000px;width:270px">
+            <div class="th">🔄 revenue_cycles (12) 🆕<span class="bd">Internal</span></div>
+            <div class="tc">
+                <div class="cr"><span class="ci pk">🔑</span><span class="cn pk">id</span><span class="ct">serial
+                        PK</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">cycle_id</span><span class="ct">text
+                        unique</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">properties</span><span
+                        class="ct">jsonb</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">date_range_start</span><span
+                        class="ct">date</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">date_range_end</span><span
+                        class="ct">date</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">total_proposals</span><span
+                        class="ct">int</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">approved_count</span><span
+                        class="ct">int</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">rejected_count</span><span
+                        class="ct">int</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">avg_price_change</span><span
+                        class="ct">int</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">occupancy_rate</span><span
+                        class="ct">int</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">aggregated_data</span><span
+                        class="ct">jsonb</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">execution_time_ms / created_at</span><span
+                        class="ct">int / ts</span></div>
+            </div>
+        </div>
+
+        <!-- 15. EVENTS (NEW) -->
+        <div class="t in" id="t-events" style="left:2000px;top:1600px;width:260px">
+            <div class="th">🌍 events (13) 🆕<span class="bd">Internal</span></div>
+            <div class="tc">
+                <div class="cr"><span class="ci pk">🔑</span><span class="cn pk">id</span><span class="ct">text
+                        PK</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">name</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">description</span><span
+                        class="ct">text</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">start_date</span><span
+                        class="ct">date</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">end_date</span><span class="ct">date</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">location</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">category</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">demand_impact</span><span
+                        class="ct">text</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">demand_notes</span><span
+                        class="ct">text</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">confidence</span><span
+                        class="ct">numeric(3,2)</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">source_url</span><span
+                        class="ct">text</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">is_recurring</span><span
+                        class="ct">boolean</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">created_at</span><span
+                        class="ct">timestamp</span></div>
+            </div>
+        </div>
+
+        <!-- 16. COMPETITOR_SIGNALS (NEW) -->
+        <div class="t in" id="t-comp" style="left:2400px;top:1600px;width:270px">
+            <div class="th">📈 competitor_signals (13) 🆕<span class="bd">Internal</span></div>
+            <div class="tc">
+                <div class="cr"><span class="ci pk">🔑</span><span class="cn pk">id</span><span class="ct">text
+                        PK</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">area</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">start_date</span><span
+                        class="ct">date</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">end_date</span><span class="ct">date</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">signal</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">confidence</span><span
+                        class="ct">numeric(3,2)</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">reasoning</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">available_units</span><span
+                        class="ct">int</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">average_price</span><span
+                        class="ct">numeric(10,2)</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">price_change_pct</span><span
+                        class="ct">numeric(5,2)</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">occupancy_rate</span><span
+                        class="ct">int</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">source</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">created_at</span><span
+                        class="ct">timestamp</span></div>
+            </div>
+        </div>
+
+        <!-- 17. CHAT_MESSAGES -->
+        <div class="t in" id="t-chat" style="left:2100px;top:2050px;width:250px">
+            <div class="th">🤖 chat_messages (8)<span class="bd">Internal</span></div>
+            <div class="tc">
+                <div class="cr"><span class="ci pk">🔑</span><span class="cn pk">id</span><span class="ct">serial
+                        PK</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">user_id</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">session_id</span><span
+                        class="ct">text</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">role</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">content</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci fk">🔗</span><span class="cn fk">listing_id</span><span class="ct">→
+                        listings</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">structured</span><span
+                        class="ct">jsonb</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">created_at</span><span
+                        class="ct">timestamp</span></div>
+            </div>
+        </div>
+
+        <!-- 18. SYNC_LOG (NEW) -->
+        <div class="t sy" id="t-sync" style="left:2600px;top:2050px;width:240px">
+            <div class="th">🔄 sync_log (8) 🆕<span class="bd">System</span></div>
+            <div class="tc">
+                <div class="cr"><span class="ci pk">🔑</span><span class="cn pk">id</span><span class="ct">serial
+                        PK</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">entity_type</span><span
+                        class="ct">text</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">entity_count</span><span
+                        class="ct">int</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">status</span><span class="ct">text</span>
+                </div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">error_message</span><span
+                        class="ct">text</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">duration_ms</span><span
+                        class="ct">int</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">started_at</span><span
+                        class="ct">timestamp</span></div>
+                <div class="cr"><span class="ci r">·</span><span class="cn">completed_at</span><span
+                        class="ct">timestamp</span></div>
+            </div>
+        </div>
+
+    </div>
+    <div class="ft">PriceOS Database Schema · 18 Tables · Matches DATABASE_SCHEMA_DESIGN.md · 🆕 = planned additions
+    </div>
+
+    <script>
+        const svg = document.getElementById('conn');
+        const rels = [
+            { f: 't-listings', fs: 'left', t: 't-calendar', ts: 'right', c: '#d29922', lbl: 'listing_id → id' },
+            { f: 't-listings', fs: 'bottom', t: 't-reserv', ts: 'top', c: '#d29922', lbl: 'listing_map_id → id' },
+            { f: 't-listings', fs: 'right', t: 't-tasks', ts: 'left', c: '#d29922', lbl: 'listing_id → id' },
+            { f: 't-listings', fs: 'right', t: 't-rules', ts: 'left', c: '#d29922', lbl: 'listing_id → id' },
+            { f: 't-listings', fs: 'left', t: 't-exp', ts: 'right', c: '#d29922', lbl: 'listing_id → id' },
+            { f: 't-listings', fs: 'left', t: 't-owner', ts: 'right', c: '#d29922', lbl: 'listing_id → id' },
+            { f: 't-listings', fs: 'right', t: 't-convos', ts: 'top', c: '#d29922', lbl: 'listing_id → id' },
+            { f: 't-listings', fs: 'bottom', t: 't-prop', ts: 'top', c: '#3fb950', lbl: 'listing_id → id' },
+            { f: 't-listings', fs: 'bottom', t: 't-chat', ts: 'top', c: '#3fb950', lbl: 'listing_id → id' },
+            { f: 't-listings', fs: 'bottom', t: 't-exec', ts: 'top', c: '#3fb950', lbl: 'listing_id → id' },
+            { f: 't-reserv', fs: 'left', t: 't-reviews', ts: 'right', c: '#58a6ff', lbl: 'reservation_id → id' },
+            { f: 't-reserv', fs: 'right', t: 't-convos', ts: 'left', c: '#58a6ff', lbl: 'reservation_id → id' },
+            { f: 't-convos', fs: 'bottom', t: 't-cmsg', ts: 'top', c: '#58a6ff', lbl: 'conversation_id → id' },
+            { f: 't-prop', fs: 'bottom', t: 't-exec', ts: 'top', c: '#3fb950', lbl: 'proposal_id → id' },
+        ];
+        function ga(el, s) {
+            const r = el.getBoundingClientRect(), cr = document.getElementById('canvas').getBoundingClientRect(), ox = -cr.left, oy = -cr.top;
+            switch (s) {
+                case 'top': return { x: r.left + r.width / 2 + ox, y: r.top + oy }; case 'bottom': return { x: r.left + r.width / 2 + ox, y: r.bottom + oy };
+                case 'left': return { x: r.left + ox, y: r.top + r.height / 2 + oy }; case 'right': return { x: r.right + ox, y: r.top + r.height / 2 + oy }
+            }
+        }
+        function draw() {
+            svg.innerHTML = '';
+            const d = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            ['d29922', '58a6ff', '3fb950'].forEach(c => {
+                const m = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+                m.setAttribute('id', 'a-' + c); m.setAttribute('markerWidth', '8'); m.setAttribute('markerHeight', '6'); m.setAttribute('refX', '8'); m.setAttribute('refY', '3'); m.setAttribute('orient', 'auto');
+                const p = document.createElementNS('http://www.w3.org/2000/svg', 'polygon'); p.setAttribute('points', '0 0,8 3,0 6'); p.setAttribute('fill', '#' + c); m.appendChild(p); d.appendChild(m)
+            });
+            svg.appendChild(d);
+            rels.forEach(r => {
+                const fe = document.getElementById(r.f), te = document.getElementById(r.t); if (!fe || !te) return;
+                const a = ga(fe, r.fs), b = ga(te, r.ts), dx = b.x - a.x, dy = b.y - a.y;
+                let cx1, cy1, cx2, cy2;
+                if (r.fs === 'bottom' || r.fs === 'top') { cx1 = a.x; cy1 = a.y + dy * .4; cx2 = b.x; cy2 = b.y - dy * .4 } else { cx1 = a.x + dx * .4; cy1 = a.y; cx2 = b.x - dx * .4; cy2 = b.y }
+                const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                p.setAttribute('d', `M ${a.x} ${a.y} C ${cx1} ${cy1},${cx2} ${cy2},${b.x} ${b.y}`);
+                p.setAttribute('stroke', r.c); p.setAttribute('stroke-width', '2'); p.setAttribute('fill', 'none'); p.setAttribute('stroke-dasharray', '6 3'); p.setAttribute('opacity', '.55');
+                p.setAttribute('marker-end', `url(#a-${r.c.replace('#', '')})`); svg.appendChild(p);
+                const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2; const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                t.setAttribute('x', mx); t.setAttribute('y', my - 5); t.setAttribute('fill', r.c); t.setAttribute('font-size', '10');
+                t.setAttribute('font-family', 'Inter'); t.setAttribute('font-weight', '600'); t.setAttribute('text-anchor', 'middle'); t.setAttribute('opacity', '.7');
+                t.textContent = r.lbl || '1\u2192N'; svg.appendChild(t)
+            })
+        }
+        window.addEventListener('load', draw); window.addEventListener('resize', draw);
+    </script>
+</body>
+
+</html>

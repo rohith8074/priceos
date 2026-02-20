@@ -1,16 +1,53 @@
 import { db, listings } from "@/lib/db";
+import { sql } from "drizzle-orm";
 import { ContextPanel } from "@/components/layout/context-panel";
 import { UnifiedChatInterface } from "@/components/chat/unified-chat-interface";
 import { SyncStatusSidebar } from "@/components/layout/sync-status-sidebar";
 
 export default async function DashboardPage() {
-  // Fetch all properties for the context panel
-  const properties = await db.select().from(listings);
+  // 1. Fetch all listings (Drizzle returns camelCase objects)
+  const allListings = await db.select().from(listings);
+
+  // 2. Fetch aggregation stats for next 30 days using raw SQL
+  const statsQuery = sql`
+    SELECT
+      listing_id,
+      COALESCE(
+        ROUND(
+          100.0 * COUNT(id) FILTER (WHERE status IN ('reserved', 'booked')) / NULLIF(COUNT(id), 0),
+          0
+        ),
+        0
+      ) as occupancy,
+      COALESCE(
+        ROUND(AVG(current_price), 2),
+        0
+      ) as avg_price
+    FROM inventory_master
+    WHERE date BETWEEN CURRENT_DATE AND CURRENT_DATE + 30
+    GROUP BY listing_id
+  `;
+
+  const statsResult = await db.execute(statsQuery);
+
+  // 3. Merge stats into listing objects
+  const propertiesWithMetrics = allListings.map((listing) => {
+    // Determine the type of rows returned by db.execute
+    // Drizzle with neon-http usually returns an array of row objects
+    const rows = Array.isArray(statsResult) ? statsResult : statsResult.rows || [];
+    const stat = rows.find((r: any) => r.listing_id === listing.id);
+
+    return {
+      ...listing,
+      occupancy: stat ? Number(stat.occupancy) : 0,
+      avgPrice: stat && Number(stat.avg_price) > 0 ? Number(stat.avg_price) : Number(listing.price),
+    };
+  });
 
   return (
     <div className="flex h-full overflow-hidden">
-      <ContextPanel properties={properties} />
-      <UnifiedChatInterface properties={properties} />
+      <ContextPanel properties={propertiesWithMetrics} />
+      <UnifiedChatInterface properties={propertiesWithMetrics} />
       <SyncStatusSidebar />
     </div>
   );

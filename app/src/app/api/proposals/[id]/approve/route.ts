@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, proposals } from "@/lib/db";
+import { db, inventoryMaster } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { ChannelSyncAgent } from "@/lib/agents/channel-sync-agent";
 
@@ -11,35 +11,40 @@ export async function POST(
     const { id } = await params;
     const proposalId = parseInt(id);
 
-    // Verify proposal exists and is pending
+    // Verify proposal exists
     const [proposal] = await db
       .select()
-      .from(proposals)
-      .where(eq(proposals.id, proposalId))
+      .from(inventoryMaster)
+      .where(eq(inventoryMaster.id, proposalId))
       .limit(1);
 
     if (!proposal) {
       return NextResponse.json(
-        { success: false, message: "Proposal not found" },
+        { success: false, message: "Proposal matching inventory record not found" },
         { status: 404 }
       );
     }
 
-    if (proposal.status !== "pending") {
+    if (!proposal.proposedPrice) {
       return NextResponse.json(
         {
           success: false,
-          message: `Proposal already ${proposal.status}`,
+          message: `No proposed price pending for this date`,
         },
         { status: 400 }
       );
     }
 
-    // Update proposal status to approved
+    const proposedPriceStr = proposal.proposedPrice;
+
+    // Update proposal status to approved (which means clearing proposedPrice and updating currentPrice)
     await db
-      .update(proposals)
-      .set({ status: "approved" })
-      .where(eq(proposals.id, proposalId));
+      .update(inventoryMaster)
+      .set({
+        currentPrice: proposedPriceStr,
+        proposedPrice: null,
+      })
+      .where(eq(inventoryMaster.id, proposalId));
 
     // Execute via Channel Sync Agent
     const channelSyncAgent = new ChannelSyncAgent(
@@ -51,14 +56,17 @@ export async function POST(
     if (result.success) {
       return NextResponse.json({
         success: true,
-        message: `Price updated from AED ${parseFloat(proposal.currentPrice).toLocaleString("en-US")} to AED ${parseFloat(proposal.proposedPrice).toLocaleString("en-US")} for ${proposal.dateRangeStart} - ${proposal.dateRangeEnd}. Updated ${result.updatedDays} days${result.verified ? " (verified)" : ""}.`,
+        message: `Price updated from AED ${parseFloat(proposal.currentPrice).toLocaleString("en-US")} to AED ${parseFloat(proposedPriceStr).toLocaleString("en-US")} for ${proposal.date}. Updated ${result.updatedDays} days${result.verified ? " (verified)" : ""}.`,
       });
     } else {
       // Revert proposal status if execution failed
       await db
-        .update(proposals)
-        .set({ status: "pending" })
-        .where(eq(proposals.id, proposalId));
+        .update(inventoryMaster)
+        .set({
+          currentPrice: proposal.currentPrice,
+          proposedPrice: proposedPriceStr
+        })
+        .where(eq(inventoryMaster.id, proposalId));
 
       return NextResponse.json(
         {

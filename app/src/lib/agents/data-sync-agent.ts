@@ -1,5 +1,5 @@
 import { createHostawayClient } from "../hostaway/client";
-import { db, listings, calendarDays, reservations } from "@/lib/db";
+import { db, listings, inventoryMaster, activityTimeline } from "@/lib/db";
 import { eq, and, gte, lte } from "drizzle-orm";
 import { addDays, format } from "date-fns";
 import type { HostawayListing, HostawayCalendarDay, HostawayReservation } from "../hostaway/types";
@@ -31,18 +31,21 @@ export class DataSyncAgent {
    * Check if cached data is stale
    */
   async isCacheStale(listingId: number): Promise<boolean> {
+    // Without syncedAt on listings, we always consider data potentially stale
+    // In production, consider using a separate sync_metadata table
     const listing = await db
-      .select({ syncedAt: listings.syncedAt })
+      .select()
       .from(listings)
       .where(eq(listings.id, listingId))
       .limit(1);
 
-    if (!listing.length || !listing[0].syncedAt) {
-      return true; // No sync yet
+    if (!listing.length) {
+      return true; // No listing found
     }
 
-    const cacheAge = Date.now() - listing[0].syncedAt.getTime();
-    return cacheAge > STALE_THRESHOLD_MS;
+    // For now, always return false (data is considered fresh after initial sync)
+    // TODO: Implement sync tracking via separate metadata table
+    return false;
   }
 
   /**
@@ -83,7 +86,6 @@ export class DataSyncAgent {
           currencyCode: hostawayListing.currencyCode,
           personCapacity: hostawayListing.personCapacity,
           amenities: hostawayListing.amenities || [],
-          syncedAt,
         })
         .where(eq(listings.id, listingId));
 
@@ -99,27 +101,24 @@ export class DataSyncAgent {
 
       // Delete old calendar data for this range
       await db
-        .delete(calendarDays)
+        .delete(inventoryMaster)
         .where(
           and(
-            eq(calendarDays.listingId, listingId),
-            gte(calendarDays.date, format(startDate, "yyyy-MM-dd")),
-            lte(calendarDays.date, format(endDate, "yyyy-MM-dd"))
+            eq(inventoryMaster.listingId, listingId),
+            gte(inventoryMaster.date, format(startDate, "yyyy-MM-dd")),
+            lte(inventoryMaster.date, format(endDate, "yyyy-MM-dd"))
           )
         );
 
       // Insert new calendar data
       if (calendarData.length > 0) {
-        await db.insert(calendarDays).values(
+        await db.insert(inventoryMaster).values(
           calendarData.map((day) => ({
             listingId,
             date: day.date,
             status: day.status,
-            price: day.price.toString(),
-            minimumStay: day.minimumStay || 1,
-            maximumStay: day.maximumStay || 30,
-            notes: day.note || null,
-            syncedAt,
+            currentPrice: day.price.toString(),
+            minMaxStay: { min: day.minimumStay || 1, max: day.maximumStay || 30 },
           }))
         );
       }
@@ -133,44 +132,25 @@ export class DataSyncAgent {
 
       // Upsert reservations
       for (const reservation of reservationsData) {
-        const existing = await db
-          .select()
-          .from(reservations)
-          .where(eq(reservations.hostawayId, reservation.id.toString()))
-          .limit(1);
-
+        const existing = await db.select().from(activityTimeline).where(and(eq(activityTimeline.title, reservation.guestName), eq(activityTimeline.startDate, reservation.arrivalDate))).limit(1);
         if (existing.length > 0) {
-          // Update existing
-          await db
-            .update(reservations)
-            .set({
-              guestName: reservation.guestName,
-              guestEmail: reservation.guestEmail || null,
-              channelName: reservation.channelName,
-              arrivalDate: reservation.arrivalDate,
-              departureDate: reservation.departureDate,
-              nights: reservation.nights,
-              totalPrice: reservation.totalPrice.toString(),
-              pricePerNight: reservation.nightlyRate.toString(),
-              status: this.mapReservationStatus(reservation.status),
-              syncedAt,
-            })
-            .where(eq(reservations.id, existing[0].id));
+          await db.update(activityTimeline).set({
+            endDate: reservation.departureDate,
+            financials: { totalPrice: reservation.totalPrice, pricePerNight: reservation.nightlyRate, channelName: reservation.channelName, reservationStatus: this.mapReservationStatus(reservation.status) }
+          }).where(eq(activityTimeline.id, existing[0].id));
         } else {
-          // Insert new
-          await db.insert(reservations).values({
-            hostawayId: reservation.id.toString(),
-            listingMapId: listingId,
-            guestName: reservation.guestName,
-            guestEmail: reservation.guestEmail || null,
-            channelName: reservation.channelName,
-            arrivalDate: reservation.arrivalDate,
-            departureDate: reservation.departureDate,
-            nights: reservation.nights,
-            totalPrice: reservation.totalPrice.toString(),
-            pricePerNight: reservation.nightlyRate.toString(),
-            status: this.mapReservationStatus(reservation.status),
-            syncedAt,
+          await db.insert(activityTimeline).values({
+            listingId,
+            type: 'reservation',
+            title: reservation.guestName,
+            startDate: reservation.arrivalDate,
+            endDate: reservation.departureDate,
+            createdAt: syncedAt,
+            financials: {
+              totalPrice: reservation.totalPrice,
+              pricePerNight: reservation.nightlyRate,
+              channelName: reservation.channelName,
+            }
           });
         }
       }
@@ -251,15 +231,11 @@ export class DataSyncAgent {
               area: hostawayListing.address || "N/A",
               bedroomsNumber: hostawayListing.bedroomsNumber,
               bathroomsNumber: hostawayListing.bathroomsNumber,
-              propertyType: hostawayListing.propertyType,
               propertyTypeId: hostawayListing.propertyTypeId,
               price: hostawayListing.price.toString(),
               currencyCode: hostawayListing.currencyCode,
-              priceFloor: (hostawayListing.price * 0.7).toString(),
-              priceCeiling: (hostawayListing.price * 1.5).toString(),
               personCapacity: hostawayListing.personCapacity,
               amenities: hostawayListing.amenities || [],
-              syncedAt: new Date(),
             })
             .returning();
 

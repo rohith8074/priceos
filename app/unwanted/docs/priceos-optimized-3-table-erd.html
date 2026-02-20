@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PriceOS — Optimized 3-Table ERD Mapping</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --surface: #1a1d27;
+            --card: #222633;
+            --border: #2d3348;
+            --text: #e4e7f1;
+            --muted: #8b90a5;
+            --accent: #6c5ce7;
+            --accent2: #00cec9;
+            --green: #00b894;
+            --orange: #fdcb6e;
+            --red: #e17055;
+            --blue: #74b9ff;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 40px 24px;
+        }
+
+        .container {
+            max-width: 1250px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: var(--muted);
+            margin-bottom: 40px;
+        }
+
+        .erd {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin: 30px 0;
+            align-items: flex-start;
+        }
+
+        .erd-table {
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            width: 380px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .erd-table.listings-card {
+            border-color: var(--accent);
+        }
+
+        .erd-table.inventory-card {
+            border-color: var(--green);
+        }
+
+        .erd-table.timeline-card {
+            border-color: var(--blue);
+        }
+
+        .erd-header {
+            padding: 14px 20px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .listings-card .erd-header {
+            background: var(--accent);
+            color: white;
+        }
+
+        .inventory-card .erd-header {
+            background: var(--green);
+            color: white;
+        }
+
+        .timeline-card .erd-header {
+            background: var(--blue);
+            color: white;
+        }
+
+        .erd-col {
+            padding: 8px 20px;
+            font-size: .88rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .erd-col:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .type {
+            color: var(--muted);
+            font-size: .75rem;
+            font-family: monospace;
+        }
+
+        .mapping {
+            color: var(--orange);
+            font-size: 0.7rem;
+            font-style: italic;
+            font-weight: 600;
+            opacity: 0.8;
+        }
+
+        .pk {
+            background: rgba(108, 92, 231, 0.1);
+            font-weight: 600;
+        }
+
+        .fk {
+            background: rgba(0, 206, 201, 0.1);
+            font-weight: 600;
+        }
+
+        .info-pill {
+            padding: 2px 8px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            font-size: 0.7rem;
+        }
+
+        .mapping-summary {
+            margin-top: 50px;
+            background: var(--card);
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        h2 {
+            color: var(--accent2);
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+        }
+
+        .matrix {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .matrix th {
+            text-align: left;
+            color: var(--accent2);
+            padding: 12px;
+            border: 1px solid var(--border);
+            font-size: 0.85rem;
+        }
+
+        .matrix td {
+            padding: 12px;
+            border: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        .source-tag {
+            font-family: monospace;
+            font-size: 0.8rem;
+            background: #333;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: var(--orange);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>PriceOS — Optimized 3-Table Schema</h1>
+        <p class="subtitle">100% Column Preservation &bull; Zero JOIN Query Architecture &bull; Optimized for Agent
+            Latency</p>
+
+        <div class="erd">
+            <!-- LISTINGS TABLE -->
+            <div class="erd-table listings-card">
+                <div class="erd-header">
+                    <span>🏠 listings</span>
+                    <span class="info-pill">Static Data</span>
+                </div>
+                <div class="erd-col pk">id <span class="type">SERIAL</span></div>
+                <div class="erd-col">hostaway_id <span class="type">TEXT</span></div>
+                <div class="erd-col">name <span class="type">TEXT</span></div>
+                <div class="erd-col">city <span class="type">TEXT</span></div>
+                <div class="erd-col">country_code <span class="type">TEXT</span></div>
+                <div class="erd-col">area <span class="type">TEXT</span></div>
+                <div class="erd-col">bedrooms_number <span class="type">INT</span></div>
+                <div class="erd-col">bathrooms_number <span class="type">INT</span></div>
+                <div class="erd-col">property_type_id <span class="type">INT</span></div>
+                <div class="erd-col">base_price <span class="type">NUMERIC</span></div>
+                <div class="erd-col">currency_code <span class="type">TEXT</span></div>
+                <div class="erd-col">person_capacity <span class="type">INT</span></div>
+                <div class="erd-col">amenities <span class="type">JSONB</span></div>
+                <div class="erd-col">address <span class="type">TEXT</span></div>
+                <div class="erd-col">latitude <span class="type">NUMERIC</span></div>
+                <div class="erd-col">longitude <span class="type">NUMERIC</span></div>
+                <div class="erd-col" style="border-top: 2px solid var(--accent)">
+                    price_floor <span class="mapping">from proposals</span>
+                </div>
+                <div class="erd-col">
+                    price_ceiling <span class="mapping">from proposals</span>
+                </div>
+            </div>
+
+            <!-- INVENTORY MASTER -->
+            <div class="erd-table inventory-card">
+                <div class="erd-header">
+                    <span>📅 inventory_master</span>
+                    <span class="info-pill">Daily State</span>
+                </div>
+                <div class="erd-col pk">id <span class="type">SERIAL</span></div>
+                <div class="erd-col fk">listing_id <span class="type">INT</span></div>
+                <div class="erd-col">date <span class="type">DATE</span></div>
+                <div class="erd-col">status <span class="type">TEXT</span></div>
+                <div class="erd-col">current_price <span class="type">NUMERIC</span></div>
+                <div class="erd-col">min_max_stay <span class="type">JSONB</span></div>
+                <div class="erd-col">calendar_note <span class="type">TEXT</span></div>
+                <div class="erd-col" style="background:#10b98115">proposed_price <span class="mapping">from
+                        proposals</span></div>
+                <div class="erd-col" style="background:#10b98115">change_pct <span class="mapping">from proposals</span>
+                </div>
+                <div class="erd-col" style="background:#10b98115">risk_level <span class="mapping">from proposals</span>
+                </div>
+                <div class="erd-col" style="background:#10b98115">proposal_status <span class="mapping">from
+                        proposals</span></div>
+                <div class="erd-col" style="background:#10b98115">reasoning <span class="mapping">from proposals</span>
+                </div>
+                <div class="erd-col" style="background:#10b98115">is_pushed <span class="mapping">from proposals</span>
+                </div>
+            </div>
+
+            <!-- ACTIVITY TIMELINE -->
+            <div class="erd-table timeline-card">
+                <div class="erd-header">
+                    <span>📊 activity_timeline</span>
+                    <span class="info-pill">Events & Context</span>
+                </div>
+                <div class="erd-col pk">id <span class="type">SERIAL</span></div>
+                <div class="erd-col fk">listing_id <span class="type">INT</span></div>
+                <div class="erd-col">type <span class="type">TEXT (RES/EVENT)</span></div>
+                <div class="erd-col">start_date <span class="type">DATE</span></div>
+                <div class="erd-col">end_date <span class="type">DATE</span></div>
+                <div class="erd-col">title <span class="type">TEXT</span></div>
+                <div class="erd-col">impact_score <span class="type">INT</span></div>
+                <div class="erd-col" style="background:#3b82f615">financials <span class="mapping">RES columns as
+                        JSON</span></div>
+                <div class="erd-col" style="background:#3b82f615">market_context <span class="mapping">EVENT columns as
+                        .erd-col">fetched_at <span class="type">TIMESTAMP</span></div>
+            </div>
+        </div>
+
+        <div class="mapping-summary">
+            <h2>Detailed Column Migration Matrix</h2>
+            <table class="matrix">
+                <tr>
+                    <th>Original Table</th>
+                    <th>Count</th>
+                    <th>Optimized Destination</th>
+                    <th>Column Migration Details</th>
+                </tr>
+                <tr>
+                    <td><code>listings</code></td>
+                    <td>16</td>
+                    <td><strong>listings</strong></td>
+                    <td>All 16 columns stay, providing the static base for Property Analysts.</td>
+                </tr>
+                <tr>
+                    <td><code>proposals</code></td>
+                    <td>12</td>
+                    <td><strong>listings</strong> & <strong>inventory_master</strong></td>
+                    <td><code>price_floor/ceiling</code> moved to <span class="source-tag">listings</span>. Remaining 10
+                        columns moved to <span class="source-tag">inventory_master</span> to allow single-query ROI
+                        analysis.</td>
+                </tr>
+                <tr>
+                    <td><code>calendar_days</code></td>
+                    <td>8</td>
+                    <td><strong>inventory_master</strong></td>
+                    <td>All 8 columns migrated. <code>min/max_stay</code> merged into a single JSONB block.</td>
+                </tr>
+                <tr>
+                    <td><code>reservations</code></td>
+                    <td>21</td>
+                    <td><strong>activity_timeline</strong></td>
+                    <td><code>id, listing_id, dates, guest_name</code> kept as top-level searchable columns. Financial
+                        details (21 columns) stored in <span class="source-tag">financials</span> JSONB for lead-time
+                        and revenue analysis.</td>
+                </tr>
+                <tr>
+                    <td><code>event_signals</code></td>
+                    <td>11</td>
+                    <td><strong>activity_timeline</strong></td>
+                    <td>Title and dates pulled to top level. Impact and search metadata stored in <span
+                            class="source-tag">market_context</span> JSONB.</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="mapping-summary" style="margin-top:40px; border-color: var(--accent);">
+            <h2>5. Agent Workflow & Responsibility Matrix</h2>
+            <table class="matrix">
+                <tr>
+                    <th>Agent</th>
+                    <th>Assigned Tables</th>
+                    <th>Core Task Responsibilities</th>
+                    <th>Key Columns Used</th>
+                </tr>
+                <tr>
+                    <td><strong>Agent 2: Property Analyst</strong></td>
+                    <td><span class="source-tag">listings</span><br><span class="source-tag">inventory_master</span>
+                    </td>
+                    <td>
+                        • <strong>Gap Detection</strong>: Finds orphaned single nights.<br>
+                        • <strong>Restrictions</strong>: Manages min/max stay logic.<br>
+                        • <strong>Revenue Forecast</strong>: Projects month-end yield.
+                    </td>
+                    <td>
+                        <code>inventory_master.status</code><br>
+                        <code>inventory_master.date</code><br>
+                        <code>inventory_master.min_max_stay</code><br>
+                        <code>inventory_master.current_price</code>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Agent 3: Booking Intelligence</strong></td>
+                    <td><span class="source-tag">activity_timeline</span></td>
+                    <td>
+                        • <strong>Financial Analysis</strong>: Calculates Net Revenue and Payouts.<br>
+                        • <strong>Performance</strong>: Tracks Channel Velocity.<br>
+                        • <strong>Lead Time</strong>: Analyzes reservation-to-stay gap.
+                    </td>
+                    <td>
+                        <code>activity_timeline.financials</code><br>
+                        <code>activity_timeline.start_date</code><br>
+                        <code>activity_timeline.type='RES'</code>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Agent 4: Market Research</strong></td>
+                    <td><span class="source-tag">activity_timeline</span><br>+ Internet</td>
+                    <td>
+                        • <strong>Event Analysis</strong>: Matches bookings to Dubai events.<br>
+                        • <strong>Benchmarking</strong>: Compares rates against competitors.<br>
+                        • <strong>Positioning</strong>: Provides real-time market sentiment.
+                    </td>
+                    <td>
+                        <code>activity_timeline.market_context</code><br>
+                        <code>activity_timeline.impact_score</code><br>
+                        <code>activity_timeline.title</code>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Agent 5: PriceGuard</strong></td>
+                    <td><span class="source-tag">listings</span><br><span class="source-tag">inventory_master</span>
+                    </td>
+                    <td>
+                        • <strong>Safety Check</strong>: Ensures prices never break Floor/Ceiling.<br>
+                        • <strong>Variance</strong>: Flags high-risk % jumps for manual review.<br>
+                        • <strong>Approval</strong>: Finalizes the recommendation status.
+                    </td>
+                    <td>
+                        <code>listings.price_floor</code><br>
+                        <code>listings.price_ceiling</code><br>
+                        <code>inventory_master.proposed_price</code><br>
+                        <code>inventory_master.change_pct</code>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Agent 6: Marketing Agent</strong></td>
+                    <td><span class="source-tag">activity_timeline</span></td>
+                    <td>
+                        • <strong>Setup Phase</strong>: Fetches and saves events & holidays.<br>
+                        • <strong>Market Intel</strong>: Populates the competitive landscape.
+                    </td>
+                    <td>
+                        <code>activity_timeline.title</code><br>
+                        <code>activity_timeline.start_date</code><br>
+                        <code>activity_timeline.impact_score</code>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="highlight-box success" style="margin-top:40px">
+        </div>
+</body>
+
+</html>

@@ -37,11 +37,11 @@ export interface SyncStatusResponse {
     count: number;
     lastSyncedAt: string | null;
   };
-  reservations: {
+  activity_timeline: {
     count: number;
     lastSyncedAt: string | null;
   };
-  calendar: {
+  inventory_master: {
     daysCount: number;
     lastSyncedAt: string | null;
   };

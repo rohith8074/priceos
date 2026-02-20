@@ -38,7 +38,7 @@ export function SyncStatusSidebar() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Fetch sync status
+  // Fetch sync status from DB
   const fetchSyncStatus = async () => {
     try {
       const params = new URLSearchParams({
@@ -62,16 +62,16 @@ export function SyncStatusSidebar() {
           isLoading: false,
         },
         reservations: {
-          count: data.reservations.count,
-          lastSyncedAt: data.reservations.lastSyncedAt
-            ? new Date(data.reservations.lastSyncedAt)
+          count: data.activity_timeline.count,
+          lastSyncedAt: data.activity_timeline.lastSyncedAt
+            ? new Date(data.activity_timeline.lastSyncedAt)
             : null,
           isLoading: false,
         },
         calendar: {
-          daysCount: data.calendar.daysCount,
-          lastSyncedAt: data.calendar.lastSyncedAt
-            ? new Date(data.calendar.lastSyncedAt)
+          daysCount: data.inventory_master.daysCount,
+          lastSyncedAt: data.inventory_master.lastSyncedAt
+            ? new Date(data.inventory_master.lastSyncedAt)
             : null,
           isLoading: false,
         },
@@ -86,7 +86,7 @@ export function SyncStatusSidebar() {
     fetchSyncStatus();
   }, [contextType, propertyId]);
 
-  // Handle manual sync
+  // Handle manual sync — re-fetch data counts from DB
   const handleSyncAll = async () => {
     setIsSyncing(true);
 
@@ -98,47 +98,41 @@ export function SyncStatusSidebar() {
     }));
 
     try {
-      // Always sync portfolio (all properties) regardless of current context
-      // Property-specific sync is not yet supported
-      const response = await fetch("/api/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          context: "portfolio",
-        }),
+      // Re-fetch current counts from the database
+      const params = new URLSearchParams({
+        context: contextType,
+        ...(contextType === "property" && propertyId
+          ? { propertyId: propertyId.toString() }
+          : {}),
       });
 
+      const response = await fetch(`/api/sync/status?${params}`);
       if (!response.ok) throw new Error("Sync failed");
 
       const data = await response.json();
+      const timestamp = new Date();
 
-      if (data.success) {
-        const timestamp = new Date(data.timestamp);
+      setSyncStatus({
+        listings: {
+          count: data.listings.count,
+          lastSyncedAt: timestamp,
+          isLoading: false,
+        },
+        reservations: {
+          count: data.activity_timeline.count,
+          lastSyncedAt: timestamp,
+          isLoading: false,
+        },
+        calendar: {
+          daysCount: data.inventory_master.daysCount,
+          lastSyncedAt: timestamp,
+          isLoading: false,
+        },
+      });
 
-        setSyncStatus({
-          listings: {
-            count: data.synced.listings,
-            lastSyncedAt: timestamp,
-            isLoading: false,
-          },
-          reservations: {
-            count: data.synced.reservations,
-            lastSyncedAt: timestamp,
-            isLoading: false,
-          },
-          calendar: {
-            daysCount: data.synced.calendar,
-            lastSyncedAt: timestamp,
-            isLoading: false,
-          },
-        });
-
-        console.log(
-          `Sync complete: ${data.synced.listings} properties, ${data.synced.reservations} reservations, ${data.synced.calendar} calendar days`
-        );
-      } else {
-        throw new Error(data.error || "Sync failed");
-      }
+      console.log(
+        `Sync complete: ${data.listings.count} listing(s), ${data.activity_timeline.count} reservation(s), ${data.inventory_master.daysCount} calendar day(s)`
+      );
     } catch (error) {
       console.error("Sync failed:", error);
 
@@ -152,12 +146,22 @@ export function SyncStatusSidebar() {
         },
         calendar: { ...prev.calendar, isLoading: false, error: "Sync failed" },
       }));
-
-      console.error("Sync failed:", error);
     } finally {
       setIsSyncing(false);
     }
   };
+
+  // Context-aware subtitle label
+  const listingsSubLabel =
+    contextType === "property"
+      ? syncStatus.listings.count === 1
+        ? "property"
+        : "properties"
+      : "properties";
+  const reservationsSubLabel =
+    syncStatus.reservations.count === 1 ? "booking" : "bookings";
+  const calendarSubLabel =
+    syncStatus.calendar.daysCount === 1 ? "day" : "days";
 
   return (
     <aside
@@ -207,6 +211,7 @@ export function SyncStatusSidebar() {
               icon={Building2}
               label="Listings"
               count={syncStatus.listings.count}
+              countLabel={listingsSubLabel}
               lastSynced={syncStatus.listings.lastSyncedAt}
               isLoading={syncStatus.listings.isLoading}
               error={syncStatus.listings.error}
@@ -216,6 +221,7 @@ export function SyncStatusSidebar() {
               icon={Calendar}
               label="Reservations"
               count={syncStatus.reservations.count}
+              countLabel={reservationsSubLabel}
               lastSynced={syncStatus.reservations.lastSyncedAt}
               isLoading={syncStatus.reservations.isLoading}
               error={syncStatus.reservations.error}
@@ -225,6 +231,7 @@ export function SyncStatusSidebar() {
               icon={CalendarRange}
               label="Calendar"
               count={syncStatus.calendar.daysCount}
+              countLabel={calendarSubLabel}
               lastSynced={syncStatus.calendar.lastSyncedAt}
               isLoading={syncStatus.calendar.isLoading}
               error={syncStatus.calendar.error}
