@@ -50,7 +50,8 @@ export function UnifiedChatInterface({ properties }: Props) {
     isSidebarOpen,
     toggleSidebar,
     dateRange,
-    setDateRange
+    setDateRange,
+    triggerMarketRefresh
   } = useContextStore();
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -216,6 +217,7 @@ export function UnifiedChatInterface({ properties }: Props) {
       toast.success("Setup Complete", {
         description: `Analyzed ${data.eventsCount} market signals. Chat is now active.`,
       });
+      triggerMarketRefresh();
 
     } catch (error) {
       console.error("Market Setup Error:", error);

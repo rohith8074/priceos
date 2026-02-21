@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { activityTimeline } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 const LYZR_API_URL = "https://agent-prod.studio.lyzr.ai/v3/inference/chat/";
 const LYZR_API_KEY = process.env.LYZR_API_KEY || "";
@@ -201,6 +202,10 @@ Please execute market research for this property matching the exact date range a
                 }
             });
         }
+
+        // Delete previous signals to ensure UI and DB only show the absolutely latest info for the selected range
+        await db.delete(activityTimeline).where(eq(activityTimeline.type, 'market_event'));
+        console.log(`  🗑️ Cleared previous signals.`);
 
         if (recordsToInsert.length > 0) {
             const finalRecords = recordsToInsert.map(r => ({

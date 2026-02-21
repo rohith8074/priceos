@@ -20,6 +20,10 @@ interface ContextStore {
   // UI State
   isSidebarOpen: boolean;
   toggleSidebar: () => void;
+
+  // Sync Trigger
+  marketRefreshTrigger: number;
+  triggerMarketRefresh: () => void;
 }
 
 // Helper to convert JSON strings back to dates
@@ -45,8 +49,12 @@ export const useContextStore = create<ContextStore>()(
         to: addDays(new Date(), 30),
       },
 
+      marketRefreshTrigger: 0,
+
       // UI Actions
       toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+
+      triggerMarketRefresh: () => set((state) => ({ marketRefreshTrigger: state.marketRefreshTrigger + 1 })),
 
       setDateRange: (range: DateRange | undefined) =>
         set({
