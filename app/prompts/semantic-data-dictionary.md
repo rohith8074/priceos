@@ -15,82 +15,176 @@
 
 ---
 
-## 1. `listings` (Optimized Base)
+# Table: `listings`
 
-### Table Description
+**Table Description:** The master property registry. Every short-term rental property managed by PriceOS is stored here. Each row represents one physical property. Always use this table as your primary anchor to grab property metadata. Use `price_floor` and `price_ceiling` explicitly to ensure your pricing bounds are respected. This table is primarily utilized by Agent 2 (Property Analyst), Agent 4 (Market Research) and Agent 5 (PriceGuard).
 
-The **master property registry**. Every short-term rental property managed by PriceOS is stored here. Each row = one physical property. **Agent Instructions:** Always use this table as your primary anchor to grab property metadata. Use `price_floor` and `price_ceiling` explicitly to ensure your pricing bounds are respected. This table is primarily utilized by Agent 2 (Property Analyst), Agent 4 (Market Research) and Agent 5 (PriceGuard).
+### `id`
+**Description:** The primary key and unique internal identifier for the property record in our database.
+**SQL Query:** `SELECT id FROM listings LIMIT 5;`
 
-### Columns
+### `hostaway_id`
+**Description:** The property's unique ID synced directly from the Hostaway Property Management System. Used for API matching.
+**SQL Query:** `SELECT hostaway_id FROM listings WHERE id = 1;`
 
-* **`id`** — serial (PK). The unique identifier for the internal database.
-* **`hostaway_id`** — text (UNIQUE). Property's unique ID in Hostaway PMS.
-* **`name`** — text (NOT NULL). Human-readable property name.
-  * **SQL Example**: `SELECT id, name FROM listings WHERE name ILIKE '%marina%';`
-* **`city`** — text (NOT NULL, default 'Dubai').
-* **`country_code`** — varchar(3) (NOT NULL, default 'AE').
-* **`area`** — text (NOT NULL). Neighborhood (e.g., 'Dubai Marina').
-* **`bedrooms_number`** — integer (NOT NULL).
-* **`bathrooms_number`** — integer (NOT NULL).
-* **`property_type_id`** — integer (NOT NULL).
-* **`price`** — numeric(10,2) (NOT NULL). Base standard nightly rate in AED.
-* **`currency_code`** — varchar(3) (NOT NULL, default 'AED').
-* **`person_capacity`** — integer (NULLABLE). Max guests allowed.
-* **`amenities`** — jsonb (NULLABLE). Array of tags strings. e.g., `["pool", "wifi"]`.
-  * **SQL Example**: `SELECT id, name, amenities FROM listings WHERE amenities ? 'pool';`
-* **`address`** — text (NULLABLE).
-* **`latitude`** — numeric(10,7) (NULLABLE).
-* **`longitude`** — numeric(10,7) (NULLABLE).
-* **`price_floor`** — numeric(10,2) (NOT NULL). Hard minimum nightly rate.
-* **`price_ceiling`** — numeric(10,2) (NOT NULL). Hard maximum nightly rate.
-  * **SQL Example**: `SELECT price_floor, price_ceiling FROM listings WHERE id = 1;`
+### `name`
+**Description:** The human-readable property name as it appears on booking sites. Searchable and often used for text matching.
+**SQL Query:** `SELECT name FROM listings WHERE name ILIKE '%marina%';`
+
+### `city`
+**Description:** The city where the property is located. By default, this is set to 'Dubai'.
+**SQL Query:** `SELECT city FROM listings WHERE id = 1;`
+
+### `country_code`
+**Description:** The standard 2-digit country code. By default, this is set to 'AE'.
+**SQL Query:** `SELECT country_code FROM listings WHERE id = 1;`
+
+### `area`
+**Description:** The specific geographic neighborhood or sub-market (e.g., 'Dubai Marina', 'Downtown Dubai'). Critical for competitor grouping.
+**SQL Query:** `SELECT area, count(*) FROM listings GROUP BY area;`
+
+### `bedrooms_number`
+**Description:** The integer count of physical bedrooms in the property.
+**SQL Query:** `SELECT name, bedrooms_number FROM listings WHERE bedrooms_number >= 2;`
+
+### `bathrooms_number`
+**Description:** The integer count of physical bathrooms in the property.
+**SQL Query:** `SELECT name, bathrooms_number FROM listings WHERE id = 1;`
+
+### `property_type_id`
+**Description:** An integer ID matching the physical property type category (e.g., Apartment, Villa).
+**SQL Query:** `SELECT property_type_id FROM listings WHERE id = 1;`
+
+### `price`
+**Description:** The standard or default nightly base rate in AED. This acts as a reference point for dynamic adjustments.
+**SQL Query:** `SELECT name, price FROM listings ORDER BY price DESC;`
+
+### `currency_code`
+**Description:** The 3-character currency string. By default, 'AED'.
+**SQL Query:** `SELECT currency_code FROM listings WHERE id = 1;`
+
+### `person_capacity`
+**Description:** The maximum number of guests legally allowed to sleep in the rental property.
+**SQL Query:** `SELECT name, person_capacity FROM listings WHERE person_capacity >= 4;`
+
+### `amenities`
+**Description:** A JSONB array containing simple string tags of the property's amenities (e.g., `["pool", "wifi", "gym"]`). Use JSONB operators to search.
+**SQL Query:** `SELECT name, amenities FROM listings WHERE amenities ? 'pool';`
+
+### `address`
+**Description:** The full, human-readable street address of the property.
+**SQL Query:** `SELECT name, address FROM listings WHERE id = 1;`
+
+### `latitude`
+**Description:** The geographical map latitude of the property for location plotting.
+**SQL Query:** `SELECT latitude FROM listings WHERE id = 1;`
+
+### `longitude`
+**Description:** The geographical map longitude of the property for location plotting.
+**SQL Query:** `SELECT longitude FROM listings WHERE id = 1;`
+
+### `price_floor`
+**Description:** The strict minimum base limit (in AED) that the AI cannot price below under any circumstance. Crucial safety guardrail.
+**SQL Query:** `SELECT name, price_floor FROM listings WHERE id = 1;`
+
+### `price_ceiling`
+**Description:** The strict maximum limit (in AED) that the AI cannot price above. Used by PriceGuard for clipping.
+**SQL Query:** `SELECT name, price_ceiling FROM listings WHERE id = 1;`
 
 ---
 
-## 2. `inventory_master` (Calendar & Proposals)
+# Table: `inventory_master`
 
-### Table Description
+**Table Description:** The daily operations and pricing matrix. It consolidates both the current calendar state (booked, blocked, available) and the AI's future pricing proposals in a single row per day per listing. When analyzing calendar gaps, verifying occupancy rates, or confirming live vs proposed rates, query this table. Always constrain your search strictly using a `DATE` overlap. This table is utilized by Agent 2 (Property Analyst) and Agent 5 (PriceGuard).
 
-The **daily operations and pricing matrix**. Consolidates both the current calendar state and the AI's future pricing proposals in a single row per day per listing. **Agent Instructions:** When analyzing calendar gaps, verifying occupancy rates, or confirming live vs proposed rates, query this table. Always constrain your search strictly using a `DATE` overlap. This table is utilized by Agent 2 (Property Analyst) and Agent 5 (PriceGuard).
+### `id`
+**Description:** The primary key and unique internal identifier for this specific day's inventory record.
+**SQL Query:** `SELECT id FROM inventory_master LIMIT 5;`
 
-### Columns
+### `listing_id`
+**Description:** The foreign key linking this day's record back to the `listings` table.
+**SQL Query:** `SELECT listing_id FROM inventory_master WHERE date = CURRENT_DATE;`
 
-* **`id`** — serial (PK). The unique internal identifier.
-* **`listing_id`** — integer (FK) - Joins to `listings.id`.
-* **`date`** — date (NOT NULL). Target calendar day.
-  * **SQL Example**: `SELECT date, status FROM inventory_master WHERE listing_id = 1 AND date BETWEEN CURRENT_DATE AND (CURRENT_DATE + 7);`
-* **`status`** — text (NOT NULL). Values: `'available'`, `'reserved'`, `'blocked'`.
-  * **SQL Example**: `SELECT date FROM inventory_master WHERE listing_id = 1 AND status = 'available';`
-* **`current_price`** — numeric(10,2) (NOT NULL). Live price on booking platforms right now.
-* **`min_max_stay`** — jsonb (NOT NULL). Rules object. Examples: `{"min": 2, "max": 30}`
-  * **SQL Example**: `SELECT date FROM inventory_master WHERE listing_id = 1 AND (min_max_stay->>'min')::int >= 3;`
-* **`proposed_price`** — numeric(10,2) (NULLABLE). AI pricing recommendation.
-* **`change_pct`** — integer (NULLABLE). Percentage delta between current and proposed price.
-* **`proposal_status`** — text (NULLABLE). Values: `'pending'`, `'approved'`, `'rejected'`.
-* **`reasoning`** — text (NULLABLE). Agent's text explanation for why they set the proposed price.
+### `date`
+**Description:** The exact calendar day this row represents. Every property has exactly one row per calendar day.
+**SQL Query:** `SELECT date FROM inventory_master WHERE listing_id = 1 AND date BETWEEN CURRENT_DATE AND (CURRENT_DATE + 30);`
+
+### `status`
+**Description:** The active state of the calendar day. Permitted enum values are `'available'`, `'reserved'`, or `'blocked'`.
+**SQL Query:** `SELECT date, status FROM inventory_master WHERE listing_id = 1 AND status = 'available';`
+
+### `current_price`
+**Description:** The actual, live nightly price currently active on all booking channels (in AED) for this day.
+**SQL Query:** `SELECT date, current_price FROM inventory_master WHERE listing_id = 1 AND date = '2026-03-15';`
+
+### `min_max_stay`
+**Description:** A JSONB object dictating the minimum and maximum nights a guest is required to book if their stay includes this date. e.g. `{"min": 2, "max": 30}`
+**SQL Query:** `SELECT date FROM inventory_master WHERE listing_id = 1 AND (min_max_stay->>'min')::int >= 3;`
+
+### `proposed_price`
+**Description:** The new nightly rate the AI Pricing Agent is recommending for this specific date. It can be null if no suggestion exists.
+**SQL Query:** `SELECT date, proposed_price FROM inventory_master WHERE listing_id = 1 AND proposed_price IS NOT NULL;`
+
+### `change_pct`
+**Description:** The calculated mathematical percentage difference between the `current_price` and the `proposed_price`.
+**SQL Query:** `SELECT date, change_pct FROM inventory_master WHERE listing_id = 1 AND proposed_price IS NOT NULL;`
+
+### `proposal_status`
+**Description:** The state of the AI's proposal. Values are `'pending'`, `'approved'`, or `'rejected'`.
+**SQL Query:** `SELECT date, proposal_status FROM inventory_master WHERE listing_id = 1 AND proposal_status = 'pending';`
+
+### `reasoning`
+**Description:** A short text explanation generated by the AI detailing *why* the `proposed_price` was generated (e.g. "Gap discount to fill 2 nights").
+**SQL Query:** `SELECT date, reasoning FROM inventory_master WHERE listing_id = 1 AND proposal_status = 'pending';`
 
 ---
 
-## 3. `activity_timeline` (Reservations & Market Events)
+# Table: `activity_timeline`
 
-### Table Description
+**Table Description:** The chronological event and transaction hub. This table uniquely stores both Guest Reservations AND local Market Events/Intelligence. The discriminator column `type` informs how to parse the deeply nested JSONB attributes. When looking for intelligence insights, depend on this table heavily. Agent 3 must filter conditionally for `type = 'reservation'`, while Agent 4 must rely on `type = 'market_event'`.
 
-The **chronological event and transaction hub**. Stores both Guest Bookings AND local Market Events/Intelligence. Discriminator column `type` informs how to parse the JSONB attributes. **Agent Instructions:** When looking for insights (Agent 3 and 4), depend on this table heavily. Use the `type` column to delineate your logic. Agent 3 must filter for `type = 'reservation'` while Agent 4 must filter for `type = 'market_event'`.
+### `id`
+**Description:** The primary key and unique internal identifier for the timeline event.
+**SQL Query:** `SELECT id FROM activity_timeline LIMIT 5;`
 
-### Columns
+### `listing_id`
+**Description:** The foreign key connecting the event to a property. This field is populated for `reservation` types, but is strictly `NULL` for globally applicable `market_event` types.
+**SQL Query:** `SELECT listing_id FROM activity_timeline WHERE type = 'reservation';`
 
-* **`id`** — serial (PK). The unique internal identifier.
-* **`listing_id`** — integer (FK, NULLABLE). Filled for `reservation`. NULL for city-wide `market_event`. 
-* **`type`** — text (NOT NULL). Discriminator. Values: `'reservation'` or `'market_event'`.
-  * **SQL Example**: `SELECT * FROM activity_timeline WHERE type = 'reservation' AND listing_id = 1;`
-* **`start_date`** — date (NOT NULL). Guest arrival OR Event start.
-* **`end_date`** — date (NOT NULL). Guest departure OR Event end.
-* **`title`** — text (NOT NULL). Guest Name OR Event Name (e.g., `'John Doe'`, `'Art Dubai 2026'`).
-* **`impact_score`** — integer (NULLABLE). Multiplier metric (stored as 0-100 percentage increase context) for market demand.
-* **`financials`** — jsonb (NULLABLE). **Populated only for `'reservation'`**. 
-  - Standard keys: `total_price` (numeric), `price_per_night` (numeric), `channel_commission` (numeric), `cleaning_fee` (numeric), `channel_name` (text, e.g. "Airbnb", "Direct"), `reservation_status` (text, e.g. "confirmed", "cancelled").
-  * **SQL Example for Math**: `SELECT title AS guest_name, (financials->>'total_price')::numeric - COALESCE((financials->>'channel_commission')::numeric, 0) AS net_revenue FROM activity_timeline WHERE type = 'reservation' AND listing_id = 1;`
-  * **SQL Example for Categorization**: `SELECT (financials->>'channel_name') AS channel, COUNT(*) FROM activity_timeline WHERE type = 'reservation' AND listing_id = 1 GROUP BY (financials->>'channel_name');`
-* **`market_context`** — jsonb (NULLABLE). **Populated only for `'market_event'`**.
-  - Standard keys: `event_type` (text: 'event', 'holiday', 'competitor_intel', 'positioning'), `description` (text), `suggested_premium_pct` (int), `competitor_median_rate` (numeric), `insight_verdict` (text).
-  * **SQL Example**: `SELECT title AS event_name, start_date, (market_context->>'suggested_premium_pct') AS potential_premium FROM activity_timeline WHERE type = 'market_event' AND start_date <= '2026-03-31' AND end_date >= '2026-03-01';`
+### `type`
+**Description:** The discriminator dictating the payload. It must be either `'reservation'` (handled by Agent 3) or `'market_event'` (handled by Agent 4).
+**SQL Query:** `SELECT type, count(*) FROM activity_timeline GROUP BY type;`
+
+### `start_date`
+**Description:** The start boundary of the event. If `type='reservation'`, it's the check-in arrival date. If `type='market_event'`, it is the event jump-off date.
+**SQL Query:** `SELECT start_date FROM activity_timeline WHERE type = 'market_event' AND title ILIKE '%Art Dubai%';`
+
+### `end_date`
+**Description:** The end boundary of the event. If `type='reservation'`, it's the check-out departure date. If `type='market_event'`, it is the event conclusion date.
+**SQL Query:** `SELECT end_date FROM activity_timeline WHERE start_date >= CURRENT_DATE;`
+
+### `title`
+**Description:** The primary label. If `type='reservation'`, it holds the Guest's Name. If `type='market_event'`, it holds the Event Title (e.g. `'Gitex 2026'`).
+**SQL Query:** `SELECT title FROM activity_timeline WHERE type = 'market_event';`
+
+### `impact_score`
+**Description:** An integer metric (0-100) scoring the anticipated market demand bump for a specific event. Used to judge whether to hike prices aggresively.
+**SQL Query:** `SELECT title, impact_score FROM activity_timeline WHERE type = 'market_event' ORDER BY impact_score DESC;`
+
+### `financials`
+**Description:** A JSONB block **populated ONLY when `type = 'reservation'`**. Includes keys: `total_price`, `price_per_night`, `channel_commission`, `cleaning_fee`, `channel_name`, and `reservation_status`. Crucial for revenue math.
+**SQL Query:** 
+```sql
+SELECT title AS guest_name, (financials->>'total_price')::numeric AS gross_revenue 
+FROM activity_timeline 
+WHERE type = 'reservation' AND listing_id = 1;
+```
+
+### `market_context`
+**Description:** A JSONB block **populated ONLY when `type = 'market_event'`**. Includes intelligence flags like `event_type` ('event', 'holiday', 'competitor_intel'), `description`, `suggested_premium_pct`, `competitor_median_rate`, and `insight_verdict`.
+**SQL Query:** 
+```sql
+SELECT title AS event_name, (market_context->>'event_type') AS sub_type, (market_context->>'suggested_premium_pct') AS premium 
+FROM activity_timeline 
+WHERE type = 'market_event' AND start_date >= '2026-03-01';
+```
