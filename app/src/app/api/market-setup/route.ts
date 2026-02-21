@@ -24,65 +24,10 @@ export async function POST(req: NextRequest) {
             ? `Property: ${context.propertyName} (Area: ${context.area || "Dubai"}, Bedrooms: ${context.bedrooms || "unknown"}, Base Price: AED ${context.basePrice || "unknown"})`
             : "Portfolio level analysis (all Dubai properties)";
 
-        const message = `You are a Dubai short-term rental market researcher with internet search capabilities.
-
-${propertyInfo}
+        const message = `${propertyInfo}
 Date Range: ${dateRange.from} to ${dateRange.to}
 
-TASK — Return ALL of the following for DUBAI:
-
-1. **EVENTS**: Search for ALL major events happening in Dubai during this period — conferences, exhibitions, sports events, concerts, cultural festivals, etc. For each event provide: title, exact dates, impact level (high/medium/low), confidence (0-100), description, source URL, and suggested_premium_pct (integer, e.g. 15 means +15% price premium). If no events found, return an empty array.
-
-2. **HOLIDAYS**: Find ALL UAE public holidays and school breaks in this period. For each: name, dates, impact description, premium_pct (integer), source. If no holidays found, return an empty array.
-
-3. **COMPETITORS**: Search Airbnb, Booking.com for similar properties in the same Dubai area. Return: sample_size, min_rate (AED/night), max_rate, median_rate, and 3-5 specific competitor examples with name, price, and source.
-
-4. **POSITIONING**: Given the property's base price, calculate its percentile vs competitors. Return: percentile (0-100), verdict (UNDERPRICED/FAIR/SLIGHTLY_ABOVE/OVERPRICED), and a 1-sentence insight.
-
-5. **SUMMARY**: A 2-3 sentence executive summary of market conditions for this period. If no events, focus on competitor pricing and seasonality.
-
-RESPONSE FORMAT — Return ONLY this JSON, no other text:
-{
-  "area": "string",
-  "date_range": { "start": "YYYY-MM-DD", "end": "YYYY-MM-DD" },
-  "events": [
-    {
-      "title": "string",
-      "date_start": "YYYY-MM-DD",
-      "date_end": "YYYY-MM-DD",
-      "impact": "high|medium|low",
-      "confidence": 85,
-      "description": "string",
-      "source": "https://...",
-      "suggested_premium_pct": 15
-    }
-  ],
-  "holidays": [
-    {
-      "name": "string",
-      "date_start": "YYYY-MM-DD",
-      "date_end": "YYYY-MM-DD",
-      "impact": "string",
-      "premium_pct": 10,
-      "source": "https://..."
-    }
-  ],
-  "competitors": {
-    "sample_size": 45,
-    "min_rate": 280,
-    "max_rate": 950,
-    "median_rate": 490,
-    "examples": [
-      { "name": "Similar 1BR Marina", "price": 480, "source": "Airbnb" }
-    ]
-  },
-  "positioning": {
-    "percentile": 58,
-    "verdict": "FAIR",
-    "insight": "At AED 550, property sits at 58th percentile with room to push during events."
-  },
-  "summary": "string"
-}`;
+Please execute market research for this property matching the exact date range above. Return your analysis formatted exactly as specified in your system instructions.`;
 
         // 2. Call Marketing Agent (Sonar LLM with internet search)
         console.log(`\n📡 MARKET SETUP — Calling Marketing Agent`);
