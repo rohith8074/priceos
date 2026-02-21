@@ -342,12 +342,7 @@ export function OverviewClient({
         <CardHeader className="border-b border-border dark:border-white/10 py-4 bg-gradient-to-r from-amber-500/5 dark:from-amber-500/10 to-transparent flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <CardTitle className="text-amber-600 dark:text-amber-500 flex items-center gap-2">
-              <CalendarCheck className="w-5 h-5" />
-              Global Availability Master Calendar
             </CardTitle>
-            <CardDescription className="text-muted-foreground mt-1">
-              30-day forward-looking timeline view across all active properties
-            </CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider hidden md:inline">Start Date</span>

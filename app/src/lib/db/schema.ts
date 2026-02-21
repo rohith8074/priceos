@@ -80,6 +80,13 @@ export const activityTimeline = pgTable("activity_timeline", {
     source?: string;
     [key: string]: any;
   }>(),
+  guestDetails: jsonb("guest_details").$type<{
+    name?: string;
+    email?: string;
+    phone?: string;
+    numberOfGuests?: number;
+    profileUrl?: string;
+  }>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
   listingIdx: index("activity_timeline_listing_idx").on(table.listingId),
