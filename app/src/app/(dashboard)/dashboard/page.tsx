@@ -4,6 +4,7 @@ import { ContextPanel } from "@/components/layout/context-panel";
 import { UnifiedChatInterface } from "@/components/chat/unified-chat-interface";
 import { SyncStatusSidebar } from "@/components/layout/sync-status-sidebar";
 import { MarketEventsTable } from "@/components/events/market-events-table";
+import { RightSidebarLayout } from "@/components/layout/right-sidebar-layout";
 
 export default async function DashboardPage() {
   // 1. Fetch all listings (Drizzle returns camelCase objects)
@@ -50,20 +51,20 @@ export default async function DashboardPage() {
       <ContextPanel properties={propertiesWithMetrics} />
 
       {/* Center Chat Panel */}
-      <div className="flex-[2] min-w-[500px] border-r flex flex-col h-full">
+      <div className="flex-[2] min-w-[500px] border-r flex flex-col h-full bg-background relative z-10 transition-all duration-300">
         <UnifiedChatInterface properties={propertiesWithMetrics} />
       </div>
 
       {/* Right Side Stack: Events Table on top, Sync status below */}
-      <div className="flex-1 min-w-[350px] max-w-[450px] flex flex-col h-full bg-background relative border-l">
-        <div className="flex-1 overflow-hidden min-h-[400px]">
+      <RightSidebarLayout>
+        <div className="flex-1 min-h-[400px] overflow-hidden">
           <MarketEventsTable />
         </div>
         <div className="h-px bg-border my-2 mx-4" />
         <div className="h-[250px] shrink-0">
           <SyncStatusSidebar />
         </div>
-      </div>
+      </RightSidebarLayout>
     </div>
   );
 }

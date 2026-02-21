@@ -9,6 +9,10 @@ interface ContextStore {
   // Actions
   setPortfolioContext: () => void;
   setPropertyContext: (id: number, name: string) => void;
+
+  // UI State
+  isSidebarOpen: boolean;
+  toggleSidebar: () => void;
 }
 
 export const useContextStore = create<ContextStore>((set) => ({
@@ -16,6 +20,10 @@ export const useContextStore = create<ContextStore>((set) => ({
   contextType: "portfolio",
   propertyId: null,
   propertyName: null,
+  isSidebarOpen: true,
+
+  // UI Actions
+  toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
 
   // Switch to portfolio view
   setPortfolioContext: () =>

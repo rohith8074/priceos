@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Send, Loader2, Settings, Zap, Calendar as CalendarIcon } from "lucide-react";
+import { Send, Loader2, Settings, Zap, Calendar as CalendarIcon, PanelRightClose, PanelRightOpen } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useContextStore } from "@/stores/context-store";
@@ -43,7 +43,7 @@ interface ChatSession {
 const SESSION_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 
 export function UnifiedChatInterface({ properties }: Props) {
-  const { contextType, propertyId, propertyName } = useContextStore();
+  const { contextType, propertyId, propertyName, isSidebarOpen, toggleSidebar } = useContextStore();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -371,9 +371,9 @@ export function UnifiedChatInterface({ properties }: Props) {
   return (
     <div className="flex flex-col flex-1 overflow-hidden h-full">
       {/* Header */}
-      <div className="border-b bg-muted/30 px-6 py-4">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+      <div className="border-b bg-muted/30 px-6 py-4 shrink-0">
+        <div className="flex items-center justify-between gap-4 flex-wrap overflow-hidden">
+          <div className="flex items-center gap-3 shrink-0">
             <div className="rounded-lg bg-primary/10 p-2">
               <Send className="h-4 w-4 text-primary" />
             </div>
@@ -432,59 +432,71 @@ export function UnifiedChatInterface({ properties }: Props) {
             </div>
           </div>
 
-          {/* Occupancy & Price Metrics — Dynamic from calendar_days */}
-          {contextType === "property" && propertyId && (
-            <div className="hidden lg:flex items-center gap-6">
-              <div className="text-right">
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                  Occupancy
-                </p>
-                <div className="flex items-baseline gap-1 justify-end">
-                  {isLoadingMetrics ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  ) : calendarMetrics ? (
-                    <>
-                      <span className={`text-lg font-bold ${calendarMetrics.occupancy >= 70 ? 'text-emerald-500' :
-                        calendarMetrics.occupancy >= 50 ? 'text-amber-500' :
-                          'text-red-500'
-                        }`}>
-                        {calendarMetrics.occupancy}%
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-lg font-bold text-muted-foreground">—</span>
-                  )}
-                </div>
-                {calendarMetrics && (
-                  <p className="text-[9px] text-muted-foreground">
-                    {calendarMetrics.bookedDays}/{calendarMetrics.totalDays} days
+          <div className="flex items-center gap-4 shrink-0 ml-auto">
+            {/* Occupancy & Price Metrics — Dynamic from calendar_days */}
+            {contextType === "property" && propertyId && (
+              <div className="hidden lg:flex items-center gap-6 shrink-0 min-w-max bg-background border px-4 py-1.5 rounded-xl shadow-sm">
+                <div className="text-right">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                    Occupancy
                   </p>
-                )}
-              </div>
-              <div className="h-8 w-px bg-border" />
-              <div className="text-right">
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                  Avg Price
-                </p>
-                <div className="flex items-baseline gap-1 justify-end">
-                  {isLoadingMetrics ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  ) : calendarMetrics ? (
-                    <>
-                      <span className="text-lg font-bold">
-                        {calendarMetrics.avgPrice.toFixed(0)}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        AED
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-lg font-bold text-muted-foreground">—</span>
+                  <div className="flex items-baseline gap-1 justify-end">
+                    {isLoadingMetrics ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    ) : calendarMetrics ? (
+                      <>
+                        <span className={`text-lg font-bold ${calendarMetrics.occupancy >= 70 ? 'text-emerald-500' :
+                          calendarMetrics.occupancy >= 50 ? 'text-amber-500' :
+                            'text-red-500'
+                          }`}>
+                          {calendarMetrics.occupancy}%
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-lg font-bold text-muted-foreground">—</span>
+                    )}
+                  </div>
+                  {calendarMetrics && (
+                    <p className="text-[9px] text-muted-foreground">
+                      {calendarMetrics.bookedDays}/{calendarMetrics.totalDays} days
+                    </p>
                   )}
                 </div>
+                <div className="h-8 w-px bg-border" />
+                <div className="text-right">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                    Avg Price
+                  </p>
+                  <div className="flex items-baseline gap-1 justify-end">
+                    {isLoadingMetrics ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    ) : calendarMetrics ? (
+                      <>
+                        <span className="text-lg font-bold">
+                          {calendarMetrics.avgPrice.toFixed(0)}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          AED
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-lg font-bold text-muted-foreground">—</span>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={toggleSidebar}
+              className="h-9 w-9 shrink-0 shadow-sm"
+              title={isSidebarOpen ? "Close Sidebar" : "Open Sidebar"}
+            >
+              {isSidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
       </div>
 
