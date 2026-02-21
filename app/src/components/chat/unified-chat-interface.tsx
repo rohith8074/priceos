@@ -15,7 +15,7 @@ import { addDays, format } from "date-fns";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface Message {
   id: string;
@@ -44,7 +44,6 @@ const SESSION_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 
 export function UnifiedChatInterface({ properties }: Props) {
   const { contextType, propertyId, propertyName } = useContextStore();
-  const { toast } = useToast();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -172,8 +171,7 @@ export function UnifiedChatInterface({ properties }: Props) {
 
     setIsSettingUp(true);
 
-    toast({
-      title: "Syncing Market Intelligence...",
+    toast("Syncing Market Intelligence...", {
       description: "Agents are fetching real-time data for your selected dates...",
     });
 
@@ -206,18 +204,14 @@ export function UnifiedChatInterface({ properties }: Props) {
       // Once setup is done, activate chat silently
       setIsChatActive(true);
 
-      toast({
-        title: "Setup Complete",
+      toast.success("Setup Complete", {
         description: `Analyzed ${data.eventsCount} market signals. Chat is now active.`,
-        variant: "default",
       });
 
     } catch (error) {
       console.error("Market Setup Error:", error);
-      toast({
-        title: "Market Sync Failed",
+      toast.error("Market Sync Failed", {
         description: error instanceof Error ? error.message : "Marketing Agent could not be reached.",
-        variant: "destructive",
       });
     } finally {
       setIsSettingUp(false);
@@ -559,3 +553,4 @@ export function UnifiedChatInterface({ properties }: Props) {
     </div>
   );
 }
+// Toaster was added to layout.tsx
