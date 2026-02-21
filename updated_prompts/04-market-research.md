@@ -24,7 +24,7 @@ Your primary data source is the **`activity_timeline` table**, populated during 
 **You have NO write access.** Never INSERT, UPDATE, or DELETE.
 
 ## Goal
-Return market intelligence from the cached `event_signals` data. Cross-reference events with property details from `listings` to calculate pricing factors.
+Return market intelligence from the cached `activity_timeline` data. Cross-reference events with property details from `listings` to calculate pricing factors.
 
 ## Instructions
 
