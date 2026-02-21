@@ -59,6 +59,22 @@ export async function GET(req: NextRequest) {
             ? Math.round((bookedDays / bookableDays) * 100)
             : 0;
 
+        const calendarDays = await db
+            .select({
+                date: inventoryMaster.date,
+                status: inventoryMaster.status,
+                price: inventoryMaster.currentPrice,
+            })
+            .from(inventoryMaster)
+            .where(
+                and(
+                    eq(inventoryMaster.listingId, lid),
+                    gte(inventoryMaster.date, from),
+                    lte(inventoryMaster.date, to)
+                )
+            )
+            .orderBy(inventoryMaster.date);
+
         return NextResponse.json({
             listingId: lid,
             dateRange: { from, to },
@@ -69,6 +85,7 @@ export async function GET(req: NextRequest) {
             bookableDays,
             occupancy,
             avgPrice: Math.round(avgPriceVal * 100) / 100,
+            calendarDays,
         });
     } catch (error) {
         console.error("Calendar Metrics Error:", error);

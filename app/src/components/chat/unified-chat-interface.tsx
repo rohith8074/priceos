@@ -79,6 +79,7 @@ export function UnifiedChatInterface({ properties }: Props) {
     availableDays: number;
     blockedDays: number;
     totalDays: number;
+    calendarDays?: { date: string; status: string; price: number }[];
   } | null>(null);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
 
@@ -164,6 +165,7 @@ export function UnifiedChatInterface({ properties }: Props) {
             availableDays: data.availableDays,
             blockedDays: data.blockedDays,
             totalDays: data.totalDays,
+            calendarDays: data.calendarDays,
           });
         }
       } catch (err) {
@@ -444,6 +446,41 @@ export function UnifiedChatInterface({ properties }: Props) {
             </Button>
           </div>
         </div>
+
+        {/* Calendar Strip Layer */}
+        {contextType === "property" && propertyId && calendarMetrics?.calendarDays && calendarMetrics.calendarDays.length > 0 && (
+          <div className="px-5 pb-3 w-full border-t border-border/40 pt-2 bg-muted/10">
+            <div className="flex flex-col gap-1.5 max-w-full">
+              <div className="flex justify-between items-center px-1">
+                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider flex-shrink-0">
+                  {format(new Date(calendarMetrics.calendarDays[0].date), "MMM d")}
+                </span>
+                <div className="flex gap-4 text-[10px] text-muted-foreground font-medium uppercase tracking-wider mx-auto">
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-rose-500"></span> Booked</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Available</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-700"></span> Blocked</span>
+                </div>
+                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider flex-shrink-0">
+                  {format(new Date(calendarMetrics.calendarDays[calendarMetrics.calendarDays.length - 1].date), "MMM d")}
+                </span>
+              </div>
+              <div className="flex gap-[2px] items-center h-2.5 overflow-hidden rounded-full w-full bg-muted/30">
+                {calendarMetrics.calendarDays.map((day, idx) => {
+                  let badge = 'bg-emerald-500';
+                  if (day.status === 'booked' || day.status === 'reserved') badge = 'bg-rose-500';
+                  else if (day.status === 'blocked') badge = 'bg-slate-300 dark:bg-slate-700';
+                  return (
+                    <div
+                      key={idx}
+                      className={`h-full flex-1 min-w-[2px] rounded-full transition-opacity hover:opacity-75 cursor-help ${badge}`}
+                      title={`${format(new Date(day.date), "MMM d, yyyy")}: ${day.status.toUpperCase()} (${day.price} AED)`}
+                    />
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Messages */}
