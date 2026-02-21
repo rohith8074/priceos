@@ -48,6 +48,7 @@ export function OverviewClient({
   totalPortfolioRevenue
 }: OverviewClientProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [calendarStartDate, setCalendarStartDate] = useState(new Date());
 
   const filteredProperties = properties.filter((prop) =>
     prop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -55,8 +56,7 @@ export function OverviewClient({
   );
 
   // Generate an array of the next 30 days for the Global Calendar header
-  const today = new Date();
-  const next30Days = Array.from({ length: 30 }).map((_, i) => addDays(today, i));
+  const next30Days = Array.from({ length: 30 }).map((_, i) => addDays(calendarStartDate, i));
 
   const chartData = [...filteredProperties]
     .sort((a, b) => b.revenue - a.revenue)
@@ -93,6 +93,11 @@ export function OverviewClient({
     'Booking.com': '#3b82f6',
     'Direct': '#10b981'
   };
+
+  const BAR_COLORS = [
+    '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899',
+    '#f43f5e', '#14b8a6', '#f97316', '#06b6d4', '#84cc16'
+  ];
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -225,7 +230,7 @@ export function OverviewClient({
                   <Tooltip content={<CustomTooltip />} cursor={{ fill: '#888888', opacity: 0.1 }} />
                   <Bar dataKey="revenue" radius={[6, 6, 0, 0]}>
                     {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.revenue > 10000 ? '#f59e0b' : '#3f3f46'} />
+                      <Cell key={`cell-${index}`} fill={BAR_COLORS[index % BAR_COLORS.length]} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -331,26 +336,42 @@ export function OverviewClient({
         </CardContent>
       </Card>
 
-      <Card className="flex-1 shrink-0 flex flex-col shadow-2xl mt-8 mb-8 border border-white/5 bg-[#111113]">
-        <CardHeader className="border-b border-white/10 py-4 bg-gradient-to-r from-amber-500/10 to-transparent">
-          <CardTitle className="text-amber-500 flex items-center gap-2">
-            <CalendarCheck className="w-5 h-5" />
-            Global Availability Master Calendar
-          </CardTitle>
-          <CardDescription className="text-muted-foreground">
-            30-day forward-looking timeline view across all active properties
-          </CardDescription>
+      <Card className="flex-1 shrink-0 flex flex-col shadow-xl dark:shadow-2xl mt-8 mb-8 border border-border dark:border-white/5 bg-card dark:bg-[#111113]">
+        <CardHeader className="border-b border-border dark:border-white/10 py-4 bg-gradient-to-r from-amber-500/5 dark:from-amber-500/10 to-transparent flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <CardTitle className="text-amber-600 dark:text-amber-500 flex items-center gap-2">
+              <CalendarCheck className="w-5 h-5" />
+              Global Availability Master Calendar
+            </CardTitle>
+            <CardDescription className="text-muted-foreground mt-1">
+              30-day forward-looking timeline view across all active properties
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider hidden md:inline">Start Date</span>
+            <Input
+              type="month"
+              value={format(calendarStartDate, 'yyyy-MM')}
+              onChange={(e) => {
+                if (e.target.value) {
+                  const [year, month] = e.target.value.split('-');
+                  setCalendarStartDate(new Date(parseInt(year), parseInt(month) - 1, 1));
+                }
+              }}
+              className="w-auto h-9 bg-background/50 border-border dark:border-white/10"
+            />
+          </div>
         </CardHeader>
-        <CardContent className="p-0 flex flex-col relative w-full">
+        <CardContent className="p-0 flex flex-col relative w-full overflow-hidden">
           <div className="w-full overflow-x-auto custom-scrollbar">
             <div className="min-w-[1200px] inline-block align-top pb-4">
-              <div className="flex bg-muted/10 sticky top-0 z-20 border-b border-white/10 backdrop-blur-md">
-                <div className="w-[300px] shrink-0 p-3 font-semibold text-xs text-muted-foreground uppercase border-r border-white/10 sticky left-0 bg-[#0c0c0e] z-30 shadow-xl">
+              <div className="flex bg-muted/20 dark:bg-muted/10 sticky top-0 z-20 border-b border-border dark:border-white/10 backdrop-blur-md">
+                <div className="w-[300px] shrink-0 p-3 font-semibold text-xs text-muted-foreground uppercase border-r border-border dark:border-white/10 sticky left-0 bg-background dark:bg-[#0c0c0e] z-30 shadow-xl">
                   Property Name
                 </div>
                 <div className="flex flex-1">
                   {next30Days.map((d, i) => (
-                    <div key={i} className="flex-1 min-w-[32px] max-w-[40px] border-r border-white/5 p-2 flex flex-col items-center justify-center bg-black/20">
+                    <div key={i} className="flex-1 min-w-[32px] max-w-[40px] border-r border-border dark:border-white/5 p-2 flex flex-col items-center justify-center bg-muted/5 dark:bg-black/20">
                       <span className="text-[10px] text-muted-foreground font-medium">{format(d, 'MMM')}</span>
                       <span className="text-xs font-bold text-foreground">{format(d, 'd')}</span>
                     </div>
@@ -360,9 +381,9 @@ export function OverviewClient({
 
               <div className="flex flex-col relative z-0">
                 {filteredProperties.sort((a, b) => b.revenue - a.revenue).map((property, idx) => (
-                  <div key={property.id} className={`flex border-b border-white/5 transition-colors hover:bg-white/5 ${idx % 2 === 0 ? 'bg-transparent' : 'bg-black/20'}`}>
-                    <div className="w-[300px] shrink-0 p-3 flex flex-col justify-center border-r border-white/10 sticky left-0 bg-[#0c0c0e] z-10 shadow-xl">
-                      <span className="text-sm font-semibold truncate text-white">{property.name}</span>
+                  <div key={property.id} className={`flex border-b border-border dark:border-white/5 transition-colors hover:bg-muted/50 dark:hover:bg-white/5 ${idx % 2 === 0 ? 'bg-transparent' : 'bg-muted/20 dark:bg-black/20'}`}>
+                    <div className="w-[300px] shrink-0 p-3 flex flex-col justify-center border-r border-border dark:border-white/10 sticky left-0 bg-background dark:bg-[#0c0c0e] z-10 shadow-xl">
+                      <span className="text-sm font-semibold truncate text-foreground dark:text-white">{property.name}</span>
                       <span className="text-xs text-muted-foreground truncate">{property.area}</span>
                     </div>
                     <div className="flex flex-1 relative py-1">
@@ -381,8 +402,8 @@ export function OverviewClient({
                         let borderColor = "border-green-500/30";
 
                         if (calDay?.status === 'blocked') {
-                          bgColor = "bg-neutral-800/80";
-                          borderColor = "border-neutral-700";
+                          bgColor = "bg-neutral-500/50 dark:bg-neutral-800/80";
+                          borderColor = "border-neutral-400 dark:border-neutral-700";
                         } else if (calDay?.status === 'reserved' || calDay?.status === 'booked' || reservation) {
                           bgColor = "bg-red-500/20";
                           borderColor = "border-red-500/50";
@@ -391,32 +412,32 @@ export function OverviewClient({
                         // We'll create small tooltips for the days
                         return (
                           <div key={i} className="flex-1 min-w-[32px] max-w-[40px] px-0.5 group relative flex items-center">
-                            <div className={`w-full h-8 rounded-md border ${bgColor} ${borderColor} transition-all duration-300 hover:brightness-125 z-0`} />
+                            <div className={`w-full h-8 rounded-md border ${bgColor} ${borderColor} transition-all duration-300 hover:brightness-105 dark:hover:brightness-125 z-0`} />
 
                             {/* Hover Tooltip inside mapping to avoid complex portals for now */}
                             {(reservation || calDay?.status === 'blocked') && (
-                              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:flex flex-col bg-black border border-white/20 p-3 rounded-xl shadow-2xl z-[100] w-64 backdrop-blur-xl">
+                              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:flex flex-col bg-popover dark:bg-black border border-border dark:border-white/20 p-3 rounded-xl shadow-2xl z-[100] w-64 backdrop-blur-xl">
                                 {reservation ? (
                                   <>
-                                    <div className="border-b border-white/10 pb-2 mb-2">
+                                    <div className="border-b border-border dark:border-white/10 pb-2 mb-2">
                                       <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-1">Confirmed Guest</p>
-                                      <p className="text-sm font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis">{reservation.title}</p>
+                                      <p className="text-sm font-bold text-foreground dark:text-white whitespace-nowrap overflow-hidden text-ellipsis">{reservation.title}</p>
                                     </div>
                                     <div className="flex justify-between items-center text-xs mb-1">
                                       <span className="text-muted-foreground">Total Payout:</span>
-                                      <span className="font-bold text-emerald-400">{reservation.financials?.hostPayout?.toLocaleString() || reservation.financials?.totalPrice?.toLocaleString() || 'Unknown'} AED</span>
+                                      <span className="font-bold text-emerald-600 dark:text-emerald-400">{reservation.financials?.hostPayout?.toLocaleString() || reservation.financials?.totalPrice?.toLocaleString() || 'Unknown'} AED</span>
                                     </div>
                                     <div className="flex justify-between items-center text-xs mb-1">
                                       <span className="text-muted-foreground">Channel:</span>
-                                      <span className="font-semibold text-white capitalize">{reservation.financials?.channelName || reservation.financials?.channel || 'Direct'}</span>
+                                      <span className="font-semibold text-foreground dark:text-white capitalize">{reservation.financials?.channelName || reservation.financials?.channel || 'Direct'}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-xs">
                                       <span className="text-muted-foreground">Dates:</span>
-                                      <span className="font-medium text-white">{reservation.startDate} - {reservation.endDate}</span>
+                                      <span className="font-medium text-foreground dark:text-white">{reservation.startDate} - {reservation.endDate}</span>
                                     </div>
                                   </>
                                 ) : (
-                                  <div className="text-xs text-muted-foreground font-medium text-center">Owner Blocked</div>
+                                  <div className="text-xs text-muted-foreground font-medium text-center text-foreground dark:text-muted-foreground">Owner Blocked</div>
                                 )}
                                 <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-popover dark:border-t-black"></div>
                               </div>
