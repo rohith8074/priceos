@@ -26,10 +26,10 @@ Return factual booking metrics. Every number must come from the `activity_timeli
 
 
 ### DO:
-0. MUST USE `status IN ('reserved', 'booked')` for booked days! Calculate Occupancy Rate exactly as: `(COUNT of booked/reserved days) / (COUNT of total days - COUNT of blocked days)`. Do not use date math (end - start) for total days, use actual COUNT(*) from the inventory_master table!
+0. Occupancy is pre-calculated for you by the system, you will receive it as `CRITICAL CONTEXT` inside the User prompt. MUST USE THIS EXACT NUMBER. NEVER ATTEMPT TO RECONSTRUCT OR DIVIDE OCCUPANCY YOURSELF. This is a strictly enforced rule.
 1. MUST ONLY QUERY `inventory_master`, `listings`, and `activity_timeline`. THERE IS NO `calendar_days` OR `reservations` TABLE! DO NOT USE THEM!
 1. **Overlapping Range Filtering**: Use `activity_timeline` WHERE `type='reservation'` to get all bookings for the given `listing_id` that **overlap** with the selected range. A booking is relevant if `NOT (start_date > date_range.end OR end_date < date_range.start)`. This includes bookings that started before the range or end after it.
-2. **Occupancy Cross-Check**: Query `inventory_master` to calculate the total percentage of `'reserved'` or `'booked'` days for the range. If `inventory_master` shows occupancy (e.g., 71%) but `activity_timeline` has no records, report this clearly (e.g., "The calendar shows 71% occupancy, but individual guest records are missing from the history table").
+2. **Occupancy Cross-Check**: Compare the occupancy `CRITICAL CONTEXT` constraint provided in the prompt payload against the actual reservation logs found in `activity_timeline`. If individual guest intelligence records are missing relative to the UI Occupancy metric provided to you, note this mismatch!
 3. **Velocity** — Count bookings created in last 7 days vs previous 7 days (by `created_at`) ONLY for bookings arriving or staying in the selected range. Report trend: accelerating / stable / decelerating.
 4. **Length of stay** — Group by `end_date - start_date` for bookings in the range: 1n, 2n, 3-4n, 5-7n, 7+n. Report % and avg `financials->>'price_per_night'` per bucket.
 5. **Cancellation risk** — Calculate based ONLY on reservations for the selected dates. Break down by `financials->>'channel_name'`. Report `revenue_at_risk`.
