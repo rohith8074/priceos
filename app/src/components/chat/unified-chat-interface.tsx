@@ -226,22 +226,69 @@ ${error instanceof Error ? error.message : "The Marketing Agent could not be rea
         }),
       });
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+
+      // Add a blank placeholder assistant message immediately
+      const assistantMessageId = (Date.now() + 1).toString();
+      setMessages((prev) => [
+        ...prev,
+        { id: assistantMessageId, role: "assistant", content: " " },
+      ]);
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let currentContent = "";
+
+      if (reader) {
+        let buffer = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\\n');
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith("data: ")) {
+              try {
+                const dataStr = trimmed.slice(6);
+                if (dataStr === "[DONE]") continue;
+
+                const data = JSON.parse(dataStr);
+                if (data.event_type === "llm_generation" && data.message) {
+                  // Protect against either cumulative string logic or delta token logic natively
+                  if (data.message.startsWith(currentContent) && currentContent.length > 0) {
+                    currentContent = data.message;
+                  } else if (currentContent.startsWith(data.message) && data.message.length > 0) {
+                    // Ignore, out of order or older cumulative packet
+                  } else {
+                    // It is a delta token
+                    currentContent += data.message;
+                  }
+
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantMessageId
+                        ? { ...m, content: currentContent }
+                        : m
+                    )
+                  );
+                }
+              } catch (e) {
+                // Ignore incomplete JSON chunks Mid-stream
+              }
+            }
+          }
+        }
+      }
+
       const duration = Math.round(performance.now() - startTime);
+      console.log(`%c✅ AGENT REPLY STREAMED — ${duration}ms`, 'color: #34d399; font-weight: bold');
 
-      console.log(`%c✅ AGENT REPLY — ${duration}ms`, 'color: #34d399; font-weight: bold');
-      console.log(`  Status:   ${response.status}`);
-      console.log(`  User:     "${input}"`);
-      console.log(`  Reply:    "${(data.message || '').substring(0, 300)}${(data.message || '').length > 300 ? '...' : ''}"`);
-      console.log(`  Duration: ${duration}ms`);
-
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: data.message || "Sorry, I couldn't process that. Please try again.",
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       const duration = Math.round(performance.now() - startTime);
       console.error(`%c❌ CHAT ERROR — ${duration}ms`, 'color: #ef4444; font-weight: bold');
@@ -336,8 +383,8 @@ ${error instanceof Error ? error.message : "The Marketing Agent could not be rea
                   ) : calendarMetrics ? (
                     <>
                       <span className={`text-lg font-bold ${calendarMetrics.occupancy >= 70 ? 'text-emerald-500' :
-                          calendarMetrics.occupancy >= 50 ? 'text-amber-500' :
-                            'text-red-500'
+                        calendarMetrics.occupancy >= 50 ? 'text-amber-500' :
+                          'text-red-500'
                         }`}>
                         {calendarMetrics.occupancy}%
                       </span>

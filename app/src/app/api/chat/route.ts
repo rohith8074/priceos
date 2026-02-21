@@ -14,9 +14,9 @@ import { chatMessages } from "@/lib/db/schema";
  *   Body:    { user_id, agent_id, session_id, message }
  */
 
-const LYZR_API_URL =
-  process.env.LYZR_API_URL ||
-  "https://agent-prod.studio.lyzr.ai/v3/inference/chat/";
+const LYZR_STREAM_URL =
+  process.env.LYZR_STREAM_URL ||
+  "https://agent-prod.studio.lyzr.ai/v3/inference/stream";
 const LYZR_API_KEY = process.env.LYZR_API_KEY || "";
 const AGENT_ID = process.env.AGENT_ID || MANAGER_AGENT_ID;
 
@@ -143,101 +143,104 @@ export async function POST(req: NextRequest) {
         : "****";
 
     // ═══════════════════════════════════════════
-    // 📤 LOG: REQUEST TO LYZR AGENT
+    // 📤 LOG: STREAM REQUEST TO LYZR AGENT
     // ═══════════════════════════════════════════
-    console.log(`\n📤 LYZR REQUEST — Sending to agent`);
+    console.log(`\n📤 LYZR STREAM REQUEST — Sending to agent`);
     console.log(`${'─'.repeat(60)}`);
-    console.log(`  URL:         ${LYZR_API_URL}`);
+    console.log(`  URL:         ${LYZR_STREAM_URL}`);
     console.log(`  API Key:     ${maskedKey}`);
     console.log(`  Agent ID:    ${AGENT_ID}`);
-    console.log(`  User ID:     priceos-user`);
     console.log(`  Session ID:  ${lyzrSessionId}`);
-    console.log(`  Message:     "${agentMessage}"`);
     console.log(`${'─'.repeat(60)}`);
 
-    // Call the Lyzr inference chat endpoint
-    const response = await fetch(LYZR_API_URL, {
+    // Call the Lyzr inference stream endpoint
+    const response = await fetch(LYZR_STREAM_URL, {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
     });
 
-    const rawText = await response.text();
-    const duration = Math.round(performance.now() - startTime);
-
-    // ═══════════════════════════════════════════
-    // 📥 LOG: RAW RESPONSE FROM LYZR AGENT
-    // ═══════════════════════════════════════════
-    console.log(`\n📥 LYZR RESPONSE — ${response.status} (${duration}ms)`);
-    console.log(`${'─'.repeat(60)}`);
-    console.log(`  Status:      ${response.status} ${response.statusText}`);
-    console.log(`  Duration:    ${duration}ms`);
-    console.log(`  Raw Body:    ${rawText.substring(0, 800)}`);
-    console.log(`${'─'.repeat(60)}`);
-
     if (!response.ok) {
-      // ═══════════════════════════════════════════
-      // ❌ LOG: LYZR API ERROR
-      // ═══════════════════════════════════════════
+      const rawText = await response.text();
+      const duration = Math.round(performance.now() - startTime);
       console.error(`\n❌ LYZR API ERROR — ${response.status}`);
       console.error(`${'─'.repeat(60)}`);
-      console.error(`  HTTP Status: ${response.status}`);
       console.error(`  Error Body:  ${rawText.substring(0, 500)}`);
-      console.error(`  User Msg:    "${message}"`);
-      console.error(`  Context:     ${context.type} / ${context.propertyName || 'portfolio'}`);
-      console.error(`  Duration:    ${duration}ms`);
       console.error(`${'─'.repeat(60)}`);
 
       return NextResponse.json(
         {
-          message:
-            "I'm having trouble connecting to the AI agent right now. Please try again in a moment.",
-          error: `Lyzr API returned ${response.status}: ${rawText.substring(0, 200)}`,
+          message: "I'm having trouble connecting to the AI agent right now. Please try again in a moment.",
+          error: `Lyzr API returned ${response.status}`,
         },
         { status: 502 }
       );
     }
 
-    // Parse the Lyzr response
-    let lyzrResponse: any;
-    try {
-      lyzrResponse = JSON.parse(rawText);
-    } catch {
-      lyzrResponse = { response: rawText };
+    if (!response.body) {
+      return NextResponse.json({ error: "No stream from Lyzr" }, { status: 500 });
     }
 
-    // Extract the agent's message
-    const agentReply = extractAgentMessage(lyzrResponse);
+    // Pass the SSE stream through to the client, while extracting the text to save to DB
+    const decoder = new TextDecoder("utf-8");
+    let fullAgentReply = "";
 
-    // Save assistant message to database
-    try {
-      await db.insert(chatMessages).values({
-        userId: "user-1",
-        sessionId: lyzrSessionId,
-        role: "assistant",
-        content: agentReply,
-        listingId: context.propertyId || null,
-        structured: { context, dateRange },
-      });
-    } catch (err) {
-      console.error("Failed to save assistant message to DB:", err);
-    }
+    const transformStream = new TransformStream({
+      transform(chunk, controller) {
+        const chunkStr = decoder.decode(chunk, { stream: true });
+        const lines = chunkStr.split('\\n');
 
-    // ═══════════════════════════════════════════
-    // ✅ LOG: AGENT REPLY SENT TO USER
-    // ═══════════════════════════════════════════
-    console.log(`\n✅ AGENT REPLY — ${new Date().toISOString()}`);
-    console.log(`${'─'.repeat(60)}`);
-    console.log(`  User asked:  "${message}"`);
-    console.log(`  Context:     ${context.type} / ${context.propertyName || 'portfolio'}`);
-    console.log(`  Reply (${agentReply.length} chars):`);
-    console.log(`  "${agentReply.substring(0, 500)}${agentReply.length > 500 ? '...' : ''}"`);
-    console.log(`  Duration:    ${duration}ms`);
-    console.log(`${'═'.repeat(60)}\n`);
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('data: ')) {
+            try {
+              const dataStr = trimmed.slice(6);
+              if (dataStr === '[DONE]') continue;
 
-    return NextResponse.json({
-      message: agentReply,
+              const data = JSON.parse(dataStr);
+              if (data.event_type === "llm_generation" && data.message) {
+                // Keep track of the message either cumulatively or via delta
+                if (data.message.startsWith(fullAgentReply) && fullAgentReply.length > 0) {
+                  fullAgentReply = data.message;
+                } else if (!fullAgentReply.startsWith(data.message)) {
+                  fullAgentReply += data.message;
+                }
+              }
+            } catch (e) {
+              // Ignore partial JSON parsing errors
+            }
+          }
+        }
+        controller.enqueue(chunk); // pass the raw SSE chunk identical to original stream
+      },
+      async flush() {
+        // Save assistant message to database
+        try {
+          if (fullAgentReply) {
+            await db.insert(chatMessages).values({
+              userId: "user-1",
+              sessionId: lyzrSessionId,
+              role: "assistant",
+              content: fullAgentReply,
+              listingId: context.propertyId || null,
+              structured: { context, dateRange },
+            });
+            console.log(`\n✅ AGENT REPLY STREAMED & SAVED — ${new Date().toISOString()}`);
+          }
+        } catch (err) {
+          console.error("Failed to save assistant message to DB:", err);
+        }
+      }
     });
+
+    return new NextResponse(response.body.pipeThrough(transformStream), {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive"
+      }
+    });
+
   } catch (error) {
     const duration = Math.round(performance.now() - startTime);
 
