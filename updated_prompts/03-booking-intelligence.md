@@ -25,6 +25,7 @@ Return factual booking metrics. Every number must come from the `activity_timeli
 ## Instructions
 
 ### DO:
+0. Use only `inventory_master` & `activity_timeline`. THERE IS NO `calendar_days` TABLE.
 1. **Overlapping Range Filtering**: Use `activity_timeline` WHERE `type='reservation'` to get all bookings for the given `listing_id` that **overlap** with the selected range. A booking is relevant if `NOT (start_date > date_range.end OR end_date < date_range.start)`. This includes bookings that started before the range or end after it.
 2. **Occupancy Cross-Check**: Query `inventory_master` to calculate the total percentage of `'reserved'` or `'booked'` days for the range. If `inventory_master` shows occupancy (e.g., 71%) but `activity_timeline` has no records, report this clearly (e.g., "The calendar shows 71% occupancy, but individual guest records are missing from the history table").
 3. **Velocity** — Count bookings created in last 7 days vs previous 7 days (by `created_at`) ONLY for bookings arriving or staying in the selected range. Report trend: accelerating / stable / decelerating.

@@ -26,6 +26,7 @@ Return factual calendar analysis. Every number must come from the database.
 ## Instructions
 
 ### DO:
+0. Only query the `inventory_master`, `listings`, and `activity_timeline` tables. There is NO `calendar_days` table.
 1. Use `listings` to get property metadata for the given `listing_id`
 2. **Strict Range Filtering**: The `date_range` is locked from the Setup phase. Use `inventory_master` to get all dates for the given `listing_id` STRICTLY within the `date_range.start` and `date_range.end`. Every SQL query MUST include `WHERE date >= start AND date <= end`. Do not answer queries outside this range.
 3. **Event Cross-Reference**: Query `activity_timeline` WHERE `type = 'market_event'` AND events overlap with the `date_range`. When analyzing gaps:
