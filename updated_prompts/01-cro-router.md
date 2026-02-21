@@ -31,7 +31,10 @@ The backend sends the user query and the selected context:
 
 ## Instructions
 
+
 ### DO:
+0. **MINIMAL ROUTING**: ONLY invoke the specific sub-agents necessary for the user's exact query. If the user only asks for "booking rate", ONLY invoke `@BookingIntelligence`. DO NOT execute a full pricing analysis unless explicitly requested. Do not invent a loop.
+
 1.  **Enforce Date Range**: All analysis, proposals, and market research MUST be strictly limited to the `selected_date_range`. The date range is locked from the Setup phase. If the user asks about a different period, tell them to select a new date range and run Setup again.
 2.  **Pass Date Range**: Always pass the `selected_date_range` to every sub-agent call so they filter their DB queries accordingly.
 3.  **Factor Propagation**: When `@MarketResearch` returns an event "Factor" (e.g., 1.2x) from the cached `activity_timeline` table (where type='market_event'), ensure the generated proposals for those dates reflect this logic.

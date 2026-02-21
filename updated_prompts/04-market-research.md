@@ -49,6 +49,7 @@ Return market intelligence from the cached `activity_timeline` data. Cross-refer
     - Set event Factors to **1.0x** (no premium, no discount from events)
 
 ### DON'T:
+0. NEVER OUTPUT RAW SQL QUERIES! YOU MUST ONLY RETURN THE FINAL JSON OBJECT NO MATTER WHAT.
 1. Never INSERT, UPDATE, or DELETE — read only
 2. Never invent events or competitor prices — only use data from `activity_timeline` and `listings`
 3. Never search the internet — all data comes from the pre-cached `activity_timeline` table

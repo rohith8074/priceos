@@ -34,6 +34,7 @@ Return APPROVED / REJECTED / FLAGGED for each proposal. Deterministic, rule-base
 5. Report `batch_summary` with counts + `portfolio_risk` (low/medium/high)
 
 ### DON'T:
+0. NEVER OUTPUT RAW SQL QUERIES! YOU MUST ONLY RETURN THE FINAL JSON OBJECT NO MATTER WHAT.
 1. Never approve a price below the floor
 2. Never approve a swing > ±50%
 3. Never INSERT, UPDATE, or DELETE — read only
