@@ -14,9 +14,9 @@ import { chatMessages } from "@/lib/db/schema";
  *   Body:    { user_id, agent_id, session_id, message }
  */
 
-const LYZR_STREAM_URL =
-  process.env.LYZR_STREAM_URL ||
-  "https://agent-prod.studio.lyzr.ai/v3/inference/stream/";
+const LYZR_API_URL =
+  process.env.LYZR_API_URL ||
+  "https://agent-prod.studio.lyzr.ai/v3/inference/chat/";
 const LYZR_API_KEY = process.env.LYZR_API_KEY || "";
 const AGENT_ID = process.env.AGENT_ID || MANAGER_AGENT_ID;
 
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
     const rangeTag = dateRange ? `Analysis Range: ${dateRange.from} to ${dateRange.to}` : "";
 
     if (context.type === "property" && context.propertyName) {
-      agentMessage = `Property: ${context.propertyName}\n${rangeTag}\nUser query: ${message || "Please analyze this property for the selected dates."}`;
+      agentMessage = `Property ID: ${context.propertyId}\nProperty: ${context.propertyName}\n${rangeTag}\nUser query: ${message || "Please analyze this property for the selected dates."}`;
     } else if (context.type === "portfolio") {
       agentMessage = `Portfolio view (all properties)\n${rangeTag}\nUser query: ${message || "Please analyze my portfolio for the selected dates."}`;
     }
@@ -143,19 +143,19 @@ export async function POST(req: NextRequest) {
         : "****";
 
     // ═══════════════════════════════════════════
-    // 📤 LOG: STREAM REQUEST TO LYZR AGENT
+    // 📤 LOG: API REQUEST TO LYZR AGENT
     // ═══════════════════════════════════════════
-    console.log(`\n📤 LYZR STREAM REQUEST — Sending to agent`);
+    console.log(`\n📤 LYZR CHAT REQUEST — Sending to agent`);
     console.log(`${'─'.repeat(60)}`);
-    console.log(`  URL:         ${LYZR_STREAM_URL}`);
+    console.log(`  URL:         ${LYZR_API_URL}`);
     console.log(`  API Key:     ${maskedKey}`);
     console.log(`  Agent ID:    ${AGENT_ID}`);
     console.log(`  Session ID:  ${lyzrSessionId}`);
     console.log(`  Payload:     ${JSON.stringify({ ...payload, message: payload.message.substring(0, 100) + '...' })}`);
     console.log(`${'─'.repeat(60)}`);
 
-    // Call the Lyzr inference stream endpoint
-    const response = await fetch(LYZR_STREAM_URL, {
+    // Call the Lyzr inference chat endpoint
+    const response = await fetch(LYZR_API_URL, {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
@@ -178,76 +178,30 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!response.body) {
-      return NextResponse.json({ error: "No stream from Lyzr" }, { status: 500 });
+    const data = await response.json();
+    const duration = Math.round(performance.now() - startTime);
+
+    const agentReply = extractAgentMessage(data);
+
+    // Save assistant message to database
+    try {
+      if (agentReply) {
+        await db.insert(chatMessages).values({
+          userId: "user-1",
+          sessionId: lyzrSessionId,
+          role: "assistant",
+          content: agentReply,
+          listingId: context.propertyId || null,
+          structured: { context, dateRange },
+        });
+        console.log(`\n✅ AGENT REPLY RECEIVED & SAVED — ${duration}ms`);
+      }
+    } catch (err) {
+      console.error("Failed to save assistant message to DB:", err);
     }
 
-    // Pass the SSE stream through to the client, while extracting the text to save to DB
-    const decoder = new TextDecoder("utf-8");
-    let fullAgentReply = "";
-
-    const transformStream = new TransformStream({
-      transform(chunk, controller) {
-        const chunkStr = decoder.decode(chunk, { stream: true });
-        const lines = chunkStr.split('\\n');
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (trimmed.startsWith('data: ')) {
-            try {
-              const dataStr = trimmed.slice(6);
-              if (dataStr === '[DONE]') {
-                console.log(`[Stream API] 🏁 Received [DONE] signal from Lyzr.`);
-                continue;
-              }
-
-              const data = JSON.parse(dataStr);
-
-              if (data.event_type !== "llm_generation") {
-                console.log(`[Stream API] 🔄 Event Transition -> ${data.event_type} | Status: ${data.status}`);
-              }
-
-              if (data.event_type === "llm_generation" && data.message) {
-                // Keep track of the message either cumulatively or via delta
-                if (data.message.startsWith(fullAgentReply) && fullAgentReply.length > 0) {
-                  fullAgentReply = data.message;
-                } else if (!fullAgentReply.startsWith(data.message)) {
-                  fullAgentReply += data.message;
-                }
-              }
-            } catch (e) {
-              // Ignore partial JSON parsing errors
-            }
-          }
-        }
-        controller.enqueue(chunk); // pass the raw SSE chunk identical to original stream
-      },
-      async flush() {
-        // Save assistant message to database
-        try {
-          if (fullAgentReply) {
-            await db.insert(chatMessages).values({
-              userId: "user-1",
-              sessionId: lyzrSessionId,
-              role: "assistant",
-              content: fullAgentReply,
-              listingId: context.propertyId || null,
-              structured: { context, dateRange },
-            });
-            console.log(`\n✅ AGENT REPLY STREAMED & SAVED — ${new Date().toISOString()}`);
-          }
-        } catch (err) {
-          console.error("Failed to save assistant message to DB:", err);
-        }
-      }
-    });
-
-    return new NextResponse(response.body.pipeThrough(transformStream), {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        "Connection": "keep-alive"
-      }
+    return NextResponse.json({
+      message: agentReply || "No message received from agent",
     });
 
   } catch (error) {

@@ -7,6 +7,9 @@ interface TableData {
         listings: number;
         inventory_master: number;
         activity_timeline: number;
+        events: number;
+        chat_messages: number;
+        user_settings: number;
     };
     date_ranges: {
         calendar: { min: string; max: string };
@@ -16,10 +19,13 @@ interface TableData {
         listings: Record<string, unknown>[];
         inventory_master: Record<string, unknown>[];
         activity_timeline: Record<string, unknown>[];
+        events: Record<string, unknown>[];
+        chat_messages: Record<string, unknown>[];
+        user_settings: Record<string, unknown>[];
     };
 }
 
-type TableName = "listings" | "inventory_master" | "activity_timeline";
+type TableName = "listings" | "inventory_master" | "activity_timeline" | "events" | "chat_messages" | "user_settings";
 
 export default function DbViewerPage() {
     const [data, setData] = useState<TableData | null>(null);
@@ -45,7 +51,10 @@ export default function DbViewerPage() {
     const tables: { key: TableName; label: string; color: string }[] = [
         { key: "listings", label: "Listings", color: "#6c5ce7" },
         { key: "inventory_master", label: "Inventory Master", color: "#00b894" },
-        { key: "activity_timeline", label: "Activity Timeline", color: "#74b9ff" },
+        { key: "activity_timeline", label: "Activity Timeline (Raw)", color: "#74b9ff" },
+        { key: "events", label: "Market Events Filter", color: "#e17055" },
+        { key: "chat_messages", label: "Chat Messages", color: "#fdcb6e" },
+        { key: "user_settings", label: "User Settings", color: "#e84393" },
     ];
 
     const renderTable = (rows: Record<string, unknown>[]) => {

@@ -273,83 +273,18 @@ export function UnifiedChatInterface({ properties }: Props) {
         throw new Error(`API Error: ${response.status}`);
       }
 
-      // Add a blank placeholder assistant message immediately
-      const assistantMessageId = (Date.now() + 1).toString();
-      setMessages((prev) => [
-        ...prev,
-        { id: assistantMessageId, role: "assistant", content: " " },
-      ]);
+      const data = await response.json();
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder("utf-8");
-      let currentContent = "";
-      let chunkCount = 0;
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: data.message || "Sorry, I couldn't get a response.",
+      };
 
-      console.log(`%c[UI-Stream] 🟢 Streaming connection opened. Reading data...`, 'color: #3b82f6; font-weight: bold;');
-
-      if (reader) {
-        let buffer = "";
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            console.log(`%c[UI-Stream] 🏁 Stream [DONE]. Total Chunks: ${chunkCount}`, 'color: #10b981; font-weight: bold;');
-            break;
-          }
-
-          chunkCount++;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\\n');
-          buffer = lines.pop() || "";
-
-          // Optionally, log the chunk count (uncomment for very verbose debugging)
-          // console.log(`[UI-Stream] Received chunk #${chunkCount} (${lines.length} lines)`);
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (trimmed.startsWith("data: ")) {
-              try {
-                const dataStr = trimmed.slice(6);
-                if (dataStr === "[DONE]") {
-                  console.log(`[UI-Stream] 🏁 Server sent [DONE] payload.`);
-                  continue;
-                }
-
-                const data = JSON.parse(dataStr);
-
-                // Track lifecycle statuses
-                if (data.event_type !== "llm_generation") {
-                  console.log(`%c[UI-Stream] 🔄 Status Update: ${data.event_type} (${data.status})`, 'color: #8b5cf6;');
-                }
-
-                if (data.event_type === "llm_generation" && data.message) {
-                  // Protect against either cumulative string logic or delta token logic natively
-                  if (data.message.startsWith(currentContent) && currentContent.length > 0) {
-                    currentContent = data.message;
-                  } else if (currentContent.startsWith(data.message) && data.message.length > 0) {
-                    // Ignore, out of order or older cumulative packet
-                  } else {
-                    // It is a delta token
-                    currentContent += data.message;
-                  }
-
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === assistantMessageId
-                        ? { ...m, content: currentContent }
-                        : m
-                    )
-                  );
-                }
-              } catch (e) {
-                console.warn(`[UI-Stream] ⚠️ Incomplete JSON, buffered for next frame...`);
-              }
-            }
-          }
-        }
-      }
+      setMessages((prev) => [...prev, assistantMessage]);
 
       const duration = Math.round(performance.now() - startTime);
-      console.log(`%c✅ AGENT REPLY STREAMED — ${duration}ms`, 'color: #34d399; font-weight: bold');
+      console.log(`%c✅ AGENT REPLY RECEIVED — ${duration}ms`, 'color: #34d399; font-weight: bold');
 
     } catch (error) {
       const duration = Math.round(performance.now() - startTime);
