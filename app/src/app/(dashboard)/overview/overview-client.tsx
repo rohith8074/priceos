@@ -16,6 +16,7 @@ import {
   ResponsiveContainer,
   Cell
 } from 'recharts';
+import { addDays, format, isWithinInterval, parseISO } from 'date-fns';
 
 interface PropertyMetric {
   id: number;
@@ -25,6 +26,8 @@ interface PropertyMetric {
   occupancy: number;
   avgPrice: number;
   revenue: number;
+  calendarDays?: { date: string; status: string; price: number }[];
+  reservations?: { title: string; startDate: string; endDate: string; financials: any }[];
 }
 
 interface OverviewClientProps {
@@ -48,6 +51,10 @@ export function OverviewClient({
     prop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     prop.area.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Generate an array of the next 30 days for the Global Calendar header
+  const today = new Date();
+  const next30Days = Array.from({ length: 30 }).map((_, i) => addDays(today, i));
 
   // Prepare chart data - top 10 by revenue
   const chartData = [...filteredProperties]
@@ -199,8 +206,8 @@ export function OverviewClient({
                     </div>
                     <div className="flex flex-col items-end shrink-0">
                       <span className={`text-sm font-bold ${prop.occupancy >= 70 ? 'text-emerald-500' :
-                          prop.occupancy >= 40 ? 'text-amber-500' :
-                            'text-rose-500'
+                        prop.occupancy >= 40 ? 'text-amber-500' :
+                          'text-rose-500'
                         }`}>
                         {prop.occupancy}%
                       </span>
@@ -239,8 +246,8 @@ export function OverviewClient({
                     <TableCell className="text-muted-foreground">{property.price} AED</TableCell>
                     <TableCell>
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${property.occupancy >= 70 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
-                          property.occupancy >= 40 ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' :
-                            'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                        property.occupancy >= 40 ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' :
+                          'bg-rose-500/10 text-rose-600 dark:text-rose-400'
                         }`}>
                         {property.occupancy}%
                       </span>
@@ -267,7 +274,110 @@ export function OverviewClient({
             </Table>
           </ScrollArea>
         </CardContent>
-      </Card >
-    </div >
+      </Card>
+
+      <Card className="flex-1 min-h-0 flex flex-col shadow-sm border-muted mt-8 mb-8 border border-white/5 bg-black/40 backdrop-blur-md">
+        <CardHeader className="border-b border-border/10 py-4 bg-gradient-to-r from-amber-500/10 to-transparent">
+          <CardTitle className="text-amber-500 flex items-center gap-2">
+            <CalendarCheck className="w-5 h-5" />
+            Global Availability Master Calendar
+          </CardTitle>
+          <CardDescription className="text-muted-foreground">
+            30-day forward-looking timeline view across all active properties
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-0 overflow-hidden flex flex-col relative w-full">
+          <div className="w-full overflow-x-auto custom-scrollbar">
+            <div className="min-w-[1200px] inline-block align-top">
+              <div className="flex bg-muted/10 sticky top-0 z-20 border-b border-white/10 backdrop-blur-md">
+                <div className="w-[300px] shrink-0 p-3 font-semibold text-xs text-muted-foreground uppercase border-r border-white/10 sticky left-0 bg-[#0c0c0e] z-30 shadow-xl">
+                  Property Name
+                </div>
+                <div className="flex flex-1">
+                  {next30Days.map((d, i) => (
+                    <div key={i} className="flex-1 min-w-[32px] max-w-[40px] border-r border-white/5 p-2 flex flex-col items-center justify-center bg-black/20">
+                      <span className="text-[10px] text-muted-foreground font-medium">{format(d, 'MMM')}</span>
+                      <span className="text-xs font-bold text-foreground">{format(d, 'd')}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col relative z-0">
+                {filteredProperties.sort((a, b) => b.revenue - a.revenue).map((property, idx) => (
+                  <div key={property.id} className={`flex border-b border-white/5 transition-colors hover:bg-white/5 ${idx % 2 === 0 ? 'bg-transparent' : 'bg-black/20'}`}>
+                    <div className="w-[300px] shrink-0 p-3 flex flex-col justify-center border-r border-white/10 sticky left-0 bg-[#0c0c0e] z-10 shadow-xl">
+                      <span className="text-sm font-semibold truncate text-white">{property.name}</span>
+                      <span className="text-xs text-muted-foreground truncate">{property.area}</span>
+                    </div>
+                    <div className="flex flex-1 relative py-1">
+                      {next30Days.map((d, i) => {
+                        const dateStr = format(d, 'yyyy-MM-dd');
+                        const calDay = property.calendarDays?.find(c => c.date === dateStr);
+
+                        // Look for a reservation exactly covering this day to render block
+                        const reservation = property.reservations?.find(r => {
+                          try {
+                            return isWithinInterval(d, { start: parseISO(r.startDate), end: parseISO(r.endDate) });
+                          } catch { return false; }
+                        });
+
+                        let bgColor = "bg-green-500/20";
+                        let borderColor = "border-green-500/30";
+
+                        if (calDay?.status === 'blocked') {
+                          bgColor = "bg-neutral-800/80";
+                          borderColor = "border-neutral-700";
+                        } else if (calDay?.status === 'reserved' || calDay?.status === 'booked' || reservation) {
+                          bgColor = "bg-red-500/20";
+                          borderColor = "border-red-500/50";
+                        }
+
+                        // We'll create small tooltips for the days
+                        return (
+                          <div key={i} className="flex-1 min-w-[32px] max-w-[40px] px-0.5 group relative flex items-center">
+                            <div className={`w-full h-8 rounded-md border ${bgColor} ${borderColor} transition-all duration-300 hover:brightness-125 z-0`} />
+
+                            {/* Hover Tooltip inside mapping to avoid complex portals for now */}
+                            {(reservation || calDay?.status === 'blocked') && (
+                              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:flex flex-col bg-black border border-white/20 p-3 rounded-xl shadow-2xl z-[100] w-64 backdrop-blur-xl">
+                                {reservation ? (
+                                  <>
+                                    <div className="border-b border-white/10 pb-2 mb-2">
+                                      <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-1">Confirmed Guest</p>
+                                      <p className="text-sm font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis">{reservation.title}</p>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs mb-1">
+                                      <span className="text-muted-foreground">Total Payout:</span>
+                                      <span className="font-bold text-emerald-400">{reservation.financials?.hostPayout?.toLocaleString() || reservation.financials?.totalPrice?.toLocaleString() || 'Unknown'} AED</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs mb-1">
+                                      <span className="text-muted-foreground">Channel:</span>
+                                      <span className="font-semibold text-white capitalize">{reservation.financials?.channelName || reservation.financials?.channel || 'Direct'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs">
+                                      <span className="text-muted-foreground">Dates:</span>
+                                      <span className="font-medium text-white">{reservation.startDate} - {reservation.endDate}</span>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="text-xs text-muted-foreground font-medium text-center">Owner Blocked</div>
+                                )}
+                                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-black"></div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+    </div>
   );
 }
