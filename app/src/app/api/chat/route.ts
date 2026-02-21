@@ -228,57 +228,82 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * Extract the agent's text message from the Lyzr response.
- *
- * The Lyzr `/v3/inference/chat/` endpoint returns a JSON response.
- * Based on lyzr_client.py, the response is used directly via `response.json()`.
- * We handle multiple possible response formats for robustness.
+ * Extract the agent's text message from the Lyzr response and parse JSON if needed.
  */
 function extractAgentMessage(response: any): string {
+  let rawStr = "";
+
   // Format 1: Direct response string (common from Lyzr chat endpoint)
   if (typeof response.response === "string") {
-    return response.response;
+    rawStr = response.response;
   }
-
   // Format 2: Response with nested message
-  if (response.response?.message) {
-    return response.response.message;
+  else if (response.response?.message) {
+    rawStr = response.response.message;
   }
-
   // Format 3: Response with nested result containing message
-  if (response.response?.result?.message) {
-    return response.response.result.message;
+  else if (response.response?.result?.message) {
+    rawStr = response.response.result.message;
   }
-
   // Format 4: Response with nested result containing text
-  if (response.response?.result?.text) {
-    return response.response.result.text;
+  else if (response.response?.result?.text) {
+    rawStr = response.response.result.text;
   }
-
   // Format 5: Response with nested result containing answer
-  if (response.response?.result?.answer) {
-    return response.response.result.answer;
+  else if (response.response?.result?.answer) {
+    rawStr = response.response.result.answer;
   }
-
   // Format 6: Direct message field
-  if (typeof response.message === "string") {
-    return response.message;
+  else if (typeof response.message === "string") {
+    rawStr = response.message;
   }
-
   // Format 7: OpenAI-style choices (from the /chat/completions variant)
-  if (response.choices?.[0]?.message?.content) {
-    return response.choices[0].message.content;
+  else if (response.choices?.[0]?.message?.content) {
+    rawStr = response.choices[0].message.content;
   }
-
   // Format 8: Direct result string
-  if (typeof response.result === "string") {
-    return response.result;
+  else if (typeof response.result === "string") {
+    rawStr = response.result;
   }
 
-  // Fallback: stringify the response
-  console.warn(
-    "[Chat API] Unknown Lyzr response format:",
-    JSON.stringify(response).substring(0, 500)
-  );
-  return "I received your message but couldn't parse my response. Please try again.";
+  if (!rawStr) {
+    console.warn(
+      "[Chat API] Unknown Lyzr response format:",
+      JSON.stringify(response).substring(0, 500)
+    );
+    return "I received your message but couldn't parse my response. Please try again.";
+  }
+
+  // Strip markdown json formatting if present
+  let cleanStr = rawStr;
+  if (cleanStr.startsWith("```json")) {
+    cleanStr = cleanStr.replace(/```json\s*/, "").replace(/\s*```$/, "");
+  }
+
+  // Try parsing to see if it's the structured CRO router or agent response
+  try {
+    const parsed = JSON.parse(cleanStr);
+
+    // Log the parsed JSON to the terminal so we can see what the agent actually returned!
+    console.log(`\n🤖 LYZR AGENT PARSED JSON:`);
+    console.dir(parsed, { depth: null, colors: true });
+
+    // Prefer chat_response from CRO Router
+    if (parsed.chat_response) {
+      return parsed.chat_response;
+    }
+
+    // Fallback to summary from individual agents (like Property Analyst)
+    if (parsed.summary) {
+      return parsed.summary;
+    }
+
+    // Fallback: If it's a JSON but has no chat_response or summary, stringify it cleanly
+    return "```json\n" + JSON.stringify(parsed, null, 2) + "\n```";
+  } catch (e) {
+    // If it's not valid JSON, just return the raw string
+    console.log(`\n🤖 LYZR AGENT RAW TEXT:`);
+    console.log(rawStr);
+    return rawStr;
+  }
 }
