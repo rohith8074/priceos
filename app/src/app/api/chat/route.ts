@@ -16,7 +16,7 @@ import { chatMessages } from "@/lib/db/schema";
 
 const LYZR_STREAM_URL =
   process.env.LYZR_STREAM_URL ||
-  "https://agent-prod.studio.lyzr.ai/v3/inference/stream";
+  "https://agent-prod.studio.lyzr.ai/v3/inference/stream/";
 const LYZR_API_KEY = process.env.LYZR_API_KEY || "";
 const AGENT_ID = process.env.AGENT_ID || MANAGER_AGENT_ID;
 
@@ -151,6 +151,7 @@ export async function POST(req: NextRequest) {
     console.log(`  API Key:     ${maskedKey}`);
     console.log(`  Agent ID:    ${AGENT_ID}`);
     console.log(`  Session ID:  ${lyzrSessionId}`);
+    console.log(`  Payload:     ${JSON.stringify({ ...payload, message: payload.message.substring(0, 100) + '...' })}`);
     console.log(`${'─'.repeat(60)}`);
 
     // Call the Lyzr inference stream endpoint
@@ -195,9 +196,17 @@ export async function POST(req: NextRequest) {
           if (trimmed.startsWith('data: ')) {
             try {
               const dataStr = trimmed.slice(6);
-              if (dataStr === '[DONE]') continue;
+              if (dataStr === '[DONE]') {
+                console.log(`[Stream API] 🏁 Received [DONE] signal from Lyzr.`);
+                continue;
+              }
 
               const data = JSON.parse(dataStr);
+
+              if (data.event_type !== "llm_generation") {
+                console.log(`[Stream API] 🔄 Event Transition -> ${data.event_type} | Status: ${data.status}`);
+              }
+
               if (data.event_type === "llm_generation" && data.message) {
                 // Keep track of the message either cumulatively or via delta
                 if (data.message.startsWith(fullAgentReply) && fullAgentReply.length > 0) {
