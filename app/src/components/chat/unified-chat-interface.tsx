@@ -14,6 +14,7 @@ import { DateRange } from "react-day-picker";
 import { addDays, format } from "date-fns";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { CalendarVisualizer } from "./calendar-visualizer";
 
 import { toast } from "sonner";
 
@@ -58,6 +59,7 @@ export function UnifiedChatInterface({ properties }: Props) {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isChatActive, setIsChatActive] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Rehydrate the Zustand persisted store on client mount
@@ -434,6 +436,17 @@ export function UnifiedChatInterface({ properties }: Props) {
                 </div>
               </div>
             )}
+            {contextType === "property" && propertyId && (
+              <Button
+                variant={isCalendarOpen ? "secondary" : "outline"}
+                size="icon"
+                onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                className="h-9 w-9 shrink-0 shadow-sm"
+                title={isCalendarOpen ? "Close Calendar" : "Open Calendar"}
+              >
+                <CalendarIcon className="h-4 w-4" />
+              </Button>
+            )}
 
             <Button
               variant="outline"
@@ -446,104 +459,87 @@ export function UnifiedChatInterface({ properties }: Props) {
             </Button>
           </div>
         </div>
+      </div>
 
-        {/* Calendar Strip Layer */}
-        {contextType === "property" && propertyId && calendarMetrics?.calendarDays && calendarMetrics.calendarDays.length > 0 && (
-          <div className="px-5 pb-3 w-full border-t border-border/40 pt-2 bg-muted/10">
-            <div className="flex flex-col gap-1.5 max-w-full">
-              <div className="flex justify-between items-center px-1">
-                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider flex-shrink-0">
-                  {format(new Date(calendarMetrics.calendarDays[0].date), "MMM d")}
-                </span>
-                <div className="flex gap-4 text-[10px] text-muted-foreground font-medium uppercase tracking-wider mx-auto">
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-rose-500"></span> Booked</span>
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Available</span>
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-700"></span> Blocked</span>
-                </div>
-                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider flex-shrink-0">
-                  {format(new Date(calendarMetrics.calendarDays[calendarMetrics.calendarDays.length - 1].date), "MMM d")}
-                </span>
+      {/* Main Content Area: Chat + Calendar Column */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Chat Column */}
+        <div className="flex flex-col flex-1 overflow-hidden relative">
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                <Card
+                  className={`max-w-2xl ${message.role === "user" ? "bg-primary text-primary-foreground" : ""}`}
+                >
+                  <CardContent className="p-4 overflow-x-auto">
+                    <div className="prose prose-sm dark:prose-invert max-w-none break-words [&>table]:w-full [&>table]:border-collapse [&>table]:my-4 [&>table_th]:border [&>table_th]:p-2 [&>table_td]:border [&>table_td]:p-2 [&>table_th]:bg-muted/50 [&>ul]:list-disc [&>ul]:pl-4 [&>ol]:list-decimal [&>ol]:pl-4 [&>p]:mb-2 last:mb-0">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-              <div className="flex gap-[2px] items-center h-2.5 overflow-hidden rounded-full w-full bg-muted/30">
-                {calendarMetrics.calendarDays.map((day, idx) => {
-                  let badge = 'bg-emerald-500';
-                  if (day.status === 'booked' || day.status === 'reserved') badge = 'bg-rose-500';
-                  else if (day.status === 'blocked') badge = 'bg-slate-300 dark:bg-slate-700';
-                  return (
-                    <div
-                      key={idx}
-                      className={`h-full flex-1 min-w-[2px] rounded-full transition-opacity hover:opacity-75 cursor-help ${badge}`}
-                      title={`${format(new Date(day.date), "MMM d, yyyy")}: ${day.status.toUpperCase()} (${day.price} AED)`}
-                    />
-                  )
-                })}
+            ))}
+
+            {isLoading && (
+              <div className="flex justify-start">
+                <Card className="max-w-2xl">
+                  <CardContent className="p-4 flex items-center space-x-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm text-muted-foreground">
+                      Thinking...
+                    </span>
+                  </CardContent>
+                </Card>
               </div>
+            )}
+
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input */}
+          <div className="border-t p-4 bg-background">
+            <form onSubmit={handleSubmit} className="flex space-x-2">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder={
+                  !isChatActive
+                    ? "Select date range and click 'Setup' to start..."
+                    : contextType === "property"
+                      ? "Ask about pricing, events, market rates..."
+                      : "Ask about your portfolio performance..."
+                }
+                disabled={isLoading || !isChatActive}
+                className="flex-1"
+              />
+              <Button type="submit" disabled={isLoading || !input.trim() || !isChatActive}>
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </form>
+          </div>
+        </div>
+
+        {/* Right Calendar Sidebar (Inside Unified Chat) */}
+        {contextType === "property" && propertyId && isCalendarOpen && calendarMetrics?.calendarDays && (
+          <div className="w-[300px] bg-muted/10 border-l overflow-y-auto flex shrink-0 flex-col">
+            <div className="p-4 border-b bg-background sticky top-0 z-10 font-semibold text-sm">
+              Availability Calendar
+            </div>
+            <div className="p-4">
+              <CalendarVisualizer days={calendarMetrics.calendarDays} />
             </div>
           </div>
         )}
-      </div>
-
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            <Card
-              className={`max-w-2xl ${message.role === "user" ? "bg-primary text-primary-foreground" : ""}`}
-            >
-              <CardContent className="p-4 overflow-x-auto">
-                <div className="prose prose-sm dark:prose-invert max-w-none break-words [&>table]:w-full [&>table]:border-collapse [&>table]:my-4 [&>table_th]:border [&>table_th]:p-2 [&>table_td]:border [&>table_td]:p-2 [&>table_th]:bg-muted/50 [&>ul]:list-disc [&>ul]:pl-4 [&>ol]:list-decimal [&>ol]:pl-4 [&>p]:mb-2 last:mb-0">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {message.content}
-                  </ReactMarkdown>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        ))}
-
-        {isLoading && (
-          <div className="flex justify-start">
-            <Card className="max-w-2xl">
-              <CardContent className="p-4 flex items-center space-x-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm text-muted-foreground">
-                  Thinking...
-                </span>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input */}
-      <div className="border-t p-4 bg-background">
-        <form onSubmit={handleSubmit} className="flex space-x-2">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={
-              !isChatActive
-                ? "Select date range and click 'Setup' to start..."
-                : contextType === "property"
-                  ? "Ask about pricing, events, market rates..."
-                  : "Ask about your portfolio performance..."
-            }
-            disabled={isLoading || !isChatActive}
-            className="flex-1"
-          />
-          <Button type="submit" disabled={isLoading || !input.trim() || !isChatActive}>
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
-        </form>
       </div>
     </div>
   );
