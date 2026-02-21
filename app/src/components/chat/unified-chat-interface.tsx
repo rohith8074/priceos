@@ -15,6 +15,8 @@ import { addDays, format } from "date-fns";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
+import { useToast } from "@/hooks/use-toast";
+
 interface Message {
   id: string;
   role: "user" | "assistant";
@@ -30,8 +32,20 @@ interface Props {
   properties: PropertyWithMetrics[];
 }
 
+interface ChatSession {
+  sessionId: string;
+  messages: Message[];
+  isChatActive: boolean;
+  lastActivityDate: number;
+  contextKey: string; // e.g., "portfolio_2026-03-01_2026-03-31" or "property_5_..."
+}
+
+const SESSION_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
+
 export function UnifiedChatInterface({ properties }: Props) {
   const { contextType, propertyId, propertyName } = useContextStore();
+  const { toast } = useToast();
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -42,9 +56,10 @@ export function UnifiedChatInterface({ properties }: Props) {
   });
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Stable session ID per context (so the Lyzr agent remembers the conversation)
-  const [sessionId] = useState(() => `session-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
+  // Function to generate a unique session ID
+  const generateSessionId = () => `session-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
+  const [sessionId, setSessionId] = useState(generateSessionId());
   const [isSettingUp, setIsSettingUp] = useState(false);
 
   // Dynamic calendar metrics (occupancy + avg price for selected date range)
@@ -57,6 +72,65 @@ export function UnifiedChatInterface({ properties }: Props) {
     totalDays: number;
   } | null>(null);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
+
+  // Generate a unique key for the current context (contextType + propertyId + dateRange)
+  const getContextKey = () => {
+    const fromStr = dateRange?.from ? format(dateRange.from, "yyyy-MM-dd") : "";
+    const toStr = dateRange?.to ? format(dateRange.to, "yyyy-MM-dd") : fromStr;
+    const propStr = contextType === "property" ? propertyId : "all";
+    return `${contextType}_${propStr}_${fromStr}_${toStr}`;
+  };
+
+  // 1. Session Initialization & Hydration
+  useEffect(() => {
+    // Only run on client after mount (to avoid hydration mismatches if checking localStorage during SSR)
+    if (typeof window === "undefined") return;
+
+    const currentKey = getContextKey();
+    const storedSessionJson = localStorage.getItem("priceos_chat_session");
+
+    if (storedSessionJson) {
+      try {
+        const session: ChatSession = JSON.parse(storedSessionJson);
+        const timeSinceActive = Date.now() - session.lastActivityDate;
+
+        // Valid session check: matches current context AND is within 15-minute timeout window
+        if (session.contextKey === currentKey && timeSinceActive < SESSION_TIMEOUT_MS) {
+          console.log("🔄 Restoring active chat session from local storage.");
+          setSessionId(session.sessionId);
+          setMessages(session.messages);
+          setIsChatActive(session.isChatActive);
+          return;
+        } else if (session.contextKey !== currentKey) {
+          console.log("🔄 Context changed. Starting new chat session.");
+        } else {
+          console.log("⏳ Chat session timed out (15 mins inactive). Starting new session.");
+        }
+      } catch (err) {
+        console.error("Failed to parse stored chat session", err);
+      }
+    }
+
+    // If no valid session exists, reset everything to a blank slate for this new context
+    setSessionId(generateSessionId());
+    setMessages([]);
+    setIsChatActive(false);
+  }, [contextType, propertyId, dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
+
+  // 2. Persist Session on State Changes
+  useEffect(() => {
+    if (typeof window === "undefined" || (!isChatActive && messages.length === 0)) return;
+
+    const session: ChatSession = {
+      sessionId,
+      messages,
+      isChatActive,
+      lastActivityDate: Date.now(),
+      contextKey: getContextKey(),
+    };
+
+    localStorage.setItem("priceos_chat_session", JSON.stringify(session));
+  }, [messages, isChatActive, sessionId]);
 
   // Fetch calendar metrics when date range or property changes
   useEffect(() => {
@@ -97,15 +171,11 @@ export function UnifiedChatInterface({ properties }: Props) {
     if (isSettingUp || !dateRange?.from || !dateRange?.to) return;
 
     setIsSettingUp(true);
-    setIsLoading(true);
 
-    // Add initial loading message
-    const setupMsgId = `setup-${Date.now()}`;
-    setMessages(prev => [...prev, {
-      id: setupMsgId,
-      role: "assistant",
-      content: "📡 **Connecting to Marketing Agent...** Syncing Dubai events and market intelligence for the selected dates."
-    }]);
+    toast({
+      title: "Syncing Market Intelligence...",
+      description: "Agents are fetching real-time data for your selected dates...",
+    });
 
     try {
       const response = await fetch("/api/market-setup", {
@@ -127,43 +197,30 @@ export function UnifiedChatInterface({ properties }: Props) {
       const data = await response.json();
 
       if (!response.ok) {
-        // Handle specific 403 RAG error with helpful guidance
         if (data.error?.includes("403") || data.error?.includes("permission")) {
-          throw new Error("Lyzr Permission Error: Your API key doesn't have permission to access this Agent's knowledge base (RAG). Please ensure the Agent ID and API Key belong to the same workspace.");
+          throw new Error("Lyzr Permission Error: Your API key doesn't have permission to access this Agent.");
         }
         throw new Error(data.error || "Setup failed");
       }
 
-      // Once setup is done, activate chat
+      // Once setup is done, activate chat silently
       setIsChatActive(true);
 
-      // Update the loading message with the result
-      setMessages(prev => prev.map(msg =>
-        msg.id === setupMsgId
-          ? {
-            ...msg,
-            content: `✅ **Market Intelligence Sync Complete** for Dubai.
-              
-${data.summary || `I've analyzed ${data.eventsCount} market signals (events & holidays) for the selected period. You can now ask me for pricing recommendations or market insights.`}`
-          }
-          : msg
-      ));
+      toast({
+        title: "Setup Complete",
+        description: `Analyzed ${data.eventsCount} market signals. Chat is now active.`,
+        variant: "default",
+      });
 
     } catch (error) {
       console.error("Market Setup Error:", error);
-      setMessages(prev => prev.map(msg =>
-        msg.id === setupMsgId
-          ? {
-            ...msg,
-            content: `❌ **Market Intelligence Sync Failed**
-              
-${error instanceof Error ? error.message : "The Marketing Agent could not be reached. Please check your API configuration."}`
-          }
-          : msg
-      ));
+      toast({
+        title: "Market Sync Failed",
+        description: error instanceof Error ? error.message : "Marketing Agent could not be reached.",
+        variant: "destructive",
+      });
     } finally {
       setIsSettingUp(false);
-      setIsLoading(false);
     }
   };
 
@@ -171,14 +228,6 @@ ${error instanceof Error ? error.message : "The Marketing Agent could not be rea
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-
-
-  // Clear messages when switching context
-  useEffect(() => {
-    setMessages([]);
-    setIsChatActive(false); // Reset activation on context switch
-  }, [contextType, propertyId]);
 
   // Find the selected property to display metrics
   const selectedProperty =
@@ -240,25 +289,44 @@ ${error instanceof Error ? error.message : "The Marketing Agent could not be rea
       const reader = response.body?.getReader();
       const decoder = new TextDecoder("utf-8");
       let currentContent = "";
+      let chunkCount = 0;
+
+      console.log(`%c[UI-Stream] 🟢 Streaming connection opened. Reading data...`, 'color: #3b82f6; font-weight: bold;');
 
       if (reader) {
         let buffer = "";
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            console.log(`%c[UI-Stream] 🏁 Stream [DONE]. Total Chunks: ${chunkCount}`, 'color: #10b981; font-weight: bold;');
+            break;
+          }
 
+          chunkCount++;
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split('\\n');
           buffer = lines.pop() || "";
+
+          // Optionally, log the chunk count (uncomment for very verbose debugging)
+          // console.log(`[UI-Stream] Received chunk #${chunkCount} (${lines.length} lines)`);
 
           for (const line of lines) {
             const trimmed = line.trim();
             if (trimmed.startsWith("data: ")) {
               try {
                 const dataStr = trimmed.slice(6);
-                if (dataStr === "[DONE]") continue;
+                if (dataStr === "[DONE]") {
+                  console.log(`[UI-Stream] 🏁 Server sent [DONE] payload.`);
+                  continue;
+                }
 
                 const data = JSON.parse(dataStr);
+
+                // Track lifecycle statuses
+                if (data.event_type !== "llm_generation") {
+                  console.log(`%c[UI-Stream] 🔄 Status Update: ${data.event_type} (${data.status})`, 'color: #8b5cf6;');
+                }
+
                 if (data.event_type === "llm_generation" && data.message) {
                   // Protect against either cumulative string logic or delta token logic natively
                   if (data.message.startsWith(currentContent) && currentContent.length > 0) {
@@ -279,7 +347,7 @@ ${error instanceof Error ? error.message : "The Marketing Agent could not be rea
                   );
                 }
               } catch (e) {
-                // Ignore incomplete JSON chunks Mid-stream
+                console.warn(`[UI-Stream] ⚠️ Incomplete JSON, buffered for next frame...`);
               }
             }
           }
