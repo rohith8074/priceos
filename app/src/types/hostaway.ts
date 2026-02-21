@@ -37,7 +37,7 @@ export interface Listing {
 
 export interface CalendarDay {
   date: string; // ISO format YYYY-MM-DD
-  status: "available" | "booked" | "blocked";
+  status: "available" | "booked" | "blocked" | "reserved";
   price: number;
   minimumStay: number;
   maximumStay: number;

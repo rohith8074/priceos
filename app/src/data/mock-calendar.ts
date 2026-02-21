@@ -3,6 +3,7 @@ import {
   eachDayOfInterval,
   getDay,
 } from "date-fns";
+import { MOCK_RESERVATIONS } from "./mock-reservations";
 
 /**
  * Mock Calendar Data Generation
@@ -88,7 +89,7 @@ export function generateMockCalendar(
   const floor = propertyInfo?.priceFloor ?? Math.round(basePrice * 0.5);
   const ceiling = propertyInfo?.priceCeiling ?? Math.round(basePrice * 2);
 
-  const occupancyRate = getPropertyOccupancyRate(listingId);
+  const propertyReservations = MOCK_RESERVATIONS.filter(r => r.listingMapId === listingId && r.status !== 'cancelled');
   const calendar: CalendarDay[] = [];
   const days = eachDayOfInterval({ start: startDate, end: endDate });
 
@@ -101,26 +102,32 @@ export function generateMockCalendar(
     const dayOfWeekMultiplier = getDayOfWeekMultiplier(date);
     const randomVariation = 0.92 + rand * 0.16; // ±8% variation
 
-    let status: "available" | "booked" | "blocked" = "available";
+    let status: "available" | "booked" | "blocked" | "reserved" = "available";
     let price = basePrice;
 
-    // Owner blocks: ~3% of days
-    if (randBlock > 0.97) {
+    const dateStr = date.toISOString().split("T")[0];
+
+    // Check if the date is within any active reservation
+    const matchingReservation = propertyReservations.find(
+      r => dateStr >= r.arrivalDate && dateStr < r.departureDate
+    );
+
+    if (matchingReservation) {
+      status = "reserved";
+      price = matchingReservation.pricePerNight;
+    } else if (randBlock > 0.97) {
+      // Owner blocks: ~3% of available days
       status = "blocked";
       price = 0;
-    } else if (rand * 100 < occupancyRate) {
-      // Use property-specific occupancy rate
-      status = "booked";
-      price = Math.round(
-        basePrice * seasonMultiplier * dayOfWeekMultiplier * randomVariation
-      );
     } else {
+      // Available
+      status = "available";
       price = Math.round(
         basePrice * seasonMultiplier * dayOfWeekMultiplier * randomVariation
       );
     }
 
-    // Clamp to floor/ceiling
+    // Clamp to floor/ceiling for available/reserved
     if (status !== "blocked") {
       price = Math.max(floor, Math.min(ceiling, price));
     }
