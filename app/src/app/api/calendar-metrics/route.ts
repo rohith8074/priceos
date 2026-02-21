@@ -42,7 +42,15 @@ export async function GET(req: NextRequest) {
         const bookedDays = Number(result?.bookedDays || 0);
         const availableDays = Number(result?.availableDays || 0);
         const blockedDays = Number(result?.blockedDays || 0);
-        const avgPriceVal = result?.avgPrice ? parseFloat(String(result.avgPrice)) : 0;
+        let avgPriceVal = result?.avgPrice ? parseFloat(String(result.avgPrice)) : 0;
+
+        // If there's no data in inventory_master for this period, fallback to the base price from listings
+        if (avgPriceVal === 0) {
+            const prop = await db.select({ price: listings.price }).from(listings).where(eq(listings.id, lid));
+            if (prop.length > 0) {
+                avgPriceVal = parseFloat(String(prop[0].price));
+            }
+        }
 
         // Occupancy = booked / (total - blocked) * 100
         // If all days are blocked, occupancy is 0
