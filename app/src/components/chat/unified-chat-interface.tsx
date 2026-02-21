@@ -43,17 +43,26 @@ interface ChatSession {
 const SESSION_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 
 export function UnifiedChatInterface({ properties }: Props) {
-  const { contextType, propertyId, propertyName, isSidebarOpen, toggleSidebar } = useContextStore();
+  const {
+    contextType,
+    propertyId,
+    propertyName,
+    isSidebarOpen,
+    toggleSidebar,
+    dateRange,
+    setDateRange
+  } = useContextStore();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isChatActive, setIsChatActive] = useState(false);
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: new Date(),
-    to: addDays(new Date(), 30),
-  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Rehydrate the Zustand persisted store on client mount
+  useEffect(() => {
+    useContextStore.persist.rehydrate();
+  }, []);
 
   // Function to generate a unique session ID
   const generateSessionId = () => `session-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
