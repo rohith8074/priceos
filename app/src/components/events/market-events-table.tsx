@@ -100,7 +100,7 @@ export function MarketEventsTable() {
     };
 
     return (
-        <Card className={cn("flex flex-col rounded-none border-0 shadow-none transition-all duration-300", isExpanded ? "h-full" : "h-auto")}>
+        <Card className={cn("flex flex-col rounded-none border-0 shadow-none transition-all duration-300", isExpanded ? "flex-1 min-h-0" : "h-auto shrink-0")}>
             <CardHeader
                 className="py-4 px-6 border-b bg-muted/10 sticky top-0 z-10 cursor-pointer hover:bg-muted/20 transition-colors"
                 onClick={() => setIsExpanded(!isExpanded)}

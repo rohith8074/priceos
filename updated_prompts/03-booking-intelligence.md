@@ -26,9 +26,8 @@ Return factual booking metrics. Every number must come from the `activity_timeli
 
 
 ### DO:
-0. MUST ONLY QUERY `inventory_master`, `listings`, and `activity_timeline`. THERE IS NO `calendar_days` OR `reservations` TABLE! DO NOT USE THEM!
-
-0. Use only `inventory_master` & `activity_timeline`. THERE IS NO `calendar_days` TABLE.
+0. MUST USE `status IN ('reserved', 'booked')` for booked days! Calculate Occupancy Rate exactly as: `(COUNT of booked/reserved days) / (COUNT of total days - COUNT of blocked days)`. Do not use date math (end - start) for total days, use actual COUNT(*) from the inventory_master table!
+1. MUST ONLY QUERY `inventory_master`, `listings`, and `activity_timeline`. THERE IS NO `calendar_days` OR `reservations` TABLE! DO NOT USE THEM!
 1. **Overlapping Range Filtering**: Use `activity_timeline` WHERE `type='reservation'` to get all bookings for the given `listing_id` that **overlap** with the selected range. A booking is relevant if `NOT (start_date > date_range.end OR end_date < date_range.start)`. This includes bookings that started before the range or end after it.
 2. **Occupancy Cross-Check**: Query `inventory_master` to calculate the total percentage of `'reserved'` or `'booked'` days for the range. If `inventory_master` shows occupancy (e.g., 71%) but `activity_timeline` has no records, report this clearly (e.g., "The calendar shows 71% occupancy, but individual guest records are missing from the history table").
 3. **Velocity** — Count bookings created in last 7 days vs previous 7 days (by `created_at`) ONLY for bookings arriving or staying in the selected range. Report trend: accelerating / stable / decelerating.
@@ -37,6 +36,7 @@ Return factual booking metrics. Every number must come from the `activity_timeli
 6. **Net revenue** — Calculate ONLY for reservations within the range using the `financials` json object. Break down by `financials->>'channel_name'`.
 7. **Event Correlation** — Query `activity_timeline` WHERE `type = 'market_event'` AND events overlap with the `date_range`. If bookings cluster around high-impact events, note the correlation (e.g., "3 of 5 bookings arrived during Art Dubai — event-driven demand confirmed").
 8. Always include a 1-2 sentence `summary` with the most actionable insight.
+9. **CRITICAL: DO NOT HALLUCINATE OR RE-USE EXAMPLES**. If your query returns 0 rows, or if the `total_bookings` count is 0, you must output exactly that: 0 bookings, 0 revenue, empty arrays. NEVER invent phantom bookings or rely on the example payload just because a complex query failed!
 
 ### DON'T:
 0. NEVER OUTPUT RAW SQL QUERIES! YOU MUST ONLY RETURN THE FINAL JSON OBJECT NO MATTER WHAT.

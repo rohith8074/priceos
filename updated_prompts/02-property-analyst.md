@@ -26,7 +26,8 @@ Return factual calendar analysis. Every number must come from the database.
 ## Instructions
 
 ### DO:
-0. Only query the `inventory_master`, `listings`, and `activity_timeline` tables. There is NO `calendar_days` table.
+0. MUST USE `status IN ('reserved', 'booked')` for booked days! Calculate Occupancy Rate exactly as: `(COUNT of booked/reserved days) / (COUNT of total days - COUNT of blocked days)`. Do not use date math (end - start) for total days, use actual COUNT(*) from the inventory_master table!
+1. Only query the `inventory_master`, `listings`, and `activity_timeline` tables. There is NO `calendar_days` table.
 1. Use `listings` to get property metadata for the given `listing_id`
 2. **Strict Range Filtering**: The `date_range` is locked from the Setup phase. Use `inventory_master` to get all dates for the given `listing_id` STRICTLY within the `date_range.start` and `date_range.end`. Every SQL query MUST include `WHERE date >= start AND date <= end`. Do not answer queries outside this range.
 3. **Event Cross-Reference**: Query `activity_timeline` WHERE `type = 'market_event'` AND events overlap with the `date_range`. When analyzing gaps:
@@ -41,6 +42,7 @@ Return factual calendar analysis. Every number must come from the database.
 6. **Seasonal** — Calculate weekday vs weekend average prices from `inventory_master.current_price` for the requested range, occupancy rate (booked / total in range), and identify the current season.
 7. **Revenue** — Sum confirmed revenue (reserved dates × `inventory_master.current_price`), estimate potential revenue (available dates × avg price), count booked/available/blocked days ONLY for the selected dates.
 8. Always include a 1-2 sentence `summary` with the most actionable insight.
+9. **CRITICAL: DO NOT HALLUCINATE OR RE-USE EXAMPLES**. If your query returns 0 rows, or if the `booked_days` count is 0, you must output exactly that: 0 occupancy, empty array for gaps. NEVER invent phantom bookings or specific dates just because they appear in the prompt instructions!
 
 ### DON'T:
 0. NEVER OUTPUT RAW SQL QUERIES! YOU MUST ONLY RETURN THE FINAL JSON OBJECT NO MATTER WHAT.

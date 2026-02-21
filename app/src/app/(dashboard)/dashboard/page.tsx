@@ -57,11 +57,9 @@ export default async function DashboardPage() {
 
       {/* Right Side Stack: Events Table on top, Sync status below */}
       <RightSidebarLayout>
-        <div className="flex-1 min-h-[400px] overflow-hidden">
+        <div className="flex flex-col h-full bg-background overflow-hidden relative">
           <MarketEventsTable />
-        </div>
-        <div className="h-px bg-border my-2 mx-4" />
-        <div className="h-[250px] shrink-0">
+          <div className="h-px bg-border my-2 mx-4 shrink-0 transition-opacity" />
           <SyncStatusSidebar />
         </div>
       </RightSidebarLayout>

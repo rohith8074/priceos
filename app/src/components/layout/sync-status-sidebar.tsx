@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Building2, Calendar, CalendarRange, ChevronRight, ChevronLeft } from "lucide-react";
+import { RefreshCw, Building2, Calendar, CalendarRange } from "lucide-react";
 import { DataTypeCard } from "./data-type-card";
 import { useContextStore } from "@/stores/context-store";
 import { cn } from "@/lib/utils";
@@ -36,7 +36,6 @@ export function SyncStatusSidebar() {
     calendar: { daysCount: 0, lastSyncedAt: null, isLoading: false },
   });
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Fetch sync status from DB
   const fetchSyncStatus = async () => {
@@ -164,101 +163,57 @@ export function SyncStatusSidebar() {
     syncStatus.calendar.daysCount === 1 ? "day" : "days";
 
   return (
-    <aside
-      className={cn(
-        "shrink-0 border-l bg-background flex flex-col transition-all duration-300 ease-in-out relative",
-        isCollapsed ? "w-12" : "w-[300px]"
-      )}
-    >
-      {/* Collapse Toggle Button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -left-3 top-4 z-10 h-6 w-6 rounded-full border bg-background shadow-sm hover:bg-accent"
-        title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-      >
-        {isCollapsed ? (
-          <ChevronLeft className="h-4 w-4" />
-        ) : (
-          <ChevronRight className="h-4 w-4" />
-        )}
-      </Button>
+    <aside className="shrink-0 bg-background flex flex-col relative w-full pb-4">
+      {/* Header */}
+      <div className="border-b p-4">
+        <h3 className="font-semibold mb-2">Hostaway Data</h3>
+        <p className="text-xs text-muted-foreground mb-3">
+          Agent context for{" "}
+          {contextType === "portfolio" ? "portfolio" : propertyName}
+        </p>
+        <Button
+          onClick={handleSyncAll}
+          disabled={isSyncing}
+          className="w-full"
+          variant="outline"
+        >
+          <RefreshCw className={cn("mr-2 h-4 w-4", isSyncing && "animate-spin")} />
+          Sync Now
+        </Button>
+      </div>
 
-      {!isCollapsed && (
-        <>
-          {/* Header */}
-          <div className="border-b p-4">
-            <h3 className="font-semibold mb-2">Hostaway Data</h3>
-            <p className="text-xs text-muted-foreground mb-3">
-              Agent context for{" "}
-              {contextType === "portfolio" ? "portfolio" : propertyName}
-            </p>
-            <Button
-              onClick={handleSyncAll}
-              disabled={isSyncing}
-              className="w-full"
-              variant="outline"
-            >
-              <RefreshCw className={cn("mr-2 h-4 w-4", isSyncing && "animate-spin")} />
-              Sync Now
-            </Button>
-          </div>
+      {/* Data Types */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+        <DataTypeCard
+          icon={Building2}
+          label="Listings"
+          count={syncStatus.listings.count}
+          countLabel={listingsSubLabel}
+          lastSynced={syncStatus.listings.lastSyncedAt}
+          isLoading={syncStatus.listings.isLoading}
+          error={syncStatus.listings.error}
+        />
 
-          {/* Data Types */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            <DataTypeCard
-              icon={Building2}
-              label="Listings"
-              count={syncStatus.listings.count}
-              countLabel={listingsSubLabel}
-              lastSynced={syncStatus.listings.lastSyncedAt}
-              isLoading={syncStatus.listings.isLoading}
-              error={syncStatus.listings.error}
-            />
+        <DataTypeCard
+          icon={Calendar}
+          label="Reservations"
+          count={syncStatus.reservations.count}
+          countLabel={reservationsSubLabel}
+          lastSynced={syncStatus.reservations.lastSyncedAt}
+          isLoading={syncStatus.reservations.isLoading}
+          error={syncStatus.reservations.error}
+        />
 
-            <DataTypeCard
-              icon={Calendar}
-              label="Reservations"
-              count={syncStatus.reservations.count}
-              countLabel={reservationsSubLabel}
-              lastSynced={syncStatus.reservations.lastSyncedAt}
-              isLoading={syncStatus.reservations.isLoading}
-              error={syncStatus.reservations.error}
-            />
-
-            <DataTypeCard
-              icon={CalendarRange}
-              label="Calendar"
-              count={syncStatus.calendar.daysCount}
-              countLabel={calendarSubLabel}
-              lastSynced={syncStatus.calendar.lastSyncedAt}
-              isLoading={syncStatus.calendar.isLoading}
-              error={syncStatus.calendar.error}
-            />
-          </div>
-        </>
-      )}
-
-      {/* Collapsed State - Show Icons Only */}
-      {isCollapsed && (
-        <div className="flex flex-col items-center gap-4 p-2 pt-14">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleSyncAll}
-            disabled={isSyncing}
-            title="Sync All Properties"
-            className="h-8 w-8"
-          >
-            <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
-          </Button>
-          <div className="h-px w-full bg-border" />
-          <Building2 className="h-4 w-4 text-muted-foreground" />
-          <Calendar className="h-4 w-4 text-muted-foreground" />
-          <CalendarRange className="h-4 w-4 text-muted-foreground" />
-        </div>
-      )}
+        <DataTypeCard
+          icon={CalendarRange}
+          label="Calendar"
+          count={syncStatus.calendar.daysCount}
+          countLabel={calendarSubLabel}
+          lastSynced={syncStatus.calendar.lastSyncedAt}
+          isLoading={syncStatus.calendar.isLoading}
+          error={syncStatus.calendar.error}
+        />
+      </div>
     </aside>
   );
 }
