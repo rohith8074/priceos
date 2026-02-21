@@ -276,6 +276,11 @@ export function UnifiedChatInterface({ properties }: Props) {
             type: contextType,
             propertyId: contextType === "property" ? propertyId : undefined,
             propertyName: contextType === "property" ? propertyName : undefined,
+            metrics: calendarMetrics ? {
+              occupancy: calendarMetrics.occupancy,
+              bookedDays: calendarMetrics.bookedDays,
+              bookableDays: calendarMetrics.totalDays - calendarMetrics.blockedDays,
+            } : undefined
           },
           dateRange: dateRange ? {
             from: format(dateRange.from!, "yyyy-MM-dd"),

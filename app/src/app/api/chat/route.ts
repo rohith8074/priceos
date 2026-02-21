@@ -24,6 +24,11 @@ interface ChatContext {
   type: "portfolio" | "property";
   propertyId?: number;
   propertyName?: string;
+  metrics?: {
+    occupancy: number;
+    bookedDays: number;
+    bookableDays: number;
+  };
 }
 
 interface ChatRequest {
@@ -95,7 +100,11 @@ export async function POST(req: NextRequest) {
     const rangeTag = dateRange ? `Analysis Range: ${dateRange.from} to ${dateRange.to}` : "";
 
     if (context.type === "property" && context.propertyName) {
-      agentMessage = `Property ID: ${context.propertyId}\nProperty: ${context.propertyName}\n${rangeTag}\nUser query: ${message || "Please analyze this property for the selected dates."}`;
+      let metricStr = "";
+      if (context.metrics) {
+        metricStr = `\nCRITICAL CONTEXT - USE THESE EXACT METRICS IN YOUR RESPONSE:\n- Date Range Occupancy: ${context.metrics.occupancy}% (${context.metrics.bookedDays} booked / ${context.metrics.bookableDays} bookable days)\n`;
+      }
+      agentMessage = `Property ID: ${context.propertyId}\nProperty: ${context.propertyName}\n${rangeTag}${metricStr}\nUser query: ${message || "Please analyze this property for the selected dates."}`;
     } else if (context.type === "portfolio") {
       agentMessage = `Portfolio view (all properties)\n${rangeTag}\nUser query: ${message || "Please analyze my portfolio for the selected dates."}`;
     }
