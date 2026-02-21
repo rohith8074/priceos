@@ -77,10 +77,10 @@ export function OverviewClient({
   };
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto w-full p-8 bg-muted/10">
+    <div className="flex flex-col h-full overflow-y-auto w-full p-8 bg-[#0a0a0a] text-foreground">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Portfolio Analytics</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-white">Portfolio Analytics</h1>
           <p className="text-muted-foreground mt-2 text-sm">
             30-day forward-looking property performance metrics.
           </p>
@@ -98,65 +98,76 @@ export function OverviewClient({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
-        <Card className="bg-gradient-to-br from-background to-muted/30 border-muted">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Properties</CardTitle>
-            <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center">
-              <Building2 className="h-4 w-4 text-blue-500" />
+        <Card className="bg-[#111113] border-white/5 shadow-2xl overflow-hidden relative group hover:border-amber-500/20 transition-all duration-500">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl -mr-10 -mt-10 group-hover:bg-amber-500/10 transition-colors" />
+          <CardHeader className="flex flex-row items-center justify-between pb-2 z-10 relative">
+            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-widest text-[10px]">Total Properties</CardTitle>
+            <div className="h-8 w-8 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center">
+              <Building2 className="h-4 w-4 text-amber-500" />
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{totalProperties}</div>
-            <p className="text-xs text-muted-foreground mt-1 font-medium">Active in portfolio</p>
+          <CardContent className="z-10 relative">
+            <div className="text-3xl font-light text-white">{totalProperties}</div>
+            <p className="text-xs text-emerald-500/80 mt-1 font-medium flex items-center gap-1">
+              <TrendingUp className="w-3 h-3" /> Active in portfolio
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-background to-muted/30 border-muted">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Avg Occupancy (30D)</CardTitle>
-            <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
+        <Card className="bg-[#111113] border-white/5 shadow-2xl overflow-hidden relative group hover:border-emerald-500/20 transition-all duration-500">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -mr-10 -mt-10 group-hover:bg-emerald-500/10 transition-colors" />
+          <CardHeader className="flex flex-row items-center justify-between pb-2 z-10 relative">
+            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-widest text-[10px]">Avg Occupancy (30D)</CardTitle>
+            <div className="h-8 w-8 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center">
               <CalendarCheck className="h-4 w-4 text-emerald-500" />
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{avgPortfolioOccupancy}%</div>
-            <p className="text-xs text-muted-foreground mt-1 font-medium">Across all properties</p>
+          <CardContent className="z-10 relative">
+            <div className="text-3xl font-light text-white">{avgPortfolioOccupancy}%</div>
+            <p className="text-xs text-emerald-500/80 mt-1 font-medium flex items-center gap-1">
+              <TrendingUp className="w-3 h-3" /> Across all properties
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-background to-muted/30 border-muted">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Avg Daily Rate (ADR)</CardTitle>
-            <div className="h-8 w-8 rounded-full bg-violet-500/10 flex items-center justify-center">
-              <TrendingUp className="h-4 w-4 text-violet-500" />
+        <Card className="bg-[#111113] border-white/5 shadow-2xl overflow-hidden relative group hover:border-violet-500/20 transition-all duration-500">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/5 rounded-full blur-3xl -mr-10 -mt-10 group-hover:bg-violet-500/10 transition-colors" />
+          <CardHeader className="flex flex-row items-center justify-between pb-2 z-10 relative">
+            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-widest text-[10px]">Avg Daily Rate</CardTitle>
+            <div className="h-8 w-8 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center">
+              <TrendingUp className="h-4 w-4 text-violet-400" />
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{avgPortfolioPrice} <span className="text-lg font-medium text-muted-foreground">AED</span></div>
-            <p className="text-xs text-muted-foreground mt-1 font-medium">Overall booked rate</p>
+          <CardContent className="z-10 relative">
+            <div className="text-3xl font-light text-white">{avgPortfolioPrice} <span className="text-lg font-light text-muted-foreground">AED</span></div>
+            <p className="text-xs text-emerald-500/80 mt-1 font-medium flex items-center gap-1">
+              <TrendingUp className="w-3 h-3" /> Overall booked rate
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-background to-muted/30 border-muted relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl -mr-10 -mt-10" />
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Projected Revenue</CardTitle>
-            <div className="h-8 w-8 rounded-full bg-amber-500/20 flex items-center justify-center">
+        <Card className="bg-[#111113] border-white/5 shadow-2xl overflow-hidden relative group border-t-amber-500">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl -mr-16 -mt-16" />
+          <CardHeader className="flex flex-row items-center justify-between pb-2 z-10 relative">
+            <CardTitle className="text-sm font-medium text-amber-500/80 uppercase tracking-widest text-[10px]">Projected Revenue</CardTitle>
+            <div className="h-8 w-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
               <DollarSign className="h-4 w-4 text-amber-500" />
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{totalPortfolioRevenue.toLocaleString()} <span className="text-lg font-medium text-muted-foreground">AED</span></div>
-            <p className="text-xs text-muted-foreground mt-1 font-medium">Estimated 30-day gross</p>
+          <CardContent className="z-10 relative">
+            <div className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-200 to-amber-500">{totalPortfolioRevenue.toLocaleString()} <span className="text-lg font-medium text-amber-500/50">AED</span></div>
+            <p className="text-xs text-amber-500/80 mt-1 font-medium flex items-center gap-1">
+              <TrendingUp className="w-3 h-3" /> Estimated 30-day gross
+            </p>
           </CardContent>
         </Card>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3 mb-8">
-        <Card className="md:col-span-2 shadow-sm border-muted">
+        <Card className="md:col-span-2 shadow-2xl border-white/5 bg-[#111113]">
           <CardHeader>
-            <CardTitle>Top Drivers by Revenue</CardTitle>
-            <CardDescription>Top 10 performing properties in the selected cohort.</CardDescription>
+            <CardTitle className="text-white">Top Drivers by Revenue</CardTitle>
+            <CardDescription className="text-muted-foreground">Top 10 performing properties in the selected cohort.</CardDescription>
           </CardHeader>
           <CardContent className="px-2">
             <div className="h-[300px] w-full">
@@ -178,7 +189,7 @@ export function OverviewClient({
                     tickFormatter={(val) => `${val / 1000}k`}
                     dx={-10}
                   />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted) / 0.4)' }} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted) / 0.1)' }} />
                   <Bar dataKey="revenue" radius={[6, 6, 0, 0]}>
                     {chartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.revenue > 10000 ? 'hsl(var(--amber-500))' : 'hsl(var(--primary) / 0.7)'} />
@@ -190,24 +201,24 @@ export function OverviewClient({
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-muted flex flex-col">
+        <Card className="shadow-2xl border-white/5 bg-[#111113] flex flex-col">
           <CardHeader>
-            <CardTitle>Occupancy Status</CardTitle>
-            <CardDescription>Property health distribution.</CardDescription>
+            <CardTitle className="text-white">Occupancy Status</CardTitle>
+            <CardDescription className="text-muted-foreground">Property health distribution.</CardDescription>
           </CardHeader>
           <CardContent className="flex-1 overflow-hidden p-0">
             <ScrollArea className="h-full px-6 pb-6">
               <div className="space-y-4">
                 {filteredProperties.sort((a, b) => b.occupancy - a.occupancy).slice(0, 8).map(prop => (
-                  <div key={prop.id} className="flex items-center justify-between">
+                  <div key={prop.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors">
                     <div className="flex flex-col flex-1 min-w-0 pr-4">
-                      <span className="text-sm font-medium truncate">{prop.name}</span>
+                      <span className="text-sm font-medium truncate text-white">{prop.name}</span>
                       <span className="text-xs text-muted-foreground truncate">{prop.area}</span>
                     </div>
                     <div className="flex flex-col items-end shrink-0">
                       <span className={`text-sm font-bold ${prop.occupancy >= 70 ? 'text-emerald-500' :
-                        prop.occupancy >= 40 ? 'text-amber-500' :
-                          'text-rose-500'
+                          prop.occupancy >= 40 ? 'text-amber-500' :
+                            'text-rose-500'
                         }`}>
                         {prop.occupancy}%
                       </span>
@@ -221,45 +232,45 @@ export function OverviewClient({
         </Card>
       </div>
 
-      <Card className="flex-1 min-h-0 flex flex-col shadow-sm border-muted">
-        <CardHeader className="border-b bg-muted/5 py-4">
-          <CardTitle>Property Details</CardTitle>
+      <Card className="flex-1 min-h-0 flex flex-col shadow-2xl border-white/5 bg-[#111113]">
+        <CardHeader className="border-b border-white/10 py-4 bg-black/20">
+          <CardTitle className="text-white">Property Details</CardTitle>
         </CardHeader>
         <CardContent className="p-0 flex-1 overflow-hidden">
           <ScrollArea className="h-[400px] rounded-b-xl border-t-0 p-4">
             <Table>
-              <TableHeader className="bg-muted/10 sticky top-0 z-10 backdrop-blur-sm">
-                <TableRow>
-                  <TableHead>Property</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Target Baseline</TableHead>
-                  <TableHead>Next 30D Occupancy</TableHead>
-                  <TableHead>Next 30D Avg Rate</TableHead>
-                  <TableHead className="text-right">Projected Revenue</TableHead>
+              <TableHeader className="bg-[#1a1a1c] sticky top-0 z-10 backdrop-blur-sm border-b border-white/10">
+                <TableRow className="hover:bg-transparent border-none">
+                  <TableHead className="text-muted-foreground text-xs uppercase tracking-wider">Property</TableHead>
+                  <TableHead className="text-muted-foreground text-xs uppercase tracking-wider">Location</TableHead>
+                  <TableHead className="text-muted-foreground text-xs uppercase tracking-wider">Target Baseline</TableHead>
+                  <TableHead className="text-muted-foreground text-xs uppercase tracking-wider">Next 30D Occupancy</TableHead>
+                  <TableHead className="text-muted-foreground text-xs uppercase tracking-wider">Next 30D Avg Rate</TableHead>
+                  <TableHead className="text-right text-muted-foreground text-xs uppercase tracking-wider">Projected Revenue</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredProperties.sort((a, b) => b.revenue - a.revenue).map((property) => (
-                  <TableRow key={property.id} className="hover:bg-muted/30 transition-colors">
-                    <TableCell className="font-medium">{property.name}</TableCell>
+                  <TableRow key={property.id} className="hover:bg-white/5 transition-colors border-white/5">
+                    <TableCell className="font-medium text-white">{property.name}</TableCell>
                     <TableCell className="text-muted-foreground">{property.area}</TableCell>
                     <TableCell className="text-muted-foreground">{property.price} AED</TableCell>
                     <TableCell>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${property.occupancy >= 70 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
-                        property.occupancy >= 40 ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' :
-                          'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${property.occupancy >= 70 ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
+                          property.occupancy >= 40 ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' :
+                            'bg-rose-500/10 text-rose-500 border border-rose-500/20'
                         }`}>
                         {property.occupancy}%
                       </span>
                     </TableCell>
-                    <TableCell className="font-medium">{property.avgPrice.toFixed(0)} <span className="text-xs text-muted-foreground">AED</span></TableCell>
+                    <TableCell className="font-medium text-white">{property.avgPrice.toFixed(0)} <span className="text-xs text-muted-foreground">AED</span></TableCell>
                     <TableCell className="text-right font-bold tracking-tight">
                       {property.revenue > 0 ? (
-                        <span className="text-emerald-600 dark:text-emerald-400">{property.revenue.toLocaleString()}</span>
+                        <span className="text-amber-500">{property.revenue.toLocaleString()}</span>
                       ) : (
                         <span className="text-muted-foreground">{property.revenue.toLocaleString()}</span>
                       )}{" "}
-                      <span className="text-xs font-normal text-muted-foreground">AED</span>
+                      <span className="text-xs font-normal text-amber-500/50">AED</span>
                     </TableCell>
                   </TableRow>
                 ))}
