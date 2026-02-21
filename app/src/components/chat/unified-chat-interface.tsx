@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Send, Loader2, Settings, Zap, Calendar as CalendarIcon, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { Send, Loader2, Settings, Zap, Calendar as CalendarIcon, PanelRightClose, PanelRightOpen, Building2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useContextStore } from "@/stores/context-store";
@@ -319,6 +319,18 @@ export function UnifiedChatInterface({ properties }: Props) {
       setIsLoading(false);
     }
   };
+
+  if (contextType === "portfolio") {
+    return (
+      <div className="flex flex-col flex-1 items-center justify-center h-full text-muted-foreground p-8 text-center bg-muted/5">
+        <Building2 className="h-16 w-16 mb-6 opacity-10" />
+        <h3 className="text-xl font-bold text-foreground">Select a Property</h3>
+        <p className="mt-2 text-sm max-w-sm">
+          Please select a property from the sidebar to view metrics, market signals, and chat with the AI Pricing Analyst.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden h-full">

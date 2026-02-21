@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Building2, TrendingUp, DollarSign, CalendarCheck, Search } from "lucide-react";
 import {
   BarChart,
@@ -103,8 +104,8 @@ export function OverviewClient({
     if (active && payload && payload.length) {
       return (
         <div className="bg-background border border-border/50 p-3 rounded-xl shadow-lg">
-          <p className="font-semibold text-sm mb-1">{label}</p>
-          <p className="text-emerald-500 font-bold text-sm">
+          <p className="font-semibold text-sm mb-1 text-foreground dark:text-white">{label}</p>
+          <p className="text-emerald-600 dark:text-emerald-500 font-bold text-sm">
             {payload[0].value.toLocaleString()} AED
           </p>
           <p className="text-muted-foreground text-xs mt-1">Projected Revenue</p>
@@ -264,7 +265,8 @@ export function OverviewClient({
                   </Pie>
                   <Tooltip
                     formatter={(value: number) => [`${value.toLocaleString()} AED`, 'Revenue']}
-                    contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
+                    contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))' }}
+                    itemStyle={{ color: 'hsl(var(--foreground))', fontWeight: '500' }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -379,76 +381,81 @@ export function OverviewClient({
                 </div>
               </div>
 
-              <div className="flex flex-col relative z-0">
-                {filteredProperties.sort((a, b) => b.revenue - a.revenue).map((property, idx) => (
-                  <div key={property.id} className={`flex border-b border-border dark:border-white/5 transition-colors hover:bg-muted/50 dark:hover:bg-white/5 ${idx % 2 === 0 ? 'bg-transparent' : 'bg-muted/20 dark:bg-black/20'}`}>
-                    <div className="w-[300px] shrink-0 p-3 flex flex-col justify-center border-r border-border dark:border-white/10 sticky left-0 bg-background dark:bg-[#0c0c0e] z-10 shadow-xl">
-                      <span className="text-sm font-semibold truncate text-foreground dark:text-white">{property.name}</span>
-                      <span className="text-xs text-muted-foreground truncate">{property.area}</span>
+              <TooltipProvider delayDuration={100}>
+                <div className="flex flex-col relative z-0">
+                  {filteredProperties.sort((a, b) => b.revenue - a.revenue).map((property, idx) => (
+                    <div key={property.id} className={`flex border-b border-border dark:border-white/5 transition-colors hover:bg-muted/50 dark:hover:bg-white/5 ${idx % 2 === 0 ? 'bg-transparent' : 'bg-muted/20 dark:bg-black/20'}`}>
+                      <div className="w-[300px] shrink-0 p-3 flex flex-col justify-center border-r border-border dark:border-white/10 sticky left-0 bg-background dark:bg-[#0c0c0e] z-10 shadow-xl">
+                        <span className="text-sm font-semibold truncate text-foreground dark:text-white">{property.name}</span>
+                        <span className="text-xs text-muted-foreground truncate">{property.area}</span>
+                      </div>
+                      <div className="flex flex-1 relative py-1">
+                        {next30Days.map((d, i) => {
+                          const dateStr = format(d, 'yyyy-MM-dd');
+                          const calDay = property.calendarDays?.find(c => c.date === dateStr);
+
+                          // Look for a reservation exactly covering this day to render block
+                          const reservation = property.reservations?.find(r => {
+                            try {
+                              return isWithinInterval(d, { start: parseISO(r.startDate), end: parseISO(r.endDate) });
+                            } catch { return false; }
+                          });
+
+                          let bgColor = "bg-emerald-500/20 dark:bg-emerald-500/30";
+                          let borderColor = "border-emerald-500/30 dark:border-emerald-500/40";
+
+                          if (calDay?.status === 'blocked') {
+                            bgColor = "bg-neutral-500/30 dark:bg-neutral-800/80";
+                            borderColor = "border-neutral-400 dark:border-neutral-700";
+                          } else if (calDay?.status === 'reserved' || calDay?.status === 'booked' || reservation) {
+                            bgColor = "bg-rose-500/20 dark:bg-rose-500/30";
+                            borderColor = "border-rose-500/50";
+                          }
+
+                          // We'll create small tooltips for the days
+                          return (
+                            <div key={i} className="flex-1 min-w-[32px] max-w-[40px] px-0.5 relative flex items-center">
+                              {(reservation || calDay?.status === 'blocked') ? (
+                                <UITooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className={`w-full h-8 rounded-md border ${bgColor} ${borderColor} transition-all duration-300 hover:brightness-105 dark:hover:brightness-125 z-0 cursor-pointer`} />
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="flex flex-col bg-popover dark:bg-black border border-border dark:border-white/20 p-3 rounded-xl shadow-2xl z-[99999] w-64 backdrop-blur-xl">
+                                    {reservation ? (
+                                      <>
+                                        <div className="border-b border-border dark:border-white/10 pb-2 mb-2">
+                                          <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-1">Confirmed Guest</p>
+                                          <p className="text-sm font-bold text-foreground dark:text-white whitespace-nowrap overflow-hidden text-ellipsis">{reservation.title}</p>
+                                        </div>
+                                        <div className="flex justify-between items-center text-xs mb-1">
+                                          <span className="text-muted-foreground">Total Payout:</span>
+                                          <span className="font-bold text-emerald-600 dark:text-emerald-400">{reservation.financials?.hostPayout?.toLocaleString() || reservation.financials?.totalPrice?.toLocaleString() || 'Unknown'} AED</span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-xs mb-1">
+                                          <span className="text-muted-foreground">Channel:</span>
+                                          <span className="font-semibold text-foreground dark:text-white capitalize">{reservation.financials?.channelName || reservation.financials?.channel || 'Direct'}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-xs">
+                                          <span className="text-muted-foreground">Dates:</span>
+                                          <span className="font-medium text-foreground dark:text-white">{reservation.startDate} - {reservation.endDate}</span>
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <div className="text-xs text-muted-foreground font-medium text-center text-foreground dark:text-muted-foreground">Owner Blocked</div>
+                                    )}
+                                  </TooltipContent>
+                                </UITooltip>
+                              ) : (
+                                <div className={`w-full h-8 rounded-md border ${bgColor} ${borderColor} transition-all duration-300 hover:brightness-105 dark:hover:brightness-125 z-0 cursor-default`} />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                    <div className="flex flex-1 relative py-1">
-                      {next30Days.map((d, i) => {
-                        const dateStr = format(d, 'yyyy-MM-dd');
-                        const calDay = property.calendarDays?.find(c => c.date === dateStr);
-
-                        // Look for a reservation exactly covering this day to render block
-                        const reservation = property.reservations?.find(r => {
-                          try {
-                            return isWithinInterval(d, { start: parseISO(r.startDate), end: parseISO(r.endDate) });
-                          } catch { return false; }
-                        });
-
-                        let bgColor = "bg-green-500/20";
-                        let borderColor = "border-green-500/30";
-
-                        if (calDay?.status === 'blocked') {
-                          bgColor = "bg-neutral-500/50 dark:bg-neutral-800/80";
-                          borderColor = "border-neutral-400 dark:border-neutral-700";
-                        } else if (calDay?.status === 'reserved' || calDay?.status === 'booked' || reservation) {
-                          bgColor = "bg-red-500/20";
-                          borderColor = "border-red-500/50";
-                        }
-
-                        // We'll create small tooltips for the days
-                        return (
-                          <div key={i} className="flex-1 min-w-[32px] max-w-[40px] px-0.5 group relative flex items-center">
-                            <div className={`w-full h-8 rounded-md border ${bgColor} ${borderColor} transition-all duration-300 hover:brightness-105 dark:hover:brightness-125 z-0`} />
-
-                            {/* Hover Tooltip inside mapping to avoid complex portals for now */}
-                            {(reservation || calDay?.status === 'blocked') && (
-                              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:flex flex-col bg-popover dark:bg-black border border-border dark:border-white/20 p-3 rounded-xl shadow-2xl z-[100] w-64 backdrop-blur-xl">
-                                {reservation ? (
-                                  <>
-                                    <div className="border-b border-border dark:border-white/10 pb-2 mb-2">
-                                      <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-1">Confirmed Guest</p>
-                                      <p className="text-sm font-bold text-foreground dark:text-white whitespace-nowrap overflow-hidden text-ellipsis">{reservation.title}</p>
-                                    </div>
-                                    <div className="flex justify-between items-center text-xs mb-1">
-                                      <span className="text-muted-foreground">Total Payout:</span>
-                                      <span className="font-bold text-emerald-600 dark:text-emerald-400">{reservation.financials?.hostPayout?.toLocaleString() || reservation.financials?.totalPrice?.toLocaleString() || 'Unknown'} AED</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-xs mb-1">
-                                      <span className="text-muted-foreground">Channel:</span>
-                                      <span className="font-semibold text-foreground dark:text-white capitalize">{reservation.financials?.channelName || reservation.financials?.channel || 'Direct'}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-xs">
-                                      <span className="text-muted-foreground">Dates:</span>
-                                      <span className="font-medium text-foreground dark:text-white">{reservation.startDate} - {reservation.endDate}</span>
-                                    </div>
-                                  </>
-                                ) : (
-                                  <div className="text-xs text-muted-foreground font-medium text-center text-foreground dark:text-muted-foreground">Owner Blocked</div>
-                                )}
-                                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-popover dark:border-t-black"></div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </TooltipProvider>
             </div>
           </div>
         </CardContent>

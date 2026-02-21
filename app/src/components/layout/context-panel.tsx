@@ -39,23 +39,13 @@ export function ContextPanel({ properties }: Props) {
   return (
     <aside className="flex h-full w-[280px] flex-col border-r bg-background shrink-0">
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Portfolio View Button */}
-        <Button
-          variant={contextType === "portfolio" ? "default" : "outline"}
-          className="w-full justify-start gap-2"
-          onClick={handlePortfolioClick}
-        >
-          <LayoutGrid className="h-4 w-4" />
-          Portfolio Chat
-        </Button>
-
         {/* Divider */}
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground">
+            <span className="bg-background px-2 text-muted-foreground font-semibold tracking-wider">
               Properties
             </span>
           </div>
