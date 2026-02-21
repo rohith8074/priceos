@@ -173,26 +173,26 @@ export function OverviewClient({
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted-foreground) / 0.1)" />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.3} />
                   <XAxis
                     dataKey="name"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                    tick={{ fontSize: 11, fill: '#a1a1aa' }}
                     dy={10}
                     tickFormatter={(val) => val.length > 15 ? val.substring(0, 15) + '...' : val}
                   />
                   <YAxis
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                    tick={{ fontSize: 11, fill: '#a1a1aa' }}
                     tickFormatter={(val) => `${val / 1000}k`}
                     dx={-10}
                   />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted) / 0.1)' }} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: '#3f3f46', opacity: 0.2 }} />
                   <Bar dataKey="revenue" radius={[6, 6, 0, 0]}>
                     {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.revenue > 10000 ? 'hsl(var(--amber-500))' : 'hsl(var(--primary) / 0.7)'} />
+                      <Cell key={`cell-${index}`} fill={entry.revenue > 10000 ? '#f59e0b' : '#3f3f46'} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -217,8 +217,8 @@ export function OverviewClient({
                     </div>
                     <div className="flex flex-col items-end shrink-0">
                       <span className={`text-sm font-bold ${prop.occupancy >= 70 ? 'text-emerald-500' :
-                          prop.occupancy >= 40 ? 'text-amber-500' :
-                            'text-rose-500'
+                        prop.occupancy >= 40 ? 'text-amber-500' :
+                          'text-rose-500'
                         }`}>
                         {prop.occupancy}%
                       </span>
@@ -257,8 +257,8 @@ export function OverviewClient({
                     <TableCell className="text-muted-foreground">{property.price} AED</TableCell>
                     <TableCell>
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${property.occupancy >= 70 ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
-                          property.occupancy >= 40 ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' :
-                            'bg-rose-500/10 text-rose-500 border border-rose-500/20'
+                        property.occupancy >= 40 ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' :
+                          'bg-rose-500/10 text-rose-500 border border-rose-500/20'
                         }`}>
                         {property.occupancy}%
                       </span>
@@ -287,8 +287,8 @@ export function OverviewClient({
         </CardContent>
       </Card>
 
-      <Card className="flex-1 min-h-0 flex flex-col shadow-sm border-muted mt-8 mb-8 border border-white/5 bg-black/40 backdrop-blur-md">
-        <CardHeader className="border-b border-border/10 py-4 bg-gradient-to-r from-amber-500/10 to-transparent">
+      <Card className="flex-1 shrink-0 flex flex-col shadow-2xl mt-8 mb-8 border border-white/5 bg-[#111113]">
+        <CardHeader className="border-b border-white/10 py-4 bg-gradient-to-r from-amber-500/10 to-transparent">
           <CardTitle className="text-amber-500 flex items-center gap-2">
             <CalendarCheck className="w-5 h-5" />
             Global Availability Master Calendar
@@ -297,9 +297,9 @@ export function OverviewClient({
             30-day forward-looking timeline view across all active properties
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-0 overflow-hidden flex flex-col relative w-full">
+        <CardContent className="p-0 flex flex-col relative w-full">
           <div className="w-full overflow-x-auto custom-scrollbar">
-            <div className="min-w-[1200px] inline-block align-top">
+            <div className="min-w-[1200px] inline-block align-top pb-4">
               <div className="flex bg-muted/10 sticky top-0 z-20 border-b border-white/10 backdrop-blur-md">
                 <div className="w-[300px] shrink-0 p-3 font-semibold text-xs text-muted-foreground uppercase border-r border-white/10 sticky left-0 bg-[#0c0c0e] z-30 shadow-xl">
                   Property Name
