@@ -14,7 +14,7 @@ import { DateRange } from "react-day-picker";
 import { addDays, format } from "date-fns";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { CalendarVisualizer } from "./calendar-visualizer";
+import { CalendarVisualizer, ReservationData } from "./calendar-visualizer";
 
 import { toast } from "sonner";
 
@@ -82,6 +82,7 @@ export function UnifiedChatInterface({ properties }: Props) {
     blockedDays: number;
     totalDays: number;
     calendarDays?: { date: string; status: string; price: number }[];
+    reservations?: ReservationData[];
   } | null>(null);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
 
@@ -168,6 +169,7 @@ export function UnifiedChatInterface({ properties }: Props) {
             blockedDays: data.blockedDays,
             totalDays: data.totalDays,
             calendarDays: data.calendarDays,
+            reservations: data.reservations,
           });
         }
       } catch (err) {
@@ -536,7 +538,14 @@ export function UnifiedChatInterface({ properties }: Props) {
               Availability Calendar
             </div>
             <div className="p-4">
-              <CalendarVisualizer days={calendarMetrics.calendarDays} />
+              <CalendarVisualizer
+                days={calendarMetrics.calendarDays}
+                reservations={calendarMetrics.reservations}
+                dateRange={{
+                  from: format(dateRange?.from || new Date(), 'yyyy-MM-dd'),
+                  to: format(dateRange?.to || new Date(), 'yyyy-MM-dd')
+                }}
+              />
             </div>
           </div>
         )}

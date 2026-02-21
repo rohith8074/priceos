@@ -1,4 +1,4 @@
-import { format, startOfMonth, getDay, endOfMonth, isSameMonth } from "date-fns";
+import { format, startOfMonth, getDay, endOfMonth, eachMonthOfInterval, isWithinInterval } from "date-fns";
 
 export interface CalendarDayData {
     date: string;
@@ -6,20 +6,39 @@ export interface CalendarDayData {
     price: number;
 }
 
-interface CalendarVisualizerProps {
-    days: CalendarDayData[];
+export interface ReservationData {
+    title: string;
+    startDate: string;
+    endDate: string;
+    financials: {
+        totalPrice?: number;
+        reservationStatus?: string;
+        channelName?: string;
+    };
 }
 
-export function CalendarVisualizer({ days }: CalendarVisualizerProps) {
-    if (!days || days.length === 0) return null;
+interface CalendarVisualizerProps {
+    days: CalendarDayData[];
+    reservations?: ReservationData[];
+    dateRange: { from: string; to: string };
+}
 
-    // Group days by month
-    const months: { [key: string]: CalendarDayData[] } = {};
-    days.forEach((day) => {
-        const monthKey = format(new Date(day.date), "yyyy-MM");
-        if (!months[monthKey]) months[monthKey] = [];
-        months[monthKey].push(day);
-    });
+export function CalendarVisualizer({ days, reservations = [], dateRange }: CalendarVisualizerProps) {
+    if (!dateRange || !dateRange.from || !dateRange.to) return null;
+
+    const startDate = new Date(dateRange.from);
+    const endDate = new Date(dateRange.to);
+    const monthsInRange = eachMonthOfInterval({ start: startDate, end: endDate });
+
+    // Helper to find a reservation for a given date
+    const getReservationForDate = (dateStr: string) => {
+        const targetDate = new Date(dateStr);
+        return reservations.find(r => {
+            const start = new Date(r.startDate);
+            const end = new Date(r.endDate);
+            return targetDate >= start && targetDate <= end;
+        });
+    };
 
     return (
         <div className="flex flex-col space-y-6">
@@ -29,27 +48,25 @@ export function CalendarVisualizer({ days }: CalendarVisualizerProps) {
                 <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700"></span> Blocked</span>
             </div>
 
-            {Object.entries(months).map(([monthKey, monthDays]) => {
-                // Calculate padding for the first day of the month
-                const firstDayDate = new Date(`${monthKey}-01T12:00:00Z`);
+            {monthsInRange.map((monthDate) => {
+                const monthKey = format(monthDate, "yyyy-MM");
+                const firstDayDate = startOfMonth(monthDate);
                 const startDayOffset = getDay(firstDayDate); // 0 = Sunday, 1 = Monday...
                 const blankDays = Array.from({ length: startDayOffset }).map((_, i) => i);
 
-                // Month title
                 const monthTitle = format(firstDayDate, "MMMM yyyy");
-
-                // The monthDays only contains days queried. We pad the rest to complete the month if we want, 
-                // but for simplicity, we map out the real days according to their exact date number.
                 const daysInMonth = parseInt(format(endOfMonth(firstDayDate), "d"));
+
                 const gridDays = Array.from({ length: daysInMonth }).map((_, i) => {
                     const dateNumber = i + 1;
                     const fullDateStr = `${monthKey}-${String(dateNumber).padStart(2, '0')}`;
-                    // Find if we have data for this day
-                    const foundDay = monthDays.find(d => d.date === fullDateStr);
+                    const foundDay = days.find(d => d.date === fullDateStr);
+                    const res = getReservationForDate(fullDateStr);
                     return {
                         dayNum: dateNumber,
                         fullDateStr,
-                        data: foundDay
+                        data: foundDay,
+                        reservation: res
                     }
                 });
 
@@ -78,11 +95,21 @@ export function CalendarVisualizer({ days }: CalendarVisualizerProps) {
                                     tooltip = `${gridDay.data.status.toUpperCase()} \nPrice: ${gridDay.data.price} AED`;
                                 }
 
+                                if (gridDay.reservation) {
+                                    tooltip += `\nGuest: ${gridDay.reservation.title}`;
+                                    if (gridDay.reservation.financials?.totalPrice) {
+                                        tooltip += `\nTotal: ${gridDay.reservation.financials.totalPrice} AED`;
+                                    }
+                                    if (gridDay.reservation.financials?.channelName) {
+                                        tooltip += `\nChannel: ${gridDay.reservation.financials.channelName}`;
+                                    }
+                                }
+
                                 return (
                                     <div
                                         key={gridDay.dayNum}
                                         title={tooltip}
-                                        className={`h-10 rounded border border-border/50 flex flex-col items-center justify-center text-xs transition-opacity hover:opacity-80 ${bgClass}`}
+                                        className={`h-10 rounded border border-border/50 flex flex-col items-center justify-center text-xs transition-opacity hover:opacity-80 ${bgClass} ${gridDay.reservation ? 'ring-1 ring-offset-1 ring-amber-500' : ''}`}
                                     >
                                         <span>{gridDay.dayNum}</span>
                                     </div>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { inventoryMaster, listings } from "@/lib/db/schema";
+import { inventoryMaster, listings, activityTimeline } from "@/lib/db/schema";
 import { eq, and, gte, lte, sql, count, avg } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
@@ -75,6 +75,23 @@ export async function GET(req: NextRequest) {
             )
             .orderBy(inventoryMaster.date);
 
+        const reservationsResp = await db
+            .select({
+                title: activityTimeline.title,
+                startDate: activityTimeline.startDate,
+                endDate: activityTimeline.endDate,
+                financials: activityTimeline.financials
+            })
+            .from(activityTimeline)
+            .where(
+                and(
+                    eq(activityTimeline.listingId, lid),
+                    eq(activityTimeline.type, 'reservation'),
+                    lte(activityTimeline.startDate, to),
+                    gte(activityTimeline.endDate, from)
+                )
+            );
+
         return NextResponse.json({
             listingId: lid,
             dateRange: { from, to },
@@ -86,6 +103,7 @@ export async function GET(req: NextRequest) {
             occupancy,
             avgPrice: Math.round(avgPriceVal * 100) / 100,
             calendarDays,
+            reservations: reservationsResp,
         });
     } catch (error) {
         console.error("Calendar Metrics Error:", error);
