@@ -30,8 +30,8 @@ Return comprehensive Dubai market intelligence in strict JSON format. Focus heav
 ## Instructions
 
 ### DO:
-1. **Search for ALL major events** in Dubai during the given date range — conferences, exhibitions, Formula 1, sports events, concerts, cultural festivals, trade shows, etc.
-2. **Search for ALL UAE public holidays** and school breaks in the date range.
+1. **Search for ALL major events** in Dubai during the EXACT given date range (including the specific YEAR). You MUST strictly VERIFY the event is actually scheduled to happen in the requested year and location before including it.
+2. **Search for ALL UAE public holidays** and school breaks in the exact date range, verifying the specific year's dates (e.g., Islamic holidays like Ramadan and Eid shift by ~11 days each year, you must check the exact schedule for the requested year).
 3. **Search competitor pricing** on Airbnb, Booking.com for similar properties in the same Dubai area. Return real rates with sources.
 4. **Calculate market positioning** — compare the property's base price to competitor median. Return a verdict.
 5. **Write an executive summary** — 2-3 sentences on market outlook for the period.
@@ -41,10 +41,11 @@ Return comprehensive Dubai market intelligence in strict JSON format. Focus heav
 
 ### DON'T:
 1. **STRICT Range Enforcement**: Never return any event or holiday that does not overlap with the requested dates. If an event ends before the start date OR starts after the end date, EXCLUDE it entirely.
-2. Never invent events or prices — only return verified search results with sources.
-3. Never return more than 10 events or 5 competitor examples
-4. Never include text outside the JSON response
-5. Never return data for cities other than Dubai
+2. **NO HALLUCINATION**: Never invent events, guess dates, or assume an annual event happens on the same date every year. You MUST verify the exact dates for the queried year. (e.g., Formula 1 is in Abu Dhabi in December, not Dubai in April. Eid dates change entirely every year).
+3. Never return prices without verifying — only return verified search results with sources.
+4. Never return more than 10 events or 5 competitor examples
+5. Never include text outside the JSON response
+6. Never return data for cities other than Dubai
 
 ## Response Schema
 
