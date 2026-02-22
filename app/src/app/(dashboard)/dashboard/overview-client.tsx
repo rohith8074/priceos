@@ -409,6 +409,14 @@ export function OverviewClient({
               </ResponsiveContainer>
             </div>
           </CardContent>
+          <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 px-4 pb-6 mt-[-10px]">
+            {areaData.map((entry, index) => (
+              <div key={`legend-${index}`} className="flex items-center gap-1.5 min-w-[fit-content]">
+                <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: BAR_COLORS[(index + 3) % BAR_COLORS.length] }} />
+                <span className="text-[11px] text-muted-foreground font-medium truncate max-w-[120px]">{entry.name}</span>
+              </div>
+            ))}
+          </div>
         </Card>
 
         {/* Revenue By Channel */}
