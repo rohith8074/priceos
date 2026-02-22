@@ -191,19 +191,7 @@ export async function POST(req: NextRequest) {
     const data = await response.json();
     const duration = Math.round(performance.now() - startTime);
 
-    const agentReply = extractAgentMessage(data);
-
-    let parsedJson: any = null;
-    try {
-      const rawStr = typeof data.response === "string" ? data.response : (data.response?.message || data.result?.message || data.message || "");
-      let cleanStr = rawStr;
-      if (cleanStr.startsWith("```json")) {
-        cleanStr = cleanStr.replace(/```json\\s*/, "").replace(/\\s*```$/, "");
-      }
-      parsedJson = JSON.parse(cleanStr);
-    } catch (e) {
-      // Not valid JSON, ignore
-    }
+    const { text: agentReply, parsedJson } = extractAgentMessage(data);
 
     // Save assistant message and any proposals to database
     try {
@@ -253,7 +241,7 @@ export async function POST(req: NextRequest) {
 /**
  * Extract the agent's text message from the Lyzr response and parse JSON if needed.
  */
-function extractAgentMessage(response: any): string {
+function extractAgentMessage(response: any): { text: string; parsedJson: any | null } {
   let rawStr = "";
 
   // Format 1: Direct response string (common from Lyzr chat endpoint)
@@ -294,7 +282,7 @@ function extractAgentMessage(response: any): string {
       "[Chat API] Unknown Lyzr response format:",
       JSON.stringify(response).substring(0, 500)
     );
-    return "I received your message but couldn't parse my response. Please try again.";
+    return { text: "I received your message but couldn't parse my response. Please try again.", parsedJson: null };
   }
 
   // Strip markdown json formatting if present
@@ -313,20 +301,20 @@ function extractAgentMessage(response: any): string {
 
     // Prefer chat_response from CRO Router
     if (parsed.chat_response) {
-      return parsed.chat_response;
+      return { text: parsed.chat_response, parsedJson: parsed };
     }
 
     // Fallback to summary from individual agents (like Property Analyst)
     if (parsed.summary) {
-      return parsed.summary;
+      return { text: parsed.summary, parsedJson: parsed };
     }
 
     // Fallback: If it's a JSON but has no chat_response or summary, stringify it cleanly
-    return "```json\n" + JSON.stringify(parsed, null, 2) + "\n```";
+    return { text: "```json\n" + JSON.stringify(parsed, null, 2) + "\n```", parsedJson: parsed };
   } catch (e) {
     // If it's not valid JSON, just return the raw string
     console.log(`\n🤖 LYZR AGENT RAW TEXT:`);
     console.log(rawStr);
-    return rawStr;
+    return { text: rawStr, parsedJson: null };
   }
 }
