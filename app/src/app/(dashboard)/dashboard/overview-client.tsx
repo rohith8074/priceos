@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2, TrendingUp, DollarSign, CalendarCheck, Search } from "lucide-react";
 import {
   BarChart,
@@ -51,6 +52,11 @@ export function OverviewClient({
   const [searchTerm, setSearchTerm] = useState("");
   const [calendarStartDate, setCalendarStartDate] = useState(new Date());
 
+  const [revenueFilter, setRevenueFilter] = useState("10");
+  const [occupancyFilter, setOccupancyFilter] = useState("10");
+  const [areaFilter, setAreaFilter] = useState("10");
+  const [channelFilter, setChannelFilter] = useState("all");
+
   const filteredProperties = properties.filter((prop) =>
     prop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     prop.area.toLowerCase().includes(searchTerm.toLowerCase())
@@ -73,9 +79,10 @@ export function OverviewClient({
   // Generate an array of the next 30 days for the Global Calendar header
   const next30Days = Array.from({ length: 30 }).map((_, i) => addDays(calendarStartDate, i));
 
+  const revenueLimit = revenueFilter === 'all' ? filteredProperties.length : parseInt(revenueFilter);
   const chartData = [...filteredProperties]
     .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 10);
+    .slice(0, revenueLimit);
 
   // Generate channel revenue data for Pie Chart
   const channelDataMap: Record<string, number> = {};
@@ -90,23 +97,27 @@ export function OverviewClient({
     });
   });
 
-  const channelData = Object.keys(channelDataMap).map(key => ({
+  const channelDataAll = Object.keys(channelDataMap).map(key => ({
     name: key,
     value: channelDataMap[key]
-  }));
+  })).sort((a, b) => b.value - a.value);
 
-  if (channelData.length === 0) {
-    channelData.push(
+  if (channelDataAll.length === 0) {
+    channelDataAll.push(
       { name: 'Airbnb', value: 45000 },
       { name: 'Booking.com', value: 30000 },
       { name: 'Direct', value: 15000 }
     );
   }
 
+  const channelLimit = channelFilter === 'all' ? channelDataAll.length : parseInt(channelFilter);
+  const channelData = channelDataAll.slice(0, channelLimit);
+
   // Chart Data: Occupancy by Property
+  const occupancyLimit = occupancyFilter === 'all' ? filteredProperties.length : parseInt(occupancyFilter);
   const occupancyData = [...filteredProperties]
     .sort((a, b) => b.occupancy - a.occupancy)
-    .slice(0, 10);
+    .slice(0, occupancyLimit);
 
   // Chart Data: Revenue by Area
   const areaDataMap: Record<string, number> = {};
@@ -115,15 +126,18 @@ export function OverviewClient({
     areaDataMap[area] = (areaDataMap[area] || 0) + prop.revenue;
   });
 
-  const areaData = Object.keys(areaDataMap).map(key => ({
+  const areaDataAll = Object.keys(areaDataMap).map(key => ({
     name: key,
     value: areaDataMap[key]
   })).sort((a, b) => b.value - a.value);
 
   // Fallback if no revenue
-  if (areaData.length === 0 || areaData.every(d => d.value === 0)) {
-    areaData.push({ name: 'Downtown Dubai', value: 120000 }, { name: 'Dubai Marina', value: 90000 });
+  if (areaDataAll.length === 0 || areaDataAll.every(d => d.value === 0)) {
+    areaDataAll.push({ name: 'Downtown Dubai', value: 120000 }, { name: 'Dubai Marina', value: 90000 });
   }
+
+  const areaLimit = areaFilter === 'all' ? areaDataAll.length : parseInt(areaFilter);
+  const areaData = areaDataAll.slice(0, areaLimit);
 
   const PIE_COLORS: Record<string, string> = {
     'Airbnb': '#ef4444',
@@ -248,9 +262,22 @@ export function OverviewClient({
       <div className="grid gap-4 md:grid-cols-2 mb-8">
         {/* Top Drivers by Revenue */}
         <Card className="shadow-xl dark:shadow-2xl border-border dark:border-white/5 bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl">
-          <CardHeader>
-            <CardTitle className="text-foreground dark:text-white">Top Drivers by Revenue</CardTitle>
-            <CardDescription className="text-muted-foreground">Top 10 performing properties in the selected cohort.</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div>
+              <CardTitle className="text-foreground dark:text-white">Top Drivers by Revenue</CardTitle>
+              <CardDescription className="text-muted-foreground">Highest performing properties.</CardDescription>
+            </div>
+            <Select value={revenueFilter} onValueChange={setRevenueFilter}>
+              <SelectTrigger className="w-[100px] h-8 text-xs">
+                <SelectValue placeholder="Filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">Top 5</SelectItem>
+                <SelectItem value="10">Top 10</SelectItem>
+                <SelectItem value="20">Top 20</SelectItem>
+                <SelectItem value="all">All</SelectItem>
+              </SelectContent>
+            </Select>
           </CardHeader>
           <CardContent className="px-2">
             <div className="h-[250px] w-full">
@@ -286,9 +313,22 @@ export function OverviewClient({
 
         {/* Occupancy Rate per Property */}
         <Card className="shadow-xl dark:shadow-2xl border-border dark:border-white/5 bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl">
-          <CardHeader>
-            <CardTitle className="text-foreground dark:text-white">Occupancy Rate by Property</CardTitle>
-            <CardDescription className="text-muted-foreground">Highest occupancy rates in the selected cohort.</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div>
+              <CardTitle className="text-foreground dark:text-white">Occupancy Rate by Property</CardTitle>
+              <CardDescription className="text-muted-foreground">Highest occupancy rates.</CardDescription>
+            </div>
+            <Select value={occupancyFilter} onValueChange={setOccupancyFilter}>
+              <SelectTrigger className="w-[100px] h-8 text-xs border-border">
+                <SelectValue placeholder="Filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">Top 5</SelectItem>
+                <SelectItem value="10">Top 10</SelectItem>
+                <SelectItem value="20">Top 20</SelectItem>
+                <SelectItem value="all">All</SelectItem>
+              </SelectContent>
+            </Select>
           </CardHeader>
           <CardContent className="px-2">
             <div className="h-[250px] w-full">
@@ -326,9 +366,21 @@ export function OverviewClient({
 
         {/* Revenue By Area */}
         <Card className="shadow-xl dark:shadow-2xl border-border dark:border-white/5 bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl flex flex-col">
-          <CardHeader>
-            <CardTitle className="text-foreground dark:text-white">Revenue By Area</CardTitle>
-            <CardDescription className="text-muted-foreground">Geographic distribution of revenue.</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div>
+              <CardTitle className="text-foreground dark:text-white">Revenue By Area</CardTitle>
+              <CardDescription className="text-muted-foreground">Geographic distribution of revenue.</CardDescription>
+            </div>
+            <Select value={areaFilter} onValueChange={setAreaFilter}>
+              <SelectTrigger className="w-[100px] h-8 text-xs">
+                <SelectValue placeholder="Filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">Top 5</SelectItem>
+                <SelectItem value="10">Top 10</SelectItem>
+                <SelectItem value="all">All</SelectItem>
+              </SelectContent>
+            </Select>
           </CardHeader>
           <CardContent className="flex-1 flex items-center justify-center p-0">
             <div className="h-[250px] w-full">
@@ -361,9 +413,21 @@ export function OverviewClient({
 
         {/* Revenue By Channel */}
         <Card className="shadow-xl dark:shadow-2xl border-border dark:border-white/5 bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl flex flex-col">
-          <CardHeader>
-            <CardTitle className="text-foreground dark:text-white">Revenue By Channel</CardTitle>
-            <CardDescription className="text-muted-foreground">Distribution of booked revenue.</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div>
+              <CardTitle className="text-foreground dark:text-white">Revenue By Channel</CardTitle>
+              <CardDescription className="text-muted-foreground">Distribution of booked revenue.</CardDescription>
+            </div>
+            <Select value={channelFilter} onValueChange={setChannelFilter}>
+              <SelectTrigger className="w-[100px] h-8 text-xs">
+                <SelectValue placeholder="Filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="3">Top 3</SelectItem>
+                <SelectItem value="5">Top 5</SelectItem>
+                <SelectItem value="all">All</SelectItem>
+              </SelectContent>
+            </Select>
           </CardHeader>
           <CardContent className="flex-1 flex items-center justify-center p-0">
             <div className="h-[250px] w-full">
