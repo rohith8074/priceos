@@ -1,12 +1,15 @@
 import { db } from "@/lib/db";
 import { inventoryMaster, listings } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, gte } from "drizzle-orm";
 import { PricingClient } from "./pricing-client";
+import { format } from "date-fns";
 
 export const dynamic = "force-dynamic";
 
 export default async function PricingPage() {
-  // Fetch all pending price proposals
+  const today = format(new Date(), "yyyy-MM-dd");
+
+  // Fetch all price records from today onwards
   const pendingRows = await db
     .select({
       id: inventoryMaster.id,
@@ -20,7 +23,7 @@ export default async function PricingPage() {
     })
     .from(inventoryMaster)
     .innerJoin(listings, eq(inventoryMaster.listingId, listings.id))
-    .where(eq(inventoryMaster.proposalStatus, "pending"))
+    .where(gte(inventoryMaster.date, today))
     .orderBy(inventoryMaster.date);
 
   return (
