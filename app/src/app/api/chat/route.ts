@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MANAGER_AGENT_ID } from "@/lib/agents/constants";
 import { db } from "@/lib/db";
-import { chatMessages } from "@/lib/db/schema";
+import { chatMessages, inventoryMaster } from "@/lib/db/schema";
+import { and, eq } from "drizzle-orm";
 
 /**
  * POST /api/chat
@@ -192,8 +193,47 @@ export async function POST(req: NextRequest) {
 
     const agentReply = extractAgentMessage(data);
 
-    // Save assistant message to database
+    // Save assistant message and any proposals to database
     try {
+      // Use cleanStr from parsing inside extractAgentMessage, but since it returns string we need to parse again if it was valid JSON.
+      // A better way is to do a quick check to see if agentReply is JSON string (or we can just parse the raw result again).
+      let parsedJson: any = null;
+      try {
+        const rawStr = typeof data.response === "string" ? data.response : (data.response?.message || data.result?.message || data.message || "");
+        let cleanStr = rawStr;
+        if (cleanStr.startsWith("```json")) {
+          cleanStr = cleanStr.replace(/```json\s*/, "").replace(/\s*```$/, "");
+        }
+        parsedJson = JSON.parse(cleanStr);
+      } catch (e) {
+        // Not valid JSON, ignore
+      }
+
+      if (parsedJson && parsedJson.proposals && Array.isArray(parsedJson.proposals)) {
+        for (const prop of parsedJson.proposals) {
+          if (prop.listing_id && prop.date && prop.proposed_price && prop.guard_verdict === "APPROVED") {
+            try {
+              await db.update(inventoryMaster)
+                .set({
+                  proposedPrice: prop.proposed_price.toString(),
+                  changePct: prop.change_pct,
+                  proposalStatus: "pending",
+                  reasoning: prop.reasoning || null
+                })
+                .where(
+                  and(
+                    eq(inventoryMaster.listingId, prop.listing_id),
+                    eq(inventoryMaster.date, prop.date)
+                  )
+                );
+              console.log(`  💾 Saved PROPOSAL for listing ${prop.listing_id} on ${prop.date}: AED ${prop.proposed_price}`);
+            } catch (updateErr) {
+              console.error("Failed to update proposal in inventory_master:", updateErr);
+            }
+          }
+        }
+      }
+
       if (agentReply) {
         await db.insert(chatMessages).values({
           userId: "user-1",
@@ -201,12 +241,12 @@ export async function POST(req: NextRequest) {
           role: "assistant",
           content: agentReply,
           listingId: context.propertyId || null,
-          structured: { context, dateRange },
+          structured: { context, dateRange, proposals: parsedJson?.proposals || null },
         });
         console.log(`\n✅ AGENT REPLY RECEIVED & SAVED — ${duration}ms`);
       }
     } catch (err) {
-      console.error("Failed to save assistant message to DB:", err);
+      console.error("Failed to save assistant message & proposals to DB:", err);
     }
 
     return NextResponse.json({
