@@ -116,8 +116,13 @@ export function OverviewClient({
   };
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto w-full p-8 bg-background text-foreground dark:bg-[#0a0a0a]">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+    <div className="flex flex-col h-full overflow-y-auto w-full p-8 bg-background text-foreground dark:bg-black relative">
+      {/* Ambient background glow for glassmorphism */}
+      <div className="fixed top-[-10%] left-[-10%] w-[40vw] h-[40vh] rounded-full bg-amber-500/20 dark:bg-amber-500/10 blur-[120px] pointer-events-none z-0" />
+      <div className="fixed bottom-[-10%] right-[-10%] w-[40vw] h-[40vh] rounded-full bg-emerald-500/20 dark:bg-emerald-500/10 blur-[120px] pointer-events-none z-0" />
+      <div className="fixed top-[40%] left-[30%] w-[30vw] h-[30vh] rounded-full bg-violet-500/20 dark:bg-violet-500/10 blur-[120px] pointer-events-none z-0" />
+
+      <div className="z-10 relative flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground dark:text-white">Portfolio Analytics</h1>
           <p className="text-muted-foreground mt-2 text-sm">
@@ -137,7 +142,7 @@ export function OverviewClient({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
-        <Card className="bg-card dark:bg-[#111113] border-border dark:border-white/5 shadow-xl dark:shadow-2xl overflow-hidden relative group hover:border-amber-500/20 transition-all duration-500">
+        <Card className="bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl border-border dark:border-white/5 shadow-xl dark:shadow-2xl overflow-hidden relative group hover:border-amber-500/20 transition-all duration-500">
           <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl -mr-10 -mt-10 group-hover:bg-amber-500/10 transition-colors" />
           <CardHeader className="flex flex-row items-center justify-between pb-2 z-10 relative">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-widest text-[10px]">Total Properties</CardTitle>
@@ -153,7 +158,7 @@ export function OverviewClient({
           </CardContent>
         </Card>
 
-        <Card className="bg-card dark:bg-[#111113] border-border dark:border-white/5 shadow-xl dark:shadow-2xl overflow-hidden relative group hover:border-emerald-500/20 transition-all duration-500">
+        <Card className="bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl border-border dark:border-white/5 shadow-xl dark:shadow-2xl overflow-hidden relative group hover:border-emerald-500/20 transition-all duration-500">
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -mr-10 -mt-10 group-hover:bg-emerald-500/10 transition-colors" />
           <CardHeader className="flex flex-row items-center justify-between pb-2 z-10 relative">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-widest text-[10px]">Avg Occupancy (30D)</CardTitle>
@@ -169,7 +174,7 @@ export function OverviewClient({
           </CardContent>
         </Card>
 
-        <Card className="bg-card dark:bg-[#111113] border-border dark:border-white/5 shadow-xl dark:shadow-2xl overflow-hidden relative group hover:border-violet-500/20 transition-all duration-500">
+        <Card className="bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl border-border dark:border-white/5 shadow-xl dark:shadow-2xl overflow-hidden relative group hover:border-violet-500/20 transition-all duration-500">
           <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/5 rounded-full blur-3xl -mr-10 -mt-10 group-hover:bg-violet-500/10 transition-colors" />
           <CardHeader className="flex flex-row items-center justify-between pb-2 z-10 relative">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-widest text-[10px]">Avg Daily Rate</CardTitle>
@@ -185,7 +190,7 @@ export function OverviewClient({
           </CardContent>
         </Card>
 
-        <Card className="bg-card dark:bg-[#111113] border-border dark:border-white/5 shadow-xl dark:shadow-2xl overflow-hidden relative group border-t-amber-500">
+        <Card className="bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl border-border dark:border-white/5 shadow-xl dark:shadow-2xl overflow-hidden relative group border-t-amber-500">
           <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl -mr-16 -mt-16" />
           <CardHeader className="flex flex-row items-center justify-between pb-2 z-10 relative">
             <CardTitle className="text-sm font-medium text-amber-600 dark:text-amber-500/80 uppercase tracking-widest text-[10px]">Projected Revenue</CardTitle>
@@ -203,7 +208,7 @@ export function OverviewClient({
       </div>
 
       <div className="grid gap-4 md:grid-cols-3 mb-8">
-        <Card className="md:col-span-2 shadow-xl dark:shadow-2xl border-border dark:border-white/5 bg-card dark:bg-[#111113]">
+        <Card className="md:col-span-2 shadow-xl dark:shadow-2xl border-border dark:border-white/5 bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl">
           <CardHeader>
             <CardTitle className="text-foreground dark:text-white">Top Drivers by Revenue</CardTitle>
             <CardDescription className="text-muted-foreground">Top 10 performing properties in the selected cohort.</CardDescription>
@@ -240,7 +245,7 @@ export function OverviewClient({
           </CardContent>
         </Card>
 
-        <Card className="shadow-xl dark:shadow-2xl border-border dark:border-white/5 bg-card dark:bg-[#111113] flex flex-col">
+        <Card className="shadow-xl dark:shadow-2xl border-border dark:border-white/5 bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl flex flex-col">
           <CardHeader>
             <CardTitle className="text-foreground dark:text-white">Revenue By Channel</CardTitle>
             <CardDescription className="text-muted-foreground">Distribution of booked revenue.</CardDescription>
@@ -283,7 +288,7 @@ export function OverviewClient({
         </Card>
       </div>
 
-      <Card className="flex-1 min-h-0 flex flex-col shadow-xl dark:shadow-2xl border-border dark:border-white/5 bg-card dark:bg-[#111113]">
+      <Card className="flex-1 min-h-0 flex flex-col shadow-xl dark:shadow-2xl border-border dark:border-white/5 bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl">
         <CardHeader className="border-b border-border dark:border-white/10 py-4 bg-muted/20 dark:bg-black/20">
           <CardTitle className="text-foreground dark:text-white">Property Details</CardTitle>
         </CardHeader>
@@ -338,7 +343,7 @@ export function OverviewClient({
         </CardContent>
       </Card>
 
-      <Card className="flex-1 shrink-0 flex flex-col shadow-xl dark:shadow-2xl mt-8 mb-8 border border-border dark:border-white/5 bg-card dark:bg-[#111113]">
+      <Card className="flex-1 shrink-0 flex flex-col shadow-xl dark:shadow-2xl mt-8 mb-8 border border-border dark:border-white/5 bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl">
         <CardHeader className="border-b border-border dark:border-white/10 py-4 bg-gradient-to-r from-amber-500/5 dark:from-amber-500/10 to-transparent flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <CardTitle className="text-amber-600 dark:text-amber-500 flex items-center gap-2">
