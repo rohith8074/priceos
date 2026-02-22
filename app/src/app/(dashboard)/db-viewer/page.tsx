@@ -32,6 +32,47 @@ export default function DbViewerPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [activeTable, setActiveTable] = useState<TableName>("listings");
+    const [filterText, setFilterText] = useState("");
+
+    const TableCellContent = ({ content }: { content: string }) => {
+        const [expanded, setExpanded] = useState(false);
+        const isLong = content.length > 100;
+
+        if (!isLong) return <span>{content}</span>;
+
+        return (
+            <div>
+                <div
+                    style={{
+                        whiteSpace: expanded ? "pre-wrap" : "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        maxWidth: expanded ? "600px" : "300px",
+                        wordBreak: expanded ? "break-word" : "normal",
+                        maxHeight: expanded ? "300px" : "auto",
+                        overflowY: expanded ? "auto" : "visible"
+                    }}
+                >
+                    {expanded ? content : content.slice(0, 100) + "..."}
+                </div>
+                <button
+                    onClick={() => setExpanded(!expanded)}
+                    style={{
+                        background: "transparent",
+                        color: "#00cec9",
+                        border: "none",
+                        padding: "4px 0",
+                        cursor: "pointer",
+                        fontSize: "0.75rem",
+                        marginTop: "4px",
+                        fontWeight: 600
+                    }}
+                >
+                    {expanded ? "Show less" : "Show more"}
+                </button>
+            </div>
+        );
+    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -58,7 +99,18 @@ export default function DbViewerPage() {
     ];
 
     const renderTable = (rows: Record<string, unknown>[]) => {
-        if (!rows.length) return <p style={{ color: "#8b90a5", padding: "20px" }}>No data found</p>;
+        const filteredRows = rows.filter(row => {
+            if (!filterText) return true;
+            return Object.values(row).some(val =>
+                String(val === null ? "NULL" : typeof val === "object" ? JSON.stringify(val) : val)
+                    .toLowerCase()
+                    .includes(filterText.toLowerCase())
+            );
+        });
+
+        if (!filteredRows.length && !rows.length) return <p style={{ color: "#8b90a5", padding: "20px" }}>No data found</p>;
+        if (!filteredRows.length) return <p style={{ color: "#8b90a5", padding: "20px" }}>No matching rows found</p>;
+
         const columns = Object.keys(rows[0]);
         return (
             <div style={{ overflowX: "auto" }}>
@@ -84,7 +136,7 @@ export default function DbViewerPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        {rows.map((row, i) => (
+                        {filteredRows.map((row, i) => (
                             <tr key={i}>
                                 {columns.map((col) => (
                                     <td
@@ -93,17 +145,16 @@ export default function DbViewerPage() {
                                             padding: "6px 12px",
                                             border: "1px solid #2d3348",
                                             color: "#e4e7f1",
-                                            whiteSpace: "nowrap",
-                                            maxWidth: "300px",
-                                            overflow: "hidden",
-                                            textOverflow: "ellipsis",
+                                            verticalAlign: "top"
                                         }}
                                     >
-                                        {row[col] === null
-                                            ? "NULL"
-                                            : typeof row[col] === "object"
-                                                ? JSON.stringify(row[col])
-                                                : String(row[col])}
+                                        <TableCellContent
+                                            content={row[col] === null
+                                                ? "NULL"
+                                                : typeof row[col] === "object"
+                                                    ? JSON.stringify(row[col], null, 2)
+                                                    : String(row[col])}
+                                        />
                                     </td>
                                 ))}
                             </tr>
@@ -273,12 +324,33 @@ export default function DbViewerPage() {
                                     borderBottom: "1px solid #2d3348",
                                     fontSize: "0.85rem",
                                     color: "#8b90a5",
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center"
                                 }}
                             >
-                                Showing all rows from{" "}
-                                <strong style={{ color: tables.find((t) => t.key === activeTable)?.color }}>
-                                    {activeTable}
-                                </strong>
+                                <div>
+                                    Showing rows from{" "}
+                                    <strong style={{ color: tables.find((t) => t.key === activeTable)?.color }}>
+                                        {activeTable}
+                                    </strong>
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="🔍 Search in this table..."
+                                    value={filterText}
+                                    onChange={(e) => setFilterText(e.target.value)}
+                                    style={{
+                                        background: "#12141c",
+                                        border: "1px solid #2d3348",
+                                        color: "#e4e7f1",
+                                        padding: "8px 12px",
+                                        borderRadius: "6px",
+                                        fontSize: "0.85rem",
+                                        width: "250px",
+                                        outline: "none"
+                                    }}
+                                />
                             </div>
                             {renderTable(data.data[activeTable])}
                         </div>
