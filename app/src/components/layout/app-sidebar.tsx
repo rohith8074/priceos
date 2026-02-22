@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 const navigation = [
     { name: "Agent Chat", href: "/agent-chat", icon: MessageSquare },
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Multi-Calendar", href: "/calendar", icon: Database },
     { name: "Pricing", href: "/pricing", icon: Activity },
     { name: "Operations", href: "/operations", icon: Settings },
     { name: "Settings", href: "/settings", icon: Settings },
