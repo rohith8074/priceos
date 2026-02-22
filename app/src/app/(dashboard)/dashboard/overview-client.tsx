@@ -40,6 +40,7 @@ interface OverviewClientProps {
   avgPortfolioOccupancy: number;
   avgPortfolioPrice: number;
   totalPortfolioRevenue: number;
+  totalHistoricalRevenue: number;
 }
 
 export function OverviewClient({
@@ -47,7 +48,8 @@ export function OverviewClient({
   totalProperties,
   avgPortfolioOccupancy,
   avgPortfolioPrice,
-  totalPortfolioRevenue
+  totalPortfolioRevenue,
+  totalHistoricalRevenue
 }: OverviewClientProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [calendarStartDate, setCalendarStartDate] = useState(new Date());
@@ -193,7 +195,7 @@ export function OverviewClient({
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-8">
         <Card className="bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl border-border dark:border-white/5 shadow-xl dark:shadow-2xl overflow-hidden relative group hover:border-amber-500/20 transition-all duration-500">
           <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl -mr-10 -mt-10 group-hover:bg-amber-500/10 transition-colors" />
           <CardHeader className="flex flex-row items-center justify-between pb-2 z-10 relative">
@@ -254,6 +256,22 @@ export function OverviewClient({
             <div className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-500 to-amber-700 dark:from-amber-200 dark:to-amber-500">{filteredTotalRevenue.toLocaleString()} <span className="text-lg font-medium text-amber-500/50">AED</span></div>
             <p className="text-xs text-amber-600 dark:text-amber-500/80 mt-1 font-medium flex items-center gap-1">
               <TrendingUp className="w-3 h-3" /> Estimated 30-day gross
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl border-border dark:border-white/5 shadow-xl dark:shadow-2xl overflow-hidden relative group border-t-emerald-500">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl -mr-16 -mt-16" />
+          <CardHeader className="flex flex-row items-center justify-between pb-2 z-10 relative">
+            <CardTitle className="text-sm font-medium text-emerald-600 dark:text-emerald-500/80 uppercase tracking-widest text-[10px]">Lifetime Earnings</CardTitle>
+            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+              <DollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-500" />
+            </div>
+          </CardHeader>
+          <CardContent className="z-10 relative">
+            <div className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-500 to-emerald-700 dark:from-emerald-200 dark:to-emerald-500">{(totalHistoricalRevenue).toLocaleString()} <span className="text-lg font-medium text-emerald-500/50">AED</span></div>
+            <p className="text-xs text-emerald-600 dark:text-emerald-500/80 mt-1 font-medium flex items-center gap-1">
+              <TrendingUp className="w-3 h-3" /> All-time booked revenue
             </p>
           </CardContent>
         </Card>

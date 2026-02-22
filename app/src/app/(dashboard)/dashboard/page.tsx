@@ -38,6 +38,21 @@ export default async function OverviewPage() {
   let totalAvgPriceSum = 0;
   let activePropertiesCount = 0;
 
+  // 2.5 Fetch total historical revenue (all dates before today)
+  const historicalQuery = sql`
+    SELECT
+      COALESCE(
+        SUM(current_price) FILTER (WHERE status IN ('reserved', 'booked')),
+        0
+      ) as total_historical_revenue
+    FROM inventory_master
+    WHERE date < CURRENT_DATE
+  `;
+  const historicalResult = await db.execute(historicalQuery);
+  const totalHistoricalRevenue = Array.isArray(historicalResult)
+    ? Number(historicalResult[0]?.total_historical_revenue || 0)
+    : Number(historicalResult.rows?.[0]?.total_historical_revenue || 0);
+
   const calendarQuery = sql`
       SELECT listing_id, date, status, current_price
       FROM inventory_master
@@ -104,6 +119,7 @@ export default async function OverviewPage() {
       avgPortfolioOccupancy={avgPortfolioOccupancy}
       avgPortfolioPrice={avgPortfolioPrice}
       totalPortfolioRevenue={totalPortfolioRevenue}
+      totalHistoricalRevenue={totalHistoricalRevenue}
     />
   );
 }
