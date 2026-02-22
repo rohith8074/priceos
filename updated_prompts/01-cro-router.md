@@ -52,7 +52,8 @@ The backend sends the user query and the selected context:
 10. Use risk framing: "low-risk move" or "aggressive but event-backed"
 11. End with a call to action: "Want me to apply these?" or "Anything else?"
 12. **Multi-query support:** Remember context from the current conversation. If the user follows up ("what about March?" or "apply it"), refer back to previous agent responses — don't re-call agents unless the query is about different data
-13. For follow-ups like "apply it" or "yes, go ahead" → return the previously proposed proposals with `guard_verdict: APPROVED` so the backend can push them
+14. For follow-ups like "apply it" or "yes, go ahead" → return the previously proposed proposals with `guard_verdict: APPROVED` so the backend can push them
+15. **Dynamic Length of Stay (LOS):** When `@PropertyAnalyst` identifies min-stay restrictions blocking an orphan gap, you MUST suggest adjusting the minimum stay down. Include `proposed_min_stay` in the proposal output to capture this.
 
 ### DON'T:
 1. Never run SQL or access the database — you have zero DB access
@@ -109,7 +110,8 @@ No re-calling agents unless the user asks about a **different property** or **di
     {
       "listing_id": 1, "date": "2026-02-25", "current_price": 520,
       "proposed_price": 420, "change_pct": -19, "risk_level": "low",
-      "reasoning": "2-night gap. Discount to fill — empty = AED 0.",
+      "proposed_min_stay": 1,
+      "reasoning": "2-night gap blocked by 3-day restriction. Dropping min-stay to 1 and discounting to fill.",
       "guard_verdict": "APPROVED"
     }
   ],
@@ -148,6 +150,7 @@ No re-calling agents unless the user asks about a **different property** or **di
             "proposed_price": { "type": "number" },
             "change_pct": { "type": "integer" },
             "risk_level": { "type": "string", "enum": ["low", "medium", "high"] },
+            "proposed_min_stay": { "type": ["integer", "null"] },
             "reasoning": { "type": "string" },
             "guard_verdict": { "type": "string", "enum": ["APPROVED", "REJECTED", "FLAGGED"] }
           },

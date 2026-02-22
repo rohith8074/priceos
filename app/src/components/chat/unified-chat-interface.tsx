@@ -561,9 +561,16 @@ export function UnifiedChatInterface({ properties }: Props) {
                             <div key={idx} className="flex flex-col gap-1 pb-3 border-b border-border/50 last:border-0 last:pb-0">
                               <div className="flex justify-between font-medium items-center">
                                 <span>{prop.date}</span>
-                                <span className={prop.change_pct > 0 ? "text-emerald-500" : "text-amber-500"}>
-                                  AED {prop.proposed_price} <span className="text-xs opacity-75">({prop.change_pct > 0 ? "+" : ""}{prop.change_pct}%)</span>
-                                </span>
+                                <div className="flex items-center gap-3">
+                                  {prop.proposed_min_stay && (
+                                    <span className="text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary px-1.5 py-0.5 rounded-sm">
+                                      Min Stay: {prop.proposed_min_stay}n
+                                    </span>
+                                  )}
+                                  <span className={prop.change_pct > 0 ? "text-emerald-500" : "text-amber-500"}>
+                                    AED {prop.proposed_price} <span className="text-xs opacity-75">({prop.change_pct > 0 ? "+" : ""}{prop.change_pct}%)</span>
+                                  </span>
+                                </div>
                               </div>
                               <p className="text-muted-foreground text-xs leading-relaxed">{prop.reasoning}</p>
                             </div>
