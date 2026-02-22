@@ -22,6 +22,8 @@ interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  proposals?: any[];
+  proposalStatus?: "pending" | "saved" | "rejected";
 }
 
 interface PropertyWithMetrics extends ListingRow {
@@ -301,6 +303,8 @@ export function UnifiedChatInterface({ properties }: Props) {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: data.message || "Sorry, I couldn't get a response.",
+        proposals: data.proposals || undefined, // Include proposals if any exist
+        proposalStatus: data.proposals ? "pending" : undefined,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -323,6 +327,52 @@ export function UnifiedChatInterface({ properties }: Props) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Function to handle saving proposals to the db
+  const handleSaveProposals = async (messageId: string, proposals: any[]) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/proposals/bulk-save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          proposals,
+          dateRange: dateRange ? {
+            from: format(dateRange.from!, "yyyy-MM-dd"),
+            to: dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : format(dateRange.from!, "yyyy-MM-dd"),
+          } : undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save proposals");
+      }
+
+      const resData = await response.json();
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === messageId ? { ...msg, proposalStatus: "saved" } : msg
+        )
+      );
+
+      toast.success(`Successfully saved ${resData.savedCount} price updates to database.`);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to save price proposals. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRejectProposals = (messageId: string) => {
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.id === messageId ? { ...msg, proposalStatus: "rejected" } : msg
+      )
+    );
+    toast.info("Price proposals rejected. No changes were made.");
   };
 
   if (contextType === "portfolio") {
@@ -500,6 +550,59 @@ export function UnifiedChatInterface({ properties }: Props) {
                         {message.content}
                       </ReactMarkdown>
                     </div>
+
+                    {message.proposals && message.proposals.length > 0 && (
+                      <div className="mt-4 border rounded-lg bg-muted/20 overflow-hidden">
+                        <div className="bg-muted p-2 text-sm font-semibold border-b">
+                          Pending Price Adjustments ({message.proposals.length})
+                        </div>
+                        <div className="p-3 text-sm space-y-3">
+                          {message.proposals.map((prop, idx) => (
+                            <div key={idx} className="flex flex-col gap-1 pb-3 border-b border-border/50 last:border-0 last:pb-0">
+                              <div className="flex justify-between font-medium items-center">
+                                <span>{prop.date}</span>
+                                <span className={prop.change_pct > 0 ? "text-emerald-500" : "text-amber-500"}>
+                                  AED {prop.proposed_price} <span className="text-xs opacity-75">({prop.change_pct > 0 ? "+" : ""}{prop.change_pct}%)</span>
+                                </span>
+                              </div>
+                              <p className="text-muted-foreground text-xs leading-relaxed">{prop.reasoning}</p>
+                            </div>
+                          ))}
+                        </div>
+                        {message.proposalStatus === "pending" && (
+                          <div className="flex bg-muted/30 p-2 gap-2 border-t mt-1">
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="w-full text-xs"
+                              disabled={isLoading}
+                              onClick={() => handleSaveProposals(message.id, message.proposals!)}
+                            >
+                              Save to Database
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full text-xs text-destructive hover:bg-destructive/10"
+                              disabled={isLoading}
+                              onClick={() => handleRejectProposals(message.id)}
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        )}
+                        {message.proposalStatus === "saved" && (
+                          <div className="flex bg-emerald-500/10 p-2 border-t justify-center text-xs font-semibold text-emerald-500 mt-1">
+                            Saved to Database
+                          </div>
+                        )}
+                        {message.proposalStatus === "rejected" && (
+                          <div className="flex bg-destructive/10 p-2 border-t justify-center text-xs font-semibold text-destructive mt-1">
+                            Proposals Rejected
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
