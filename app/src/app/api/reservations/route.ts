@@ -1,16 +1,49 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createPMSClient } from "@/lib/pms";
+import { db, activityTimeline } from "@/lib/db";
+import { eq, and } from "drizzle-orm";
 
-export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const pms = createPMSClient();
+export async function GET(req: NextRequest) {
   try {
-    const reservation = await pms.createReservation(body);
-    return NextResponse.json(reservation);
+    const { searchParams } = new URL(req.url);
+    const context = searchParams.get("context") as "portfolio" | "property";
+    const propertyId = searchParams.get("propertyId");
+
+    if (!context) {
+      return NextResponse.json(
+        { error: "Missing context parameter" },
+        { status: 400 }
+      );
+    }
+
+    if (context === "portfolio") {
+      const allReservations = await db.select().from(activityTimeline).where(eq(activityTimeline.type, "reservation"));
+      return NextResponse.json({ reservations: allReservations });
+    } else {
+      if (!propertyId) {
+        return NextResponse.json(
+          { error: "Missing propertyId for property context" },
+          { status: 400 }
+        );
+      }
+
+      const listingId = parseInt(propertyId);
+      const propertyReservations = await db
+        .select()
+        .from(activityTimeline)
+        .where(
+          and(
+            eq(activityTimeline.listingId, listingId),
+            eq(activityTimeline.type, "reservation")
+          )
+        );
+
+      return NextResponse.json({ reservations: propertyReservations });
+    }
   } catch (error) {
+    console.error("Failed to fetch reservations:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to create reservation" },
-      { status: 400 }
+      { error: "Internal server error" },
+      { status: 500 }
     );
   }
 }

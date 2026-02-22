@@ -2,10 +2,25 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Building2, Calendar, CalendarRange } from "lucide-react";
+import { RefreshCw, Calendar, Loader2 } from "lucide-react";
 import { DataTypeCard } from "./data-type-card";
 import { useContextStore } from "@/stores/context-store";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "@/components/ui/table";
 
 interface SyncStatus {
   listings: {
@@ -36,6 +51,10 @@ export function SyncStatusSidebar() {
     calendar: { daysCount: 0, lastSyncedAt: null, isLoading: false },
   });
   const [isSyncing, setIsSyncing] = useState(false);
+  // Dialog State for reservations
+  const [isReservationsOpen, setIsReservationsOpen] = useState(false);
+  const [detailedReservations, setDetailedReservations] = useState<any[]>([]);
+  const [isLoadingReservations, setIsLoadingReservations] = useState(false);
 
   // Fetch sync status from DB
   const fetchSyncStatus = async () => {
@@ -161,6 +180,26 @@ export function SyncStatusSidebar() {
     syncStatus.reservations.count === 1 ? "booking" : "bookings";
   const calendarSubLabel =
     syncStatus.calendar.daysCount === 1 ? "day" : "days";
+  const handleOpenReservations = async () => {
+    setIsReservationsOpen(true);
+    setIsLoadingReservations(true);
+    try {
+      const params = new URLSearchParams({
+        context: contextType,
+        ...(contextType === "property" && propertyId
+          ? { propertyId: propertyId.toString() }
+          : {}),
+      });
+      const response = await fetch(`/api/reservations?${params}`);
+      if (!response.ok) throw new Error("Failed to fetch reservations");
+      const data = await response.json();
+      setDetailedReservations(data.reservations || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoadingReservations(false);
+    }
+  };
 
   return (
     <aside className="shrink-0 bg-background flex flex-col relative w-full pb-4">
@@ -185,16 +224,6 @@ export function SyncStatusSidebar() {
       {/* Data Types */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
         <DataTypeCard
-          icon={Building2}
-          label="Listings"
-          count={syncStatus.listings.count}
-          countLabel={listingsSubLabel}
-          lastSynced={syncStatus.listings.lastSyncedAt}
-          isLoading={syncStatus.listings.isLoading}
-          error={syncStatus.listings.error}
-        />
-
-        <DataTypeCard
           icon={Calendar}
           label="Reservations"
           count={syncStatus.reservations.count}
@@ -202,18 +231,73 @@ export function SyncStatusSidebar() {
           lastSynced={syncStatus.reservations.lastSyncedAt}
           isLoading={syncStatus.reservations.isLoading}
           error={syncStatus.reservations.error}
-        />
-
-        <DataTypeCard
-          icon={CalendarRange}
-          label="Calendar"
-          count={syncStatus.calendar.daysCount}
-          countLabel={calendarSubLabel}
-          lastSynced={syncStatus.calendar.lastSyncedAt}
-          isLoading={syncStatus.calendar.isLoading}
-          error={syncStatus.calendar.error}
+          onClick={handleOpenReservations}
         />
       </div>
+
+      <Dialog open={isReservationsOpen} onOpenChange={setIsReservationsOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Guest Details & Reservations</DialogTitle>
+            <DialogDescription>
+              Displaying all reservations for the current context.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4">
+            {isLoadingReservations ? (
+              <div className="flex items-center justify-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : detailedReservations.length === 0 ? (
+              <p className="text-center text-muted-foreground p-8">No reservations found.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Guest</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Stay Dates</TableHead>
+                    <TableHead>Channel</TableHead>
+                    <TableHead>Financials</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {detailedReservations.map((res, i) => {
+                    const guest = res.guestDetails || {};
+                    const start = new Date(res.startDate).toLocaleDateString();
+                    const end = new Date(res.endDate).toLocaleDateString();
+                    const name = guest.name || res.title || "Unknown";
+                    const email = guest.email || "-";
+                    const phone = guest.phone || "-";
+                    const finances = res.financials?.price_per_night ? `${res.financials.price_per_night} / night` : "-";
+
+                    return (
+                      <TableRow key={res.id || i}>
+                        <TableCell>
+                          <div className="font-medium">{name}</div>
+                          {guest.numberOfGuests && (
+                            <div className="text-xs text-muted-foreground">{guest.numberOfGuests} guests</div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">{email}</div>
+                          <div className="text-sm text-muted-foreground">{phone}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">{start}</div>
+                          <div className="text-sm text-muted-foreground">to {end}</div>
+                        </TableCell>
+                        <TableCell>{res.financials?.channelName || "Direct"}</TableCell>
+                        <TableCell>{finances}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </aside>
   );
 }

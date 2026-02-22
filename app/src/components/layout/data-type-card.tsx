@@ -13,6 +13,7 @@ interface DataTypeCardProps {
   lastSynced: Date | null;
   isLoading: boolean;
   error?: string;
+  onClick?: () => void;
 }
 
 export function DataTypeCard({
@@ -23,13 +24,16 @@ export function DataTypeCard({
   lastSynced,
   isLoading,
   error,
+  onClick,
 }: DataTypeCardProps) {
   const stale = isStale(lastSynced);
 
   return (
     <Card
+      onClick={onClick}
       className={cn(
         "p-3 transition-colors",
+        onClick && "cursor-pointer hover:bg-muted/50 dark:hover:bg-white/5 active:scale-[0.98]",
         isLoading && "bg-muted/50",
         error && "border-destructive"
       )}
