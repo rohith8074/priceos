@@ -38,15 +38,15 @@ export default async function OverviewPage() {
   let totalAvgPriceSum = 0;
   let activePropertiesCount = 0;
 
-  // 2.5 Fetch total historical revenue (all dates before today)
+  // 2.5 Fetch all-time booked revenue from actual reservation activity
   const historicalQuery = sql`
     SELECT
       COALESCE(
-        SUM(current_price) FILTER (WHERE status IN ('reserved', 'booked')),
+        SUM(CAST(financials->>'totalPrice' AS NUMERIC)),
         0
       ) as total_historical_revenue
-    FROM inventory_master
-    WHERE date < CURRENT_DATE
+    FROM activity_timeline
+    WHERE type = 'reservation'
   `;
   const historicalResult = await db.execute(historicalQuery);
   const totalHistoricalRevenue = Array.isArray(historicalResult)
