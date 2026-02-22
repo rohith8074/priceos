@@ -6,8 +6,8 @@ import { LayoutDashboard, MessageSquare, Settings, Database, Activity } from "lu
 import { cn } from "@/lib/utils";
 
 const navigation = [
-    { name: "Agent Chat", href: "/dashboard", icon: MessageSquare },
-    { name: "Dashboard", href: "/overview", icon: LayoutDashboard },
+    { name: "Agent Chat", href: "/agent-chat", icon: MessageSquare },
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Settings", href: "/settings", icon: Settings },
     { name: "Database", href: "/db-viewer", icon: Database },
 ];

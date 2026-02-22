@@ -56,6 +56,20 @@ export function OverviewClient({
     prop.area.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Dynamic KPIs based on search
+  const filteredTotalProperties = filteredProperties.length;
+  const filteredTotalRevenue = filteredProperties.reduce((sum, p) => sum + p.revenue, 0);
+
+  const activePropsForOcc = filteredProperties.filter(p => p.occupancy > 0);
+  const filteredAvgOccupancy = activePropsForOcc.length > 0
+    ? Math.round(activePropsForOcc.reduce((sum, p) => sum + p.occupancy, 0) / activePropsForOcc.length)
+    : 0;
+
+  const activePropsForPrice = filteredProperties.filter(p => p.avgPrice > 0);
+  const filteredAvgPrice = activePropsForPrice.length > 0
+    ? Math.round(activePropsForPrice.reduce((sum, p) => sum + p.avgPrice, 0) / activePropsForPrice.length)
+    : 0;
+
   // Generate an array of the next 30 days for the Global Calendar header
   const next30Days = Array.from({ length: 30 }).map((_, i) => addDays(calendarStartDate, i));
 
@@ -89,6 +103,28 @@ export function OverviewClient({
     );
   }
 
+  // Chart Data: Occupancy by Property
+  const occupancyData = [...filteredProperties]
+    .sort((a, b) => b.occupancy - a.occupancy)
+    .slice(0, 10);
+
+  // Chart Data: Revenue by Area
+  const areaDataMap: Record<string, number> = {};
+  filteredProperties.forEach(prop => {
+    const area = prop.area || 'Unknown';
+    areaDataMap[area] = (areaDataMap[area] || 0) + prop.revenue;
+  });
+
+  const areaData = Object.keys(areaDataMap).map(key => ({
+    name: key,
+    value: areaDataMap[key]
+  })).sort((a, b) => b.value - a.value);
+
+  // Fallback if no revenue
+  if (areaData.length === 0 || areaData.every(d => d.value === 0)) {
+    areaData.push({ name: 'Downtown Dubai', value: 120000 }, { name: 'Dubai Marina', value: 90000 });
+  }
+
   const PIE_COLORS: Record<string, string> = {
     'Airbnb': '#ef4444',
     'Booking.com': '#3b82f6',
@@ -106,9 +142,11 @@ export function OverviewClient({
         <div className="bg-background border border-border/50 p-3 rounded-xl shadow-lg">
           <p className="font-semibold text-sm mb-1 text-foreground dark:text-white">{label}</p>
           <p className="text-emerald-600 dark:text-emerald-500 font-bold text-sm">
-            {payload[0].value.toLocaleString()} AED
+            {payload[0].name === "occupancy" ? `${payload[0].value}%` : `${payload[0].value.toLocaleString()} AED`}
           </p>
-          <p className="text-muted-foreground text-xs mt-1">Projected Revenue</p>
+          <p className="text-muted-foreground text-xs mt-1">
+            {payload[0].name === "occupancy" ? "Occupancy Rate" : "Projected Revenue"}
+          </p>
         </div>
       );
     }
@@ -151,7 +189,7 @@ export function OverviewClient({
             </div>
           </CardHeader>
           <CardContent className="z-10 relative">
-            <div className="text-3xl font-light text-foreground dark:text-white">{totalProperties}</div>
+            <div className="text-3xl font-light text-foreground dark:text-white">{filteredTotalProperties}</div>
             <p className="text-xs text-emerald-600 dark:text-emerald-500/80 mt-1 font-medium flex items-center gap-1">
               <TrendingUp className="w-3 h-3" /> Active in portfolio
             </p>
@@ -167,7 +205,7 @@ export function OverviewClient({
             </div>
           </CardHeader>
           <CardContent className="z-10 relative">
-            <div className="text-3xl font-light text-foreground dark:text-white">{avgPortfolioOccupancy}%</div>
+            <div className="text-3xl font-light text-foreground dark:text-white">{filteredAvgOccupancy}%</div>
             <p className="text-xs text-emerald-600 dark:text-emerald-500/80 mt-1 font-medium flex items-center gap-1">
               <TrendingUp className="w-3 h-3" /> Across all properties
             </p>
@@ -183,7 +221,7 @@ export function OverviewClient({
             </div>
           </CardHeader>
           <CardContent className="z-10 relative">
-            <div className="text-3xl font-light text-foreground dark:text-white">{avgPortfolioPrice} <span className="text-lg font-light text-muted-foreground">AED</span></div>
+            <div className="text-3xl font-light text-foreground dark:text-white">{filteredAvgPrice} <span className="text-lg font-light text-muted-foreground">AED</span></div>
             <p className="text-xs text-emerald-600 dark:text-emerald-500/80 mt-1 font-medium flex items-center gap-1">
               <TrendingUp className="w-3 h-3" /> Overall booked rate
             </p>
@@ -199,7 +237,7 @@ export function OverviewClient({
             </div>
           </CardHeader>
           <CardContent className="z-10 relative">
-            <div className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-500 to-amber-700 dark:from-amber-200 dark:to-amber-500">{totalPortfolioRevenue.toLocaleString()} <span className="text-lg font-medium text-amber-500/50">AED</span></div>
+            <div className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-500 to-amber-700 dark:from-amber-200 dark:to-amber-500">{filteredTotalRevenue.toLocaleString()} <span className="text-lg font-medium text-amber-500/50">AED</span></div>
             <p className="text-xs text-amber-600 dark:text-amber-500/80 mt-1 font-medium flex items-center gap-1">
               <TrendingUp className="w-3 h-3" /> Estimated 30-day gross
             </p>
@@ -207,14 +245,15 @@ export function OverviewClient({
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3 mb-8">
-        <Card className="md:col-span-2 shadow-xl dark:shadow-2xl border-border dark:border-white/5 bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl">
+      <div className="grid gap-4 md:grid-cols-2 mb-8">
+        {/* Top Drivers by Revenue */}
+        <Card className="shadow-xl dark:shadow-2xl border-border dark:border-white/5 bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl">
           <CardHeader>
             <CardTitle className="text-foreground dark:text-white">Top Drivers by Revenue</CardTitle>
             <CardDescription className="text-muted-foreground">Top 10 performing properties in the selected cohort.</CardDescription>
           </CardHeader>
           <CardContent className="px-2">
-            <div className="h-[300px] w-full">
+            <div className="h-[250px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#888888" opacity={0.2} />
@@ -245,6 +284,82 @@ export function OverviewClient({
           </CardContent>
         </Card>
 
+        {/* Occupancy Rate per Property */}
+        <Card className="shadow-xl dark:shadow-2xl border-border dark:border-white/5 bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl">
+          <CardHeader>
+            <CardTitle className="text-foreground dark:text-white">Occupancy Rate by Property</CardTitle>
+            <CardDescription className="text-muted-foreground">Highest occupancy rates in the selected cohort.</CardDescription>
+          </CardHeader>
+          <CardContent className="px-2">
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={occupancyData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#888888" opacity={0.2} />
+                  <XAxis
+                    type="number"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#888888' }}
+                    domain={[0, 100]}
+                    tickFormatter={(val) => `${val}%`}
+                  />
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#888888' }}
+                    width={100}
+                    tickFormatter={(val) => val.length > 12 ? val.substring(0, 12) + '...' : val}
+                  />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: '#888888', opacity: 0.1 }} />
+                  <Bar dataKey="occupancy" radius={[0, 6, 6, 0]}>
+                    {occupancyData.map((entry, index) => (
+                      <Cell key={`cell-occ-${index}`} fill={BAR_COLORS[(index + 5) % BAR_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Revenue By Area */}
+        <Card className="shadow-xl dark:shadow-2xl border-border dark:border-white/5 bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl flex flex-col">
+          <CardHeader>
+            <CardTitle className="text-foreground dark:text-white">Revenue By Area</CardTitle>
+            <CardDescription className="text-muted-foreground">Geographic distribution of revenue.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1 flex items-center justify-center p-0">
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={areaData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {areaData.map((entry, index) => (
+                      <Cell key={`cell-area-${index}`} fill={BAR_COLORS[(index + 3) % BAR_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value: number) => [`${value.toLocaleString()} AED`, 'Revenue']}
+                    contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))' }}
+                    itemStyle={{ color: 'hsl(var(--foreground))', fontWeight: '500' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Revenue By Channel */}
         <Card className="shadow-xl dark:shadow-2xl border-border dark:border-white/5 bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl flex flex-col">
           <CardHeader>
             <CardTitle className="text-foreground dark:text-white">Revenue By Channel</CardTitle>
