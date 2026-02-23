@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, activityTimeline } from "@/lib/db";
-import { eq, and } from "drizzle-orm";
+import { db, reservations } from "@/lib/db";
+import { eq } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (context === "portfolio") {
-      const allReservations = await db.select().from(activityTimeline).where(eq(activityTimeline.type, "reservation"));
+      const allReservations = await db.select().from(reservations);
       return NextResponse.json({ reservations: allReservations });
     } else {
       if (!propertyId) {
@@ -29,13 +29,8 @@ export async function GET(req: NextRequest) {
       const listingId = parseInt(propertyId);
       const propertyReservations = await db
         .select()
-        .from(activityTimeline)
-        .where(
-          and(
-            eq(activityTimeline.listingId, listingId),
-            eq(activityTimeline.type, "reservation")
-          )
-        );
+        .from(reservations)
+        .where(eq(reservations.listingId, listingId));
 
       return NextResponse.json({ reservations: propertyReservations });
     }

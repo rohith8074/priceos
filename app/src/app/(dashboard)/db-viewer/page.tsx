@@ -6,8 +6,8 @@ interface TableData {
     summary: {
         listings: number;
         inventory_master: number;
-        activity_timeline: number;
-        events: number;
+        reservations: number;
+        market_events: number;
         chat_messages: number;
         user_settings: number;
     };
@@ -18,14 +18,14 @@ interface TableData {
     data: {
         listings: Record<string, unknown>[];
         inventory_master: Record<string, unknown>[];
-        activity_timeline: Record<string, unknown>[];
-        events: Record<string, unknown>[];
+        reservations: Record<string, unknown>[];
+        market_events: Record<string, unknown>[];
         chat_messages: Record<string, unknown>[];
         user_settings: Record<string, unknown>[];
     };
 }
 
-type TableName = "listings" | "inventory_master" | "activity_timeline" | "events" | "chat_messages" | "user_settings";
+type TableName = "listings" | "inventory_master" | "reservations" | "market_events" | "chat_messages" | "user_settings";
 
 export default function DbViewerPage() {
     const [data, setData] = useState<TableData | null>(null);
@@ -92,13 +92,15 @@ export default function DbViewerPage() {
     const tables: { key: TableName; label: string; color: string }[] = [
         { key: "listings", label: "Listings", color: "#6c5ce7" },
         { key: "inventory_master", label: "Inventory Master", color: "#00b894" },
-        { key: "activity_timeline", label: "Activity Timeline (Raw)", color: "#74b9ff" },
-        { key: "events", label: "Market Events Filter", color: "#e17055" },
+        { key: "reservations", label: "Reservations", color: "#74b9ff" },
+        { key: "market_events", label: "Market Events", color: "#e17055" },
         { key: "chat_messages", label: "Chat Messages", color: "#fdcb6e" },
         { key: "user_settings", label: "User Settings", color: "#e84393" },
     ];
 
     const renderTable = (rows: Record<string, unknown>[]) => {
+        if (!rows || !rows.length) return <p style={{ color: "#8b90a5", padding: "20px" }}>No data found</p>;
+
         const filteredRows = rows.filter(row => {
             if (!filterText) return true;
             return Object.values(row).some(val =>
@@ -108,7 +110,6 @@ export default function DbViewerPage() {
             );
         });
 
-        if (!filteredRows.length && !rows.length) return <p style={{ color: "#8b90a5", padding: "20px" }}>No data found</p>;
         if (!filteredRows.length) return <p style={{ color: "#8b90a5", padding: "20px" }}>No matching rows found</p>;
 
         const columns = Object.keys(rows[0]);
@@ -191,7 +192,7 @@ export default function DbViewerPage() {
                     🗄️ Database Viewer
                 </h1>
                 <p style={{ color: "#8b90a5", marginBottom: "24px" }}>
-                    Inspect all 3 tables — READ-ONLY snapshot (all rows)
+                    Inspect all 6 tables — READ-ONLY snapshot (all rows)
                 </p>
 
                 {/* Fetch Button */}
@@ -288,7 +289,7 @@ export default function DbViewerPage() {
                         </div>
 
                         {/* Table Tabs */}
-                        <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+                        <div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap" }}>
                             {tables.map((t) => (
                                 <button
                                     key={t.key}

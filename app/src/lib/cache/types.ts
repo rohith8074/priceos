@@ -37,7 +37,7 @@ export interface SyncStatusResponse {
     count: number;
     lastSyncedAt: string | null;
   };
-  activity_timeline: {
+  reservations: {
     count: number;
     lastSyncedAt: string | null;
   };

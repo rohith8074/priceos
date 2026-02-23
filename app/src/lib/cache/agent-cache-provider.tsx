@@ -53,9 +53,9 @@ export function AgentCacheProvider({ children }: { children: ReactNode }) {
             isFresh: isWithin15Minutes(data.listings.lastSyncedAt),
           },
           reservations: {
-            count: data.activity_timeline.count,
-            lastSyncedAt: data.activity_timeline.lastSyncedAt,
-            isFresh: isWithin15Minutes(data.activity_timeline.lastSyncedAt),
+            count: data.reservations.count,
+            lastSyncedAt: data.reservations.lastSyncedAt,
+            isFresh: isWithin15Minutes(data.reservations.lastSyncedAt),
           },
           calendar: {
             daysCount: data.inventory_master.daysCount,
@@ -67,7 +67,7 @@ export function AgentCacheProvider({ children }: { children: ReactNode }) {
           cacheGeneratedAt: new Date().toISOString(),
           isStale:
             !isWithin15Minutes(data.listings.lastSyncedAt) ||
-            !isWithin15Minutes(data.activity_timeline.lastSyncedAt) ||
+            !isWithin15Minutes(data.reservations.lastSyncedAt) ||
             !isWithin15Minutes(data.inventory_master.lastSyncedAt),
         },
       };

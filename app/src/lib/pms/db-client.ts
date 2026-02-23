@@ -8,14 +8,13 @@ import {
   VerificationResult,
   ReservationFilters,
 } from "@/types/hostaway";
-// Operational types removed - PriceOS is now a price intelligence layer
 import { db } from "@/lib/db";
 import {
   listings,
   inventoryMaster,
-  activityTimeline,
+  reservations,
   type ListingRow,
-  type ActivityTimelineRow,
+  type ReservationRow,
   type InventoryMasterRow,
 } from "@/lib/db";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
@@ -47,31 +46,29 @@ function mapCalendarDayRow(row: InventoryMasterRow): CalendarDay {
     date: row.date,
     status: row.status as CalendarDay["status"],
     price: parseFloat(row.currentPrice),
-    minimumStay: row.minMaxStay?.min ?? 1,
-    maximumStay: row.minMaxStay?.max ?? 30,
+    minimumStay: row.minStay ?? 1,
+    maximumStay: row.maxStay ?? 30,
   };
 }
 
-function mapReservationRow(row: ActivityTimelineRow): Reservation {
+function mapReservationRow(row: ReservationRow): Reservation {
   return {
     id: row.id,
-    listingMapId: row.listingId!,
-    guestName: row.title,
-    guestEmail: undefined,
-    channelName: (row.financials?.channelName as Reservation["channelName"]) || "Other",
+    listingMapId: row.listingId,
+    guestName: row.guestName || "Unknown",
+    guestEmail: row.guestEmail || undefined,
+    channelName: (row.channelName as Reservation["channelName"]) || "Other",
     arrivalDate: row.startDate,
     departureDate: row.endDate,
     nights: Math.floor((new Date(row.endDate).getTime() - new Date(row.startDate).getTime()) / (1000 * 3600 * 24)),
-    totalPrice: row.financials?.totalPrice || 0,
-    pricePerNight: row.financials?.pricePerNight || 0,
-    status: (row.financials?.reservationStatus as Reservation["status"]) || "confirmed",
+    totalPrice: parseFloat(row.totalPrice || "0"),
+    pricePerNight: parseFloat(row.pricePerNight || "0"),
+    status: (row.reservationStatus as Reservation["status"]) || "confirmed",
     createdAt: row.createdAt.toISOString(),
     checkInTime: undefined,
     checkOutTime: undefined,
   };
 }
-
-// Mapper functions for deleted operational tables removed
 
 // --- DbPMSClient ---
 
@@ -173,7 +170,6 @@ export class DbPMSClient implements PMSClient {
     id: string | number,
     dates: string[]
   ): Promise<VerificationResult> {
-    // Simplified: check that all dates exist in the calendar
     const numId = typeof id === "string" ? parseInt(id) : id;
     let matchedDates = 0;
     for (const dateStr of dates) {
@@ -249,29 +245,27 @@ export class DbPMSClient implements PMSClient {
     }
     return { success: true, updatedCount };
   }
+
   // --- Reservations ---
 
   async getReservations(filters?: ReservationFilters): Promise<Reservation[]> {
-    const conditions = [eq(activityTimeline.type, "reservation")];
+    const conditions: any[] = [];
 
     if (filters?.listingMapId) {
-      conditions.push(eq(activityTimeline.listingId, filters.listingMapId));
+      conditions.push(eq(reservations.listingId, filters.listingMapId));
     }
     if (filters?.startDate) {
       conditions.push(
-        gte(activityTimeline.startDate, format(filters.startDate, "yyyy-MM-dd"))
+        gte(reservations.startDate, format(filters.startDate, "yyyy-MM-dd"))
       );
     }
     if (filters?.endDate) {
       conditions.push(
-        lte(
-          activityTimeline.endDate,
-          format(filters.endDate, "yyyy-MM-dd")
-        )
+        lte(reservations.endDate, format(filters.endDate, "yyyy-MM-dd"))
       );
     }
 
-    let query = db.select().from(activityTimeline);
+    let query = db.select().from(reservations);
     if (conditions.length > 0) {
       query = query.where(and(...conditions)) as typeof query;
     }
@@ -296,13 +290,8 @@ export class DbPMSClient implements PMSClient {
     const numId = typeof id === "string" ? parseInt(id) : id;
     const rows = await db
       .select()
-      .from(activityTimeline)
-      .where(
-        and(
-          eq(activityTimeline.id, numId),
-          eq(activityTimeline.type, "reservation")
-        )
-      );
+      .from(reservations)
+      .where(eq(reservations.id, numId));
     if (rows.length === 0) throw new Error(`Reservation ${id} not found`);
     return mapReservationRow(rows[0]);
   }
@@ -316,33 +305,26 @@ export class DbPMSClient implements PMSClient {
         : 0;
 
     const [inserted] = await db
-      .insert(activityTimeline)
+      .insert(reservations)
       .values({
         listingId: reservation.listingMapId,
-        type: "reservation",
         startDate: reservation.arrivalDate,
         endDate: reservation.departureDate,
-        title: reservation.guestName,
-        financials: {
-          totalPrice: reservation.totalPrice,
-          pricePerNight: pricePerNight,
-          channelCommission: reservation.channelCommission || 0,
-          cleaningFee: reservation.cleaningFee || 0,
-          channelName: reservation.channelName,
-          reservationStatus: reservation.status,
-        },
+        guestName: reservation.guestName,
+        channelName: reservation.channelName,
+        reservationStatus: reservation.status,
+        totalPrice: String(reservation.totalPrice),
+        pricePerNight: String(pricePerNight),
+        channelCommission: String(reservation.channelCommission || 0),
+        cleaningFee: String(reservation.cleaningFee || 0),
       })
       .returning();
     return mapReservationRow(inserted);
   }
 
-  // Operational methods removed - PriceOS is now a price intelligence layer
-  // Methods for seasonal rules, conversations, tasks, expenses, and owner statements
-  // have been deprecated as part of the architectural redesign
-
   // --- Utility ---
 
   getMode(): "mock" | "live" {
-    return "mock"; // DB-backed but still "mock" data
+    return "mock";
   }
 }

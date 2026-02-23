@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { activityTimeline } from "@/lib/db/schema";
+import { marketEvents } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 const LYZR_API_URL = "https://agent-prod.studio.lyzr.ai/v3/inference/chat/";
@@ -107,17 +107,17 @@ Please execute market research for this property matching the exact date range a
                     name: ev.title || "Unnamed Event",
                     startDate: ev.date_start,
                     endDate: ev.date_end,
+                    eventType: 'event',
                     location: "Dubai",
                     expectedImpact: ev.impact || "medium",
                     confidence: typeof ev.confidence === 'number'
                         ? (ev.confidence <= 1 ? Math.round(ev.confidence * 100) : ev.confidence)
                         : 50,
                     description: ev.description || "",
-                    metadata: {
-                        source: ev.source,
-                        suggested_premium_pct: ev.suggested_premium_pct,
-                        type: 'event'
-                    }
+                    source: ev.source || null,
+                    suggestedPremium: ev.suggested_premium_pct ? String(ev.suggested_premium_pct) : null,
+                    // No metadata needed — all fields are in dedicated columns
+                    metadata: null,
                 });
             });
         }
@@ -135,16 +135,16 @@ Please execute market research for this property matching the exact date range a
                     name: hol.name || "Holiday",
                     startDate: hol.date_start,
                     endDate: hol.date_end,
+                    eventType: 'holiday',
                     location: "Dubai",
                     expectedImpact: hol.impact?.toLowerCase().includes('high') ? 'high' :
                         hol.impact?.toLowerCase().includes('med') ? 'medium' : 'low',
                     confidence: 95,
                     description: hol.impact || "",
-                    metadata: {
-                        source: hol.source,
-                        premium_pct: hol.premium_pct,
-                        type: 'holiday'
-                    }
+                    source: hol.source || null,
+                    suggestedPremium: hol.premium_pct ? String(hol.premium_pct) : null,
+                    // No metadata needed — all fields are in dedicated columns
+                    metadata: null,
                 });
             });
         }
@@ -155,14 +155,21 @@ Please execute market research for this property matching the exact date range a
                 name: `Competitor Intelligence: ${structuredData.area || "Dubai"}`,
                 startDate: dateRange.from,
                 endDate: dateRange.to,
+                eventType: 'competitor_intel',
                 location: "Dubai",
                 expectedImpact: "medium",
                 confidence: 70,
                 description: `Sample: ${structuredData.competitors.sample_size} properties. Rates: AED ${structuredData.competitors.min_rate}-${structuredData.competitors.max_rate} (median ${structuredData.competitors.median_rate}).`,
+                source: null,
+                suggestedPremium: null,
+                competitorMedian: String(structuredData.competitors.median_rate),
+                // Metadata: only overflow data NOT in dedicated columns
                 metadata: {
-                    type: 'competitor_intel',
-                    ...structuredData.competitors
-                }
+                    examples: structuredData.competitors.examples,
+                    sample_size: structuredData.competitors.sample_size,
+                    min_rate: structuredData.competitors.min_rate,
+                    max_rate: structuredData.competitors.max_rate,
+                },
             });
         }
 
@@ -172,60 +179,89 @@ Please execute market research for this property matching the exact date range a
                 name: `Market Positioning: ${structuredData.area || "Dubai"}`,
                 startDate: dateRange.from,
                 endDate: dateRange.to,
+                eventType: 'positioning',
                 location: "Dubai",
                 expectedImpact: structuredData.positioning.verdict === "UNDERPRICED" ? "high" :
                     structuredData.positioning.verdict === "OVERPRICED" ? "high" : "medium",
                 confidence: 75,
                 description: structuredData.positioning.insight || "",
+                source: null,
+                suggestedPremium: null,
+                // Metadata: only overflow data NOT in dedicated columns
                 metadata: {
-                    type: 'positioning',
                     percentile: structuredData.positioning.percentile,
                     verdict: structuredData.positioning.verdict,
-                    insight: structuredData.positioning.insight
-                }
+                },
             });
         }
 
-        // 4e. Save Market Summary as a special record
+        // 4e. Save Demand Outlook as a special record (tourism trends, weather, supply)
+        if (structuredData.demand_outlook) {
+            recordsToInsert.push({
+                name: `Demand Outlook: ${dateRange.from} to ${dateRange.to}`,
+                startDate: dateRange.from,
+                endDate: dateRange.to,
+                eventType: 'demand_outlook',
+                location: "Dubai",
+                expectedImpact: structuredData.demand_outlook.trend === 'strong' ? 'high' :
+                    structuredData.demand_outlook.trend === 'weak' ? 'low' : 'medium',
+                confidence: 70,
+                description: structuredData.demand_outlook.reason || "",
+                source: null,
+                suggestedPremium: null,
+                // Metadata: overflow data (weather, supply notes)
+                metadata: {
+                    trend: structuredData.demand_outlook.trend,
+                    weather: structuredData.demand_outlook.weather,
+                    supply_notes: structuredData.demand_outlook.supply_notes,
+                },
+            });
+        }
+
+        // 4f. Save Market Summary as a special record
         if (structuredData.summary) {
             recordsToInsert.push({
                 name: `Market Summary: ${dateRange.from} to ${dateRange.to}`,
                 startDate: dateRange.from,
                 endDate: dateRange.to,
+                eventType: 'market_summary',
                 location: "Dubai",
                 expectedImpact: "medium",
                 confidence: 80,
                 description: structuredData.summary,
+                source: null,
+                suggestedPremium: null,
+                // Metadata: only overflow (area name)
                 metadata: {
-                    type: 'market_summary',
-                    area: structuredData.area
-                }
+                    area: structuredData.area,
+                },
             });
         }
 
-        // Delete previous signals to ensure UI and DB only show the absolutely latest info for the selected range
-        await db.delete(activityTimeline).where(eq(activityTimeline.type, 'market_event'));
-        console.log(`  🗑️ Cleared previous signals.`);
+        // Delete previous signals to ensure UI and DB only show the latest info
+        await db.delete(marketEvents);
+        console.log(`  🗑️ Cleared previous market events.`);
 
         if (recordsToInsert.length > 0) {
+            // Records are already in final shape — insert directly
             const finalRecords = recordsToInsert.map(r => ({
-                listingId: null,
-                type: 'market_event',
                 title: r.name,
-                description: r.description,
                 startDate: r.startDate,
                 endDate: r.endDate,
-                marketContext: {
-                    expectedImpact: r.expectedImpact,
-                    confidence: r.confidence,
-                    location: r.location,
-                    ...r.metadata
-                }
+                eventType: r.eventType,
+                location: r.location,
+                expectedImpact: r.expectedImpact,
+                confidence: r.confidence,
+                description: r.description,
+                source: r.source || null,
+                suggestedPremium: r.suggestedPremium || null,
+                competitorMedian: r.competitorMedian || null,
+                metadata: r.metadata || null,
             }));
-            await db.insert(activityTimeline).values(finalRecords);
+            await db.insert(marketEvents).values(finalRecords);
         }
 
-        console.log(`  💾 Saved ${recordsToInsert.length} records to activity_timeline`);
+        console.log(`  💾 Saved ${recordsToInsert.length} records to market_events`);
 
         return NextResponse.json({
             success: true,

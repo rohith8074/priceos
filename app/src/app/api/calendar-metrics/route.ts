@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { inventoryMaster, listings, activityTimeline } from "@/lib/db/schema";
+import { inventoryMaster, listings, reservations } from "@/lib/db/schema";
 import { eq, and, gte, lte, sql, count, avg } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
@@ -77,18 +77,20 @@ export async function GET(req: NextRequest) {
 
         const reservationsResp = await db
             .select({
-                title: activityTimeline.title,
-                startDate: activityTimeline.startDate,
-                endDate: activityTimeline.endDate,
-                financials: activityTimeline.financials
+                guestName: reservations.guestName,
+                startDate: reservations.startDate,
+                endDate: reservations.endDate,
+                totalPrice: reservations.totalPrice,
+                pricePerNight: reservations.pricePerNight,
+                channelName: reservations.channelName,
+                reservationStatus: reservations.reservationStatus,
             })
-            .from(activityTimeline)
+            .from(reservations)
             .where(
                 and(
-                    eq(activityTimeline.listingId, lid),
-                    eq(activityTimeline.type, 'reservation'),
-                    lte(activityTimeline.startDate, to),
-                    gte(activityTimeline.endDate, from)
+                    eq(reservations.listingId, lid),
+                    lte(reservations.startDate, to),
+                    gte(reservations.endDate, from)
                 )
             );
 

@@ -80,9 +80,9 @@ export function SyncStatusSidebar() {
           isLoading: false,
         },
         reservations: {
-          count: data.activity_timeline.count,
-          lastSyncedAt: data.activity_timeline.lastSyncedAt
-            ? new Date(data.activity_timeline.lastSyncedAt)
+          count: data.reservations.count,
+          lastSyncedAt: data.reservations.lastSyncedAt
+            ? new Date(data.reservations.lastSyncedAt)
             : null,
           isLoading: false,
         },
@@ -137,7 +137,7 @@ export function SyncStatusSidebar() {
           isLoading: false,
         },
         reservations: {
-          count: data.activity_timeline.count,
+          count: data.reservations.count,
           lastSyncedAt: timestamp,
           isLoading: false,
         },
@@ -149,7 +149,7 @@ export function SyncStatusSidebar() {
       });
 
       console.log(
-        `Sync complete: ${data.listings.count} listing(s), ${data.activity_timeline.count} reservation(s), ${data.inventory_master.daysCount} calendar day(s)`
+        `Sync complete: ${data.listings.count} listing(s), ${data.reservations.count} reservation(s), ${data.inventory_master.daysCount} calendar day(s)`
       );
     } catch (error) {
       console.error("Sync failed:", error);

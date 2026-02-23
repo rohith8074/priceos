@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { inventoryMaster } from "@/lib/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 export async function POST(req: NextRequest) {
     try {
@@ -11,53 +11,66 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Invalid proposals format" }, { status: 400 });
         }
 
-        const coveredDates = new Set<string>();
+        // Track covered dates and fallbacks PER LISTING
+        const coveredDatesByListing = new Map<number, Set<string>>();
+        const fallbacksByListing = new Map<number, any>();
         const proposalsToSave: { date: string, prop: any }[] = [];
-        let fallbackProposal: any = null;
 
         for (const prop of proposals) {
-            if (prop.listing_id && prop.date && prop.proposed_price && prop.guard_verdict === "APPROVED") {
-                const dateStr = prop.date.trim().toLowerCase();
+            const lid = Number(prop.listing_id);
+            if (!lid || !prop.date || !prop.proposed_price || prop.guard_verdict !== "APPROVED") {
+                continue;
+            }
 
-                // Check for generic strings like "Other Available Dates"
-                if (dateStr.includes("other") || dateStr.includes("shoulder") || dateStr.includes("remaining")) {
-                    fallbackProposal = prop;
-                    continue;
-                }
+            if (!coveredDatesByListing.has(lid)) {
+                coveredDatesByListing.set(lid, new Set());
+            }
+            const coveredDates = coveredDatesByListing.get(lid)!;
+            const dateStr = prop.date.trim().toLowerCase();
 
-                // Handle date ranges like "2026-04-01 to 2026-04-09"
-                if (prop.date.includes(" to ")) {
-                    const [startStr, endStr] = prop.date.split(" to ");
-                    const startDate = new Date(startStr);
-                    const endDate = new Date(endStr);
-                    if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
-                        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-                            const isoDate = d.toISOString().split('T')[0];
-                            coveredDates.add(isoDate);
-                            proposalsToSave.push({ date: isoDate, prop });
-                        }
-                    }
-                } else {
-                    // Handle single dates
-                    const parsedDate = new Date(prop.date);
-                    if (!isNaN(parsedDate.getTime())) {
-                        const isoDate = parsedDate.toISOString().split('T')[0];
+            // Check for generic strings like "Other Available Dates"
+            if (dateStr.includes("other") || dateStr.includes("shoulder") || dateStr.includes("remaining")) {
+                fallbacksByListing.set(lid, prop);
+                continue;
+            }
+
+            // Handle date ranges like "2026-04-01 to 2026-04-09"
+            if (prop.date.includes(" to ")) {
+                const [startStr, endStr] = prop.date.split(" to ");
+                const startDate = new Date(startStr);
+                const endDate = new Date(endStr);
+                if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
+                    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                        const isoDate = d.toISOString().split('T')[0];
                         coveredDates.add(isoDate);
                         proposalsToSave.push({ date: isoDate, prop });
                     }
                 }
+            } else {
+                // Handle single dates
+                const parsedDate = new Date(prop.date);
+                if (!isNaN(parsedDate.getTime())) {
+                    const isoDate = parsedDate.toISOString().split('T')[0];
+                    coveredDates.add(isoDate);
+                    proposalsToSave.push({ date: isoDate, prop });
+                }
             }
         }
 
-        // Handle fallback generic dates to cover gaps
-        if (fallbackProposal && dateRange?.from && dateRange?.to) {
+        // Handle fallback generic dates per listing to cover gaps
+        if (dateRange?.from && dateRange?.to) {
             const startDate = new Date(dateRange.from);
             const endDate = new Date(dateRange.to);
+
             if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
-                for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-                    const isoDate = d.toISOString().split('T')[0];
-                    if (!coveredDates.has(isoDate)) {
-                        proposalsToSave.push({ date: isoDate, prop: fallbackProposal });
+                for (const [lid, fallbackProposal] of fallbacksByListing.entries()) {
+                    const coveredDates = coveredDatesByListing.get(lid) || new Set();
+
+                    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                        const isoDate = d.toISOString().split('T')[0];
+                        if (!coveredDates.has(isoDate)) {
+                            proposalsToSave.push({ date: isoDate, prop: fallbackProposal });
+                        }
                     }
                 }
             }
@@ -71,7 +84,8 @@ export async function POST(req: NextRequest) {
                 await db.update(inventoryMaster)
                     .set({
                         proposedPrice: prop.proposed_price.toString(),
-                        changePct: prop.change_pct,
+                        // Auto-calculate the delta percentage based on the actual current price in the DB
+                        changePct: sql`ROUND(((${prop.proposed_price} - CAST(current_price AS NUMERIC)) / NULLIF(CAST(current_price AS NUMERIC), 0)) * 100)`,
                         proposalStatus: "pending",
                         reasoning: prop.reasoning || null
                     })

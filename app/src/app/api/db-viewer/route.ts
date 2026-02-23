@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { listings, inventoryMaster, activityTimeline, chatMessages, userSettings } from "@/lib/db/schema";
-import { sql, desc, count, eq } from "drizzle-orm";
+import { listings, inventoryMaster, reservations, marketEvents, chatMessages, userSettings } from "@/lib/db/schema";
+import { sql, desc, count } from "drizzle-orm";
 
 export async function GET() {
     try {
         // Table counts
         const [listingsCount] = await db.select({ count: count() }).from(listings);
         const [inventoryCount] = await db.select({ count: count() }).from(inventoryMaster);
-        const [activityCount] = await db.select({ count: count() }).from(activityTimeline);
-        const [eventsCount] = await db.select({ count: count() }).from(activityTimeline).where(eq(activityTimeline.type, "market_event"));
+        const [reservationsCount] = await db.select({ count: count() }).from(reservations);
+        const [marketEventsCount] = await db.select({ count: count() }).from(marketEvents);
         const [chatMessagesCount] = await db.select({ count: count() }).from(chatMessages);
         const [userSettingsCount] = await db.select({ count: count() }).from(userSettings);
 
@@ -19,11 +19,14 @@ export async function GET() {
             .select()
             .from(inventoryMaster)
             .orderBy(desc(inventoryMaster.date));
-        const activityData = await db
+        const reservationsData = await db
             .select()
-            .from(activityTimeline)
-            .orderBy(desc(activityTimeline.startDate));
-        const eventsData = activityData.filter((a) => a.type === "market_event");
+            .from(reservations)
+            .orderBy(desc(reservations.startDate));
+        const marketEventsData = await db
+            .select()
+            .from(marketEvents)
+            .orderBy(desc(marketEvents.startDate));
 
         const chatMessagesData = await db
             .select()
@@ -45,14 +48,14 @@ export async function GET() {
                 min: sql<string>`MIN(start_date)`,
                 max: sql<string>`MAX(start_date)`,
             })
-            .from(activityTimeline);
+            .from(reservations);
 
         return NextResponse.json({
             summary: {
                 listings: listingsCount.count,
                 inventory_master: inventoryCount.count,
-                activity_timeline: activityCount.count,
-                events: eventsCount.count,
+                reservations: reservationsCount.count,
+                market_events: marketEventsCount.count,
                 chat_messages: chatMessagesCount.count,
                 user_settings: userSettingsCount.count,
             },
@@ -63,8 +66,8 @@ export async function GET() {
             data: {
                 listings: listingsData,
                 inventory_master: inventoryData,
-                activity_timeline: activityData,
-                events: eventsData,
+                reservations: reservationsData,
+                market_events: marketEventsData,
                 chat_messages: chatMessagesData,
                 user_settings: userSettingsData,
             },

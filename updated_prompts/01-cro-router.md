@@ -37,7 +37,7 @@ The backend sends the user query and the selected context:
 
 1.  **Enforce Date Range**: All analysis, proposals, and market research MUST be strictly limited to the `selected_date_range`. The date range is locked from the Setup phase. If the user asks about a different period, tell them to select a new date range and run Setup again.
 2.  **Pass Date Range**: Always pass the `selected_date_range` to every sub-agent call so they filter their DB queries accordingly.
-3.  **Factor Propagation**: When `@MarketResearch` returns an event "Factor" (e.g., 1.2x) from the cached `activity_timeline` table (where type='market_event'), ensure the generated proposals for those dates reflect this logic.
+3.  **Factor Propagation**: When `@MarketResearch` returns an event "Factor" (e.g., 1.2x) from the cached `market_events` table, ensure the generated proposals for those dates reflect this logic.
 4.  **No-Event Fallback**: If `@MarketResearch` returns zero events and zero holidays for the period, pricing suggestions should be based on:
     - **Competitor positioning** (from `@MarketResearch` — competitor rates and verdict are always available)
     - **Occupancy rate** (from `@PropertyAnalyst` — if occupancy < 60%, suggest discounts to fill gaps)

@@ -13,12 +13,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, Loader2, Sparkles, AlertTriangle, ExternalLink, ChevronDown } from "lucide-react";
-import { ActivityTimelineRow } from "@/lib/db/schema";
+import { MarketEventRow } from "@/lib/db/schema";
 import { useContextStore } from "@/stores/context-store";
 import { cn } from "@/lib/utils";
 
 export function MarketEventsTable() {
-    const [events, setEvents] = useState<ActivityTimelineRow[]>([]);
+    const [events, setEvents] = useState<MarketEventRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -135,10 +135,10 @@ export function MarketEventsTable() {
                                 const start = new Date(ev.startDate);
                                 const end = new Date(ev.endDate);
                                 const isSingleDay = ev.startDate === ev.endDate;
-                                const meta: any = ev.marketContext || {};
+                                const meta: any = ev.metadata || {};
 
-                                const isEvent = ev.type === 'market_event' && meta.type === 'event';
-                                const isHoliday = ev.type === 'market_event' && meta.type === 'holiday';
+                                const isEvent = ev.eventType === 'event';
+                                const isHoliday = ev.eventType === 'holiday';
 
                                 return (
                                     <TableRow key={ev.id} className="hover:bg-muted/30 group transition-colors">
@@ -168,34 +168,34 @@ export function MarketEventsTable() {
                                                     )}
                                                 </div>
                                                 <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 group-hover:line-clamp-none transition-all">
-                                                    {meta.description || (ev as any).description}
+                                                    {ev.description}
                                                 </p>
 
                                                 <div className="flex flex-wrap gap-2 mt-1">
                                                     {isEvent && <Badge variant="outline" className="text-[9px] bg-blue-500/5 text-blue-500 border-blue-500/20">Event</Badge>}
                                                     {isHoliday && <Badge variant="outline" className="text-[9px] bg-purple-500/5 text-purple-500 border-purple-500/20">Holiday</Badge>}
-                                                    {meta.location && (
+                                                    {meta.location || ev.location ? (
                                                         <span className="text-[10px] text-muted-foreground flex items-center before:content-['•'] before:mr-1 before:opacity-30">
-                                                            {meta.location}
+                                                            {ev.location || meta.location}
                                                         </span>
-                                                    )}
+                                                    ) : null}
                                                 </div>
                                             </div>
                                         </TableCell>
 
                                         <TableCell className="align-top pt-4">
                                             <div className="flex flex-col gap-2">
-                                                {getImpactBadge(meta.expectedImpact || (ev as any).expectedImpact || 'medium')}
-                                                {meta.confidence ? (
+                                                {getImpactBadge(ev.expectedImpact || 'medium')}
+                                                {ev.confidence ? (
                                                     <div className="flex items-center gap-1.5 border-t border-muted pt-1">
                                                         <div className="h-1.5 w-16 bg-muted rounded-full overflow-hidden">
                                                             <div
                                                                 className="h-full bg-primary/40 rounded-full"
-                                                                style={{ width: `${meta.confidence}%` }}
+                                                                style={{ width: `${ev.confidence}%` }}
                                                             />
                                                         </div>
                                                         <span className="text-[9px] font-mono text-muted-foreground">
-                                                            {meta.confidence}%
+                                                            {ev.confidence}%
                                                         </span>
                                                     </div>
                                                 ) : null}
@@ -203,10 +203,10 @@ export function MarketEventsTable() {
                                         </TableCell>
 
                                         <TableCell className="text-right pr-6 align-top pt-4">
-                                            {(meta.suggested_premium_pct || meta.premium_pct) ? (
+                                            {ev.suggestedPremium && Number(ev.suggestedPremium) > 0 ? (
                                                 <div className="inline-flex flex-col items-end">
                                                     <span className="text-sm font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded flex items-center gap-1">
-                                                        +{meta.suggested_premium_pct || meta.premium_pct}%
+                                                        +{Math.round(Number(ev.suggestedPremium))}%
                                                     </span>
                                                     <span className="text-[9px] uppercase tracking-wider text-muted-foreground mt-1">
                                                         Target Lift

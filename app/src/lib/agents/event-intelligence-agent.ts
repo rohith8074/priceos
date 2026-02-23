@@ -1,4 +1,4 @@
-import { db, activityTimeline } from "@/lib/db";
+import { db, marketEvents } from "@/lib/db";
 import { and, gte, lte, eq } from "drizzle-orm";
 import { format, addDays, parseISO } from "date-fns";
 
@@ -27,40 +27,36 @@ export interface EventAnalysisResult {
 /**
  * Event Intelligence Agent
  * Responsible for fetching and analyzing Dubai events for pricing impact
+ * Reads from the `market_events` table (populated during Setup)
  */
 export class EventIntelligenceAgent {
   /**
-   * Fetch events for a date range
+   * Fetch events for a date range from market_events table
    */
   async getEvents(startDate: Date, endDate: Date): Promise<EventSignal[]> {
     const startDateStr = format(startDate, "yyyy-MM-dd");
     const endDateStr = format(endDate, "yyyy-MM-dd");
 
-    // Fetch from database cache
     const cachedEvents = await db
       .select()
-      .from(activityTimeline)
+      .from(marketEvents)
       .where(
         and(
-          eq(activityTimeline.type, 'market_event'),
-          gte(activityTimeline.endDate, startDateStr),
-          lte(activityTimeline.startDate, endDateStr)
+          gte(marketEvents.endDate, startDateStr),
+          lte(marketEvents.startDate, endDateStr)
         )
       );
 
-    return cachedEvents.map((event) => {
-      const mc = (event.marketContext as any) || {};
-      return {
-        name: event.title,
-        startDate: event.startDate!,
-        endDate: event.endDate!,
-        location: mc.location || "Dubai",
-        expectedImpact: (mc.expectedImpact || "medium") as "high" | "medium" | "low",
-        confidence: mc.confidence || 50,
-        description: mc.description || undefined,
-        metadata: mc,
-      };
-    });
+    return cachedEvents.map((event) => ({
+      name: event.title,
+      startDate: event.startDate,
+      endDate: event.endDate,
+      location: event.location || "Dubai",
+      expectedImpact: (event.expectedImpact || "medium") as "high" | "medium" | "low",
+      confidence: event.confidence || 50,
+      description: event.description || undefined,
+      metadata: (event.metadata as Record<string, unknown>) || {},
+    }));
   }
 
   /**
@@ -102,12 +98,11 @@ export class EventIntelligenceAgent {
 
     const overlappingEvents = await db
       .select()
-      .from(activityTimeline)
+      .from(marketEvents)
       .where(
         and(
-          eq(activityTimeline.type, 'market_event'),
-          lte(activityTimeline.startDate, dateStr),
-          gte(activityTimeline.endDate, dateStr)
+          lte(marketEvents.startDate, dateStr),
+          gte(marketEvents.endDate, dateStr)
         )
       );
 
@@ -120,7 +115,6 @@ export class EventIntelligenceAgent {
    */
   async fetchAndCacheEvents(): Promise<{ cached: number; error?: string }> {
     try {
-      // Mock events for Dubai (2026)
       const mockEvents: EventSignal[] = [
         {
           name: "Dubai Shopping Festival",
@@ -197,35 +191,28 @@ export class EventIntelligenceAgent {
       let cachedCount = 0;
 
       for (const event of mockEvents) {
-        // Check if event already exists
         const existing = await db
           .select()
-          .from(activityTimeline)
+          .from(marketEvents)
           .where(
             and(
-              eq(activityTimeline.type, 'market_event'),
-              eq(activityTimeline.title, event.name),
-              eq(activityTimeline.startDate, event.startDate)
+              eq(marketEvents.title, event.name),
+              eq(marketEvents.startDate, event.startDate)
             )
           )
           .limit(1);
 
         if (existing.length === 0) {
-          // Insert new event
-          await db.insert(activityTimeline).values({
-            type: 'market_event',
+          await db.insert(marketEvents).values({
             title: event.name,
             startDate: event.startDate,
             endDate: event.endDate,
-            marketContext: {
-              eventType: 'event',
-              location: event.location,
-              expectedImpact: event.expectedImpact,
-              confidence: event.confidence,
-              description: event.description || undefined,
-              ...event.metadata
-            },
-            createdAt: new Date(),
+            eventType: 'event',
+            location: event.location,
+            expectedImpact: event.expectedImpact,
+            confidence: event.confidence,
+            description: event.description || null,
+            metadata: event.metadata || null,
           });
           cachedCount++;
         }
@@ -260,7 +247,7 @@ export class EventIntelligenceAgent {
     if (highImpactEvents.length > 0) {
       const eventNames = highImpactEvents.map((e) => e.name).join(", ");
       return {
-        suggestedIncrease: 30, // 30% increase for high-impact events
+        suggestedIncrease: 30,
         reasoning: `High-impact events detected: ${eventNames}. Significant demand increase expected.`,
       };
     }
@@ -268,13 +255,13 @@ export class EventIntelligenceAgent {
     if (mediumImpactEvents.length > 0) {
       const eventNames = mediumImpactEvents.map((e) => e.name).join(", ");
       return {
-        suggestedIncrease: 15, // 15% increase for medium-impact events
+        suggestedIncrease: 15,
         reasoning: `Medium-impact events detected: ${eventNames}. Moderate demand increase expected.`,
       };
     }
 
     return {
-      suggestedIncrease: 5, // 5% increase for low-impact events
+      suggestedIncrease: 5,
       reasoning: `Low-impact events detected. Minor demand increase expected.`,
     };
   }
@@ -286,5 +273,3 @@ export class EventIntelligenceAgent {
 export function createEventIntelligenceAgent(): EventIntelligenceAgent {
   return new EventIntelligenceAgent();
 }
-
-

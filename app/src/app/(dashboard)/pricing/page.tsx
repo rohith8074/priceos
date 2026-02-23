@@ -10,7 +10,7 @@ export default async function PricingPage() {
   const today = format(new Date(), "yyyy-MM-dd");
 
   // Fetch all price records from today onwards
-  const pendingRows = await db
+  const rawRows = await db
     .select({
       id: inventoryMaster.id,
       listingId: inventoryMaster.listingId,
@@ -30,6 +30,22 @@ export default async function PricingPage() {
       )
     )
     .orderBy(inventoryMaster.date);
+
+  const pendingRows = rawRows.map(row => {
+    const current = parseFloat(row.currentPrice || "0");
+    const proposed = parseFloat(row.proposedPrice || "0");
+
+    let changePct = row.changePct;
+    if (current > 0 && proposed > 0) {
+      // Recalculate to ensure accuracy and avoid AI hallucination mismatches
+      changePct = Math.round(((proposed - current) / current) * 100);
+    }
+
+    return {
+      ...row,
+      changePct
+    };
+  });
 
   return (
     <div className="flex-1 flex flex-col p-8 bg-muted/5 h-full overflow-hidden">

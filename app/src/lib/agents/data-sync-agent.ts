@@ -1,5 +1,5 @@
 import { createHostawayClient } from "../hostaway/client";
-import { db, listings, inventoryMaster, activityTimeline } from "@/lib/db";
+import { db, listings, inventoryMaster, reservations } from "@/lib/db";
 import { eq, and, gte, lte } from "drizzle-orm";
 import { addDays, format } from "date-fns";
 import type { HostawayListing, HostawayCalendarDay, HostawayReservation } from "../hostaway/types";
@@ -118,7 +118,8 @@ export class DataSyncAgent {
             date: day.date,
             status: day.status,
             currentPrice: day.price.toString(),
-            minMaxStay: { min: day.minimumStay || 1, max: day.maximumStay || 30 },
+            minStay: day.minimumStay || 1,
+            maxStay: day.maximumStay || 30,
           }))
         );
       }
@@ -130,27 +131,31 @@ export class DataSyncAgent {
         format(endDate, "yyyy-MM-dd")
       );
 
-      // Upsert reservations
+      // Upsert reservations (direct columns, no JSON)
       for (const reservation of reservationsData) {
-        const existing = await db.select().from(activityTimeline).where(and(eq(activityTimeline.title, reservation.guestName), eq(activityTimeline.startDate, reservation.arrivalDate))).limit(1);
+        const existing = await db.select().from(reservations).where(and(eq(reservations.guestName, reservation.guestName), eq(reservations.startDate, reservation.arrivalDate))).limit(1);
         if (existing.length > 0) {
-          await db.update(activityTimeline).set({
+          await db.update(reservations).set({
             endDate: reservation.departureDate,
-            financials: { totalPrice: reservation.totalPrice, pricePerNight: reservation.nightlyRate, channelName: reservation.channelName, reservationStatus: this.mapReservationStatus(reservation.status) }
-          }).where(eq(activityTimeline.id, existing[0].id));
+            totalPrice: String(reservation.totalPrice),
+            pricePerNight: String(reservation.nightlyRate),
+            channelName: reservation.channelName,
+            reservationStatus: this.mapReservationStatus(reservation.status),
+            guestName: reservation.guestName || null,
+            guestEmail: reservation.guestEmail || null,
+          }).where(eq(reservations.id, existing[0].id));
         } else {
-          await db.insert(activityTimeline).values({
+          await db.insert(reservations).values({
             listingId,
-            type: 'reservation',
-            title: reservation.guestName,
             startDate: reservation.arrivalDate,
             endDate: reservation.departureDate,
+            guestName: reservation.guestName || null,
+            guestEmail: reservation.guestEmail || null,
+            totalPrice: String(reservation.totalPrice),
+            pricePerNight: String(reservation.nightlyRate),
+            channelName: reservation.channelName,
+            reservationStatus: this.mapReservationStatus(reservation.status),
             createdAt: syncedAt,
-            financials: {
-              totalPrice: reservation.totalPrice,
-              pricePerNight: reservation.nightlyRate,
-              channelName: reservation.channelName,
-            }
           });
         }
       }

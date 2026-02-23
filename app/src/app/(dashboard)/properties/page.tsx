@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 
-import { db, listings, activityTimeline, inventoryMaster } from "@/lib/db";
+import { db, listings, reservations as reservationsTable, inventoryMaster } from "@/lib/db";
 import { eq, and, gte, sql } from "drizzle-orm";
 import { format, addDays } from "date-fns";
 import Link from "next/link";
@@ -31,17 +31,16 @@ async function getPropertyMetrics(listingId: number) {
   // Get reservations for last 30 days
   const recentReservations = await db
     .select()
-    .from(activityTimeline)
+    .from(reservationsTable)
     .where(
       and(
-        eq(activityTimeline.listingId, listingId),
-        eq(activityTimeline.type, "reservation"),
-        gte(activityTimeline.startDate, format(thirtyDaysAgo, "yyyy-MM-dd"))
+        eq(reservationsTable.listingId, listingId),
+        gte(reservationsTable.startDate, format(thirtyDaysAgo, "yyyy-MM-dd"))
       )
     );
 
   const revenue = recentReservations.reduce(
-    (sum, res) => sum + Number(res.financials?.totalPrice || 0),
+    (sum, res) => sum + Number(res.totalPrice || 0),
     0
   );
 

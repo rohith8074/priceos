@@ -4,7 +4,10 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Send, Loader2, Settings, Zap, Calendar as CalendarIcon, PanelRightClose, PanelRightOpen, Building2 } from "lucide-react";
+import {
+  Send, Loader2, Settings, Zap, Calendar as CalendarIcon,
+  PanelRightClose, PanelRightOpen, Building2, CheckSquare, AlertCircle
+} from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useContextStore } from "@/stores/context-store";
@@ -12,6 +15,7 @@ import type { ListingRow } from "@/lib/db";
 import { DateRangePicker } from "./date-range-picker";
 import { DateRange } from "react-day-picker";
 import { addDays, format } from "date-fns";
+import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { CalendarVisualizer, ReservationData } from "./calendar-visualizer";
@@ -540,77 +544,81 @@ export function UnifiedChatInterface({ properties }: Props) {
                 key={message.id}
                 className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
               >
-                <Card
-                  className={`max-w-2xl ${message.role === "user" ? "bg-primary text-primary-foreground" : ""}`}
+                <div
+                  className={`max-w-[85%] sm:max-w-2xl rounded-2xl p-4 shadow-xl transition-all duration-300 ${message.role === "user"
+                    ? "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground rounded-tr-none"
+                    : "bg-background/60 backdrop-blur-xl border border-border/50 text-foreground rounded-tl-none"
+                    }`}
                 >
-                  <CardContent className="p-4 overflow-x-auto">
-                    <div className="prose prose-sm dark:prose-invert max-w-none break-words [&>table]:w-full [&>table]:border-collapse [&>table]:my-4 [&>table_th]:border [&>table_th]:p-2 [&>table_td]:border [&>table_td]:p-2 [&>table_th]:bg-muted/50 [&>ul]:list-disc [&>ul]:pl-4 [&>ol]:list-decimal [&>ol]:pl-4 [&>p]:mb-2 last:mb-0">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {message.content}
-                      </ReactMarkdown>
-                    </div>
+                  <div className={`prose prose-sm dark:prose-invert max-w-none break-words [&>table]:w-full [&>table]:border-collapse [&>table]:my-4 [&>table_th]:border [&>table_th]:p-2 [&>table_td]:border [&>table_td]:p-2 [&>table_th]:bg-muted/50 [&>ul]:list-disc [&>ul]:pl-4 [&>ol]:list-decimal [&>ol]:pl-4 [&>p]:mb-2 last:mb-0 ${message.role === 'user' ? 'text-primary-foreground' : 'text-foreground/90'}`}>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {message.content}
+                    </ReactMarkdown>
+                  </div>
 
-                    {message.proposals && message.proposals.length > 0 && (
-                      <div className="mt-4 border rounded-lg bg-muted/20 overflow-hidden">
-                        <div className="bg-muted p-2 text-sm font-semibold border-b">
-                          Pending Price Adjustments ({message.proposals.length})
-                        </div>
-                        <div className="p-3 text-sm space-y-3">
-                          {message.proposals.map((prop, idx) => (
-                            <div key={idx} className="flex flex-col gap-1 pb-3 border-b border-border/50 last:border-0 last:pb-0">
-                              <div className="flex justify-between font-medium items-center">
-                                <span>{prop.date}</span>
-                                <div className="flex items-center gap-3">
-                                  {prop.proposed_min_stay && (
-                                    <span className="text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary px-1.5 py-0.5 rounded-sm">
-                                      Min Stay: {prop.proposed_min_stay}n
-                                    </span>
-                                  )}
-                                  <span className={prop.change_pct > 0 ? "text-emerald-500" : "text-amber-500"}>
-                                    AED {prop.proposed_price} <span className="text-xs opacity-75">({prop.change_pct > 0 ? "+" : ""}{prop.change_pct}%)</span>
-                                  </span>
-                                </div>
-                              </div>
-                              <p className="text-muted-foreground text-xs leading-relaxed">{prop.reasoning}</p>
-                            </div>
-                          ))}
-                        </div>
-                        {message.proposalStatus === "pending" && (
-                          <div className="flex bg-muted/30 p-2 gap-2 border-t mt-1">
-                            <Button
-                              variant="default"
-                              size="sm"
-                              className="w-full text-xs"
-                              disabled={isLoading}
-                              onClick={() => handleSaveProposals(message.id, message.proposals!)}
-                            >
-                              Save to Database
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full text-xs text-destructive hover:bg-destructive/10"
-                              disabled={isLoading}
-                              onClick={() => handleRejectProposals(message.id)}
-                            >
-                              Reject
-                            </Button>
-                          </div>
-                        )}
-                        {message.proposalStatus === "saved" && (
-                          <div className="flex bg-emerald-500/10 p-2 border-t justify-center text-xs font-semibold text-emerald-500 mt-1">
-                            Saved to Database
-                          </div>
-                        )}
-                        {message.proposalStatus === "rejected" && (
-                          <div className="flex bg-destructive/10 p-2 border-t justify-center text-xs font-semibold text-destructive mt-1">
-                            Proposals Rejected
-                          </div>
-                        )}
+                  {message.proposals && message.proposals.length > 0 && (
+                    <div className="mt-5 border border-border/40 rounded-2xl bg-white/5 backdrop-blur-md overflow-hidden shadow-inner">
+                      <div className="bg-primary/5 px-4 py-3 text-xs font-black uppercase tracking-[0.2em] border-b border-border/40 text-primary">
+                        Live Price Proposals ({message.proposals.length})
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
+                      <div className="p-4 text-sm space-y-4">
+                        {message.proposals.map((prop, idx) => (
+                          <div key={idx} className="flex flex-col gap-2 pb-4 border-b border-border/20 last:border-0 last:pb-0">
+                            <div className="flex justify-between font-bold items-center">
+                              <span className="text-sm tracking-tight text-foreground/80">{prop.date}</span>
+                              <div className="flex items-center gap-2">
+                                {prop.proposed_min_stay && (
+                                  <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest bg-primary/5 text-primary border-primary/20 scale-90 origin-right">
+                                    {prop.proposed_min_stay}N Min
+                                  </Badge>
+                                )}
+                                <span className={`text-sm font-black tabular-nums ${prop.change_pct > 0 ? "text-emerald-500" : "text-amber-500"}`}>
+                                  AED {prop.proposed_price}
+                                  <span className="text-[10px] ml-1 opacity-70">({prop.change_pct > 0 ? "+" : ""}{prop.change_pct}%)</span>
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-muted-foreground/80 text-[11px] leading-relaxed italic">{prop.reasoning}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {message.proposalStatus === "pending" && (
+                        <div className="flex bg-primary/5 p-3 gap-3 border-t border-border/40">
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="flex-1 h-9 rounded-xl text-[10px] font-bold uppercase tracking-widest bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all active:scale-[0.97]"
+                            disabled={isLoading}
+                            onClick={() => handleSaveProposals(message.id, message.proposals!)}
+                          >
+                            Deploy to Control
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 h-9 rounded-xl text-[10px] font-bold uppercase tracking-widest border-rose-500/20 text-rose-500 hover:bg-rose-500/10 transition-all active:scale-[0.97]"
+                            disabled={isLoading}
+                            onClick={() => handleRejectProposals(message.id)}
+                          >
+                            Discard
+                          </Button>
+                        </div>
+                      )}
+                      {message.proposalStatus === "saved" && (
+                        <div className="flex bg-emerald-500/5 p-3 border-t border-emerald-500/20 justify-center text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500">
+                          <CheckSquare className="h-3.5 w-3.5 mr-2" />
+                          Deployed to Command Center
+                        </div>
+                      )}
+                      {message.proposalStatus === "rejected" && (
+                        <div className="flex bg-rose-500/5 p-3 border-t border-rose-500/20 justify-center text-[10px] font-black uppercase tracking-[0.2em] text-rose-500">
+                          <AlertCircle className="h-3.5 w-3.5 mr-2" />
+                          Proposals Discarded
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
 

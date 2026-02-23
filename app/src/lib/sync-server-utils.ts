@@ -1,4 +1,4 @@
-import { db, listings, activityTimeline, inventoryMaster } from "./db";
+import { db, listings, reservations, inventoryMaster } from "./db";
 import type { PMSClient } from "./pms/types";
 
 /**
@@ -37,7 +37,7 @@ export async function syncListingsToDb(
     await db
       .insert(listings)
       .values({
-        hostawayId: listing.id.toString(), // Store Hostaway ID
+        hostawayId: listing.id.toString(),
         name: listing.name,
         area: listing.area,
         bedroomsNumber: listing.bedroomsNumber,
@@ -49,7 +49,7 @@ export async function syncListingsToDb(
         amenities: listing.amenities,
       })
       .onConflictDoUpdate({
-        target: listings.hostawayId, // Match on hostawayId instead of id
+        target: listings.hostawayId,
         set: {
           name: listing.name,
           area: listing.area,
@@ -66,7 +66,7 @@ export async function syncListingsToDb(
 }
 
 /**
- * Sync reservations to database with syncedAt timestamp
+ * Sync reservations to database — uses `reservations` table with direct columns
  */
 export async function syncReservationsToDb(
   pmsReservations: Array<{
@@ -88,44 +88,39 @@ export async function syncReservationsToDb(
 ) {
   for (const reservation of pmsReservations) {
     await db
-      .insert(activityTimeline)
+      .insert(reservations)
       .values({
-        id: reservation.id,
         listingId: reservation.listingMapId,
-        type: 'reservation',
-        title: reservation.guestName,
+        guestName: reservation.guestName,
+        guestEmail: reservation.guestEmail || null,
         startDate: reservation.arrivalDate,
         endDate: reservation.departureDate,
+        channelName: reservation.channelName,
+        reservationStatus: reservation.status || "confirmed",
+        totalPrice: String(reservation.totalPrice),
+        pricePerNight: String(reservation.pricePerNight),
         createdAt: syncedAt,
-        financials: {
-          totalPrice: reservation.totalPrice,
-          pricePerNight: reservation.pricePerNight,
-          channelName: reservation.channelName,
-          reservationStatus: reservation.status || "confirmed"
-        }
       })
       .onConflictDoUpdate({
-        target: activityTimeline.id,
+        target: reservations.id,
         set: {
           listingId: reservation.listingMapId,
-          type: 'reservation',
-          title: reservation.guestName,
+          guestName: reservation.guestName,
+          guestEmail: reservation.guestEmail || null,
           startDate: reservation.arrivalDate,
           endDate: reservation.departureDate,
+          channelName: reservation.channelName,
+          reservationStatus: reservation.status || "confirmed",
+          totalPrice: String(reservation.totalPrice),
+          pricePerNight: String(reservation.pricePerNight),
           createdAt: syncedAt,
-          financials: {
-            totalPrice: reservation.totalPrice,
-            pricePerNight: reservation.pricePerNight,
-            channelName: reservation.channelName,
-            reservationStatus: reservation.status || "confirmed"
-          }
         },
       });
   }
 }
 
 /**
- * Sync calendar days for listings
+ * Sync calendar days for listings — uses `min_stay`/`max_stay` integer columns
  */
 export async function syncCalendarToDb(
   pmsClient: PMSClient,
@@ -135,7 +130,6 @@ export async function syncCalendarToDb(
   hostawayId?: number
 ) {
   for (const listingId of listingIds) {
-    // Use hostawayId for PMS fetch if provided, otherwise use listingId
     const pmsId = hostawayId || listingId;
     const calendarData = await pmsClient.getCalendar(
       pmsId,
@@ -151,14 +145,16 @@ export async function syncCalendarToDb(
           date: day.date,
           status: day.status,
           currentPrice: day.price.toString(),
-          minMaxStay: { min: day.minimumStay, max: day.maximumStay },
+          minStay: day.minimumStay || 1,
+          maxStay: day.maximumStay || 30,
         })
         .onConflictDoUpdate({
           target: [inventoryMaster.listingId, inventoryMaster.date],
           set: {
             status: day.status,
             currentPrice: day.price.toString(),
-            minMaxStay: { min: day.minimumStay, max: day.maximumStay },
+            minStay: day.minimumStay || 1,
+            maxStay: day.maximumStay || 30,
           },
         });
     }

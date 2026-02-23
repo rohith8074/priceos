@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { activityTimeline, listings } from "@/lib/db/schema";
+import { reservations, listings } from "@/lib/db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
 import { OperationsClient } from "./operations-client";
 import { format, subDays, addDays } from "date-fns";
@@ -9,29 +9,55 @@ export const dynamic = "force-dynamic";
 export default async function OperationsPage() {
     const today = new Date();
     const startDate = format(subDays(today, 2), "yyyy-MM-dd");
-    const endDate = format(addDays(today, 14), "yyyy-MM-dd");
+    const endDate = format(addDays(today, 90), "yyyy-MM-dd");
 
-    const reservations = await db
+    const reservationRows = await db
         .select({
-            id: activityTimeline.id,
-            listingId: activityTimeline.listingId,
+            id: reservations.id,
+            listingId: reservations.listingId,
             propertyName: listings.name,
-            startDate: activityTimeline.startDate,
-            endDate: activityTimeline.endDate,
-            guestDetails: activityTimeline.guestDetails,
-            financials: activityTimeline.financials,
-            type: activityTimeline.type,
+            startDate: reservations.startDate,
+            endDate: reservations.endDate,
+            guestName: reservations.guestName,
+            guestEmail: reservations.guestEmail,
+            guestPhone: reservations.guestPhone,
+            numGuests: reservations.numGuests,
+            channelName: reservations.channelName,
+            totalPrice: reservations.totalPrice,
+            pricePerNight: reservations.pricePerNight,
+            reservationStatus: reservations.reservationStatus,
         })
-        .from(activityTimeline)
-        .innerJoin(listings, eq(activityTimeline.listingId, listings.id))
+        .from(reservations)
+        .innerJoin(listings, eq(reservations.listingId, listings.id))
         .where(
             and(
-                eq(activityTimeline.type, "reservation"),
-                gte(activityTimeline.endDate, startDate),
-                lte(activityTimeline.endDate, endDate) // Looking at checkouts!
+                gte(reservations.endDate, startDate),
+                lte(reservations.endDate, endDate)
             )
         )
-        .orderBy(activityTimeline.endDate);
+        .orderBy(reservations.endDate);
+
+    // Map to the shape OperationsClient expects (backwards-compat)
+    const mapped = reservationRows.map(r => ({
+        id: r.id,
+        listingId: r.listingId,
+        propertyName: r.propertyName,
+        startDate: r.startDate,
+        endDate: r.endDate,
+        guestDetails: {
+            name: r.guestName,
+            email: r.guestEmail,
+            phone: r.guestPhone,
+            numberOfGuests: r.numGuests,
+        },
+        financials: {
+            channelName: r.channelName,
+            totalPrice: r.totalPrice ? parseFloat(r.totalPrice) : 0,
+            price_per_night: r.pricePerNight ? `${r.pricePerNight}` : null,
+            reservationStatus: r.reservationStatus,
+        },
+        type: "reservation" as const,
+    }));
 
     return (
         <div className="flex-1 flex flex-col p-8 bg-muted/5 h-full overflow-hidden">
@@ -42,7 +68,7 @@ export default async function OperationsPage() {
                 </p>
             </div>
 
-            <OperationsClient reservations={reservations} />
+            <OperationsClient reservations={mapped} />
         </div>
     );
 }

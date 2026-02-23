@@ -38,15 +38,15 @@ export default async function OverviewPage() {
   let totalAvgPriceSum = 0;
   let activePropertiesCount = 0;
 
-  // 2.5 Fetch all-time booked revenue from actual reservation activity
+  // 2.5 Fetch all-time booked revenue from actual reservations
   const historicalQuery = sql`
     SELECT
       COALESCE(
-        SUM(CAST(financials->>'totalPrice' AS NUMERIC)),
+        SUM(CAST(total_price AS NUMERIC)),
         0
       ) as total_historical_revenue
-    FROM activity_timeline
-    WHERE type = 'reservation'
+    FROM reservations
+    WHERE reservation_status = 'confirmed'
   `;
   const historicalResult = await db.execute(historicalQuery);
   const totalHistoricalRevenue = Array.isArray(historicalResult)
@@ -63,10 +63,9 @@ export default async function OverviewPage() {
   const calRows = Array.isArray(calendarResult) ? calendarResult : calendarResult.rows || [];
 
   const reservationsQuery = sql`
-      SELECT listing_id, title, start_date, end_date, financials
-      FROM activity_timeline
-      WHERE type = 'reservation' 
-        AND start_date <= CURRENT_DATE + 29 
+      SELECT listing_id, guest_name, start_date, end_date, total_price, price_per_night, channel_name, reservation_status
+      FROM reservations
+      WHERE start_date <= CURRENT_DATE + 29 
         AND end_date >= CURRENT_DATE
     `;
   const reservationsResult = await db.execute(reservationsQuery);
@@ -93,10 +92,15 @@ export default async function OverviewPage() {
     }));
 
     const listingRes = resRows.filter((r: any) => r.listing_id === listing.id).map(r => ({
-      title: r.title,
+      title: r.guest_name || 'Guest',
       startDate: new Date(r.start_date).toISOString().split('T')[0],
       endDate: new Date(r.end_date).toISOString().split('T')[0],
-      financials: r.financials
+      financials: {
+        totalPrice: Number(r.total_price || 0),
+        pricePerNight: Number(r.price_per_night || 0),
+        channelName: r.channel_name,
+        reservationStatus: r.reservation_status,
+      }
     }));
 
     return {

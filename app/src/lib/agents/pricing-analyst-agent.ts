@@ -1,4 +1,4 @@
-import { db, inventoryMaster, listings, activityTimeline } from "@/lib/db";
+import { db, inventoryMaster, listings, marketEvents } from "@/lib/db";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 import { format, addDays, eachDayOfInterval, parseISO, differenceInDays } from "date-fns";
 import { createEventIntelligenceAgent } from "./event-intelligence-agent";

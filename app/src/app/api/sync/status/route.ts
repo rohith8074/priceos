@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, listings, activityTimeline, inventoryMaster } from "@/lib/db";
-import { eq, and } from "drizzle-orm";
+import { db, listings, reservations, inventoryMaster } from "@/lib/db";
+import { eq } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,17 +16,16 @@ export async function GET(req: NextRequest) {
     }
 
     if (context === "portfolio") {
-      // Query all data
       const allListings = await db.select().from(listings);
-      const allReservations = await db.select().from(activityTimeline).where(eq(activityTimeline.type, "reservation"));
+      const allReservations = await db.select().from(reservations);
       const allCalendar = await db.select().from(inventoryMaster);
 
       return NextResponse.json({
         listings: {
           count: allListings.length,
-          lastSyncedAt: null, // syncedAt removed from schema
+          lastSyncedAt: null,
         },
-        activity_timeline: {
+        reservations: {
           count: allReservations.length,
           lastSyncedAt: null,
         },
@@ -36,7 +35,6 @@ export async function GET(req: NextRequest) {
         },
       });
     } else {
-      // Query property-specific data
       if (!propertyId) {
         return NextResponse.json(
           { error: "Missing propertyId for property context" },
@@ -53,13 +51,8 @@ export async function GET(req: NextRequest) {
 
       const propertyReservations = await db
         .select()
-        .from(activityTimeline)
-        .where(
-          and(
-            eq(activityTimeline.listingId, listingId),
-            eq(activityTimeline.type, "reservation")
-          )
-        );
+        .from(reservations)
+        .where(eq(reservations.listingId, listingId));
 
       const propertyCalendar = await db
         .select()
@@ -69,9 +62,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         listings: {
           count: listing.length,
-          lastSyncedAt: null, // syncedAt removed from schema
+          lastSyncedAt: null,
         },
-        activity_timeline: {
+        reservations: {
           count: propertyReservations.length,
           lastSyncedAt: null,
         },

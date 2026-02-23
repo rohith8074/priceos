@@ -21,79 +21,69 @@ export function CompactPropertyCard({
     <button
       onClick={onClick}
       className={cn(
-        "w-full text-left rounded-lg border p-3 transition-all",
-        "hover:bg-accent/50 active:scale-[0.98]",
+        "w-full text-left rounded-xl border transition-all duration-300 group relative overflow-hidden",
         isActive
-          ? "bg-primary/10 border-primary shadow-sm"
-          : "bg-card border-border hover:border-primary/50"
+          ? "bg-primary/10 border-primary/40 shadow-[0_0_20px_rgba(var(--primary),0.05)]"
+          : "bg-background/40 border-border/50 hover:bg-background/60 hover:border-primary/30"
       )}
     >
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <div className="flex items-start gap-2 min-w-0 flex-1">
-          <div
-            className={cn(
-              "rounded-md p-1.5 shrink-0",
-              isActive ? "bg-primary/20" : "bg-muted"
-            )}
-          >
-            <Building2
+      {isActive && (
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-blue-500/5 pointer-events-none" />
+      )}
+
+      <div className="p-3 relative z-10">
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex items-start gap-3 min-w-0 flex-1">
+            <div
               className={cn(
-                "h-3.5 w-3.5",
-                isActive ? "text-primary" : "text-muted-foreground"
-              )}
-            />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p
-              className={cn(
-                "text-sm font-medium truncate",
-                isActive ? "text-primary" : "text-foreground"
+                "rounded-lg p-2 shrink-0 transition-colors",
+                isActive ? "bg-primary/20 text-primary" : "bg-muted/50 text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
               )}
             >
-              {property.name}
-            </p>
-            {property.area && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                <MapPin className="h-3 w-3 shrink-0" />
-                <span className="truncate">{property.area}</span>
-              </div>
-            )}
+              <Building2 className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p
+                className={cn(
+                  "text-sm font-bold truncate tracking-tight transition-colors",
+                  isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
+                )}
+              >
+                {property.name}
+              </p>
+              {property.area && (
+                <div className="flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider text-muted-foreground/60 mt-0.5">
+                  <MapPin className="h-2.5 w-2.5 shrink-0" />
+                  <span className="truncate">{property.area}</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Active indicator */}
-        {isActive && (
-          <div className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1" />
-        )}
-      </div>
-
-      {/* Metrics */}
-      <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t">
-        <div>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-            Occupancy
-          </p>
-          <p
-            className={cn(
-              "text-xs font-semibold",
-              occupancy >= 70
-                ? "text-green-600"
-                : occupancy >= 50
-                  ? "text-yellow-600"
-                  : "text-red-600"
-            )}
-          >
-            {occupancy}%
-          </p>
-        </div>
-        <div>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-            Price
-          </p>
-          <p className="text-xs font-semibold">
-            {property.currencyCode}{" "}
-            {parseFloat(property.price as string).toLocaleString("en-US")}
-          </p>
+        {/* Metrics Grid */}
+        <div className="grid grid-cols-2 gap-3 mt-1 pt-2 border-t border-border/30">
+          <div className="flex flex-col">
+            <span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-[0.1em] mb-0.5">Occupancy</span>
+            <div className="flex items-center gap-1.5">
+              <div className={cn(
+                "h-1.5 w-1.5 rounded-full animate-pulse",
+                occupancy >= 70 ? "bg-emerald-500" : occupancy >= 50 ? "bg-amber-500" : "bg-rose-500"
+              )} />
+              <span className={cn(
+                "text-xs font-black tabular-nums",
+                occupancy >= 70 ? "text-emerald-600" : occupancy >= 50 ? "text-amber-600" : "text-rose-600"
+              )}>
+                {occupancy}%
+              </span>
+            </div>
+          </div>
+          <div className="flex flex-col items-end">
+            <span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-[0.1em] mb-0.5">Target Rate</span>
+            <span className="text-xs font-black text-foreground tabular-nums tracking-tighter">
+              {property.currencyCode} {parseFloat(property.price as string).toLocaleString()}
+            </span>
+          </div>
         </div>
       </div>
     </button>

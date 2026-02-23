@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, listings, chatMessages, inventoryMaster, activityTimeline } from "@/lib/db";
+import { db, listings, chatMessages, inventoryMaster, reservations as reservationsTable } from "@/lib/db";
 import { eq, and, gte, sql } from "drizzle-orm";
 import { addDays, format } from "date-fns";
 
@@ -86,16 +86,13 @@ export async function POST(req: NextRequest) {
 
       const recentReservations = await db
         .select()
-        .from(activityTimeline)
+        .from(reservationsTable)
         .where(
-          and(
-            gte(activityTimeline.startDate, format(thirtyDaysAgo, "yyyy-MM-dd")),
-            eq(activityTimeline.type, "reservation")
-          )
+          gte(reservationsTable.startDate, format(thirtyDaysAgo, "yyyy-MM-dd"))
         );
 
       const totalRevenue = recentReservations.reduce(
-        (sum, res) => sum + Number(res.financials?.totalPrice || 0),
+        (sum, res) => sum + Number(res.totalPrice || 0),
         0
       );
 
@@ -143,16 +140,13 @@ export async function POST(req: NextRequest) {
 
       const recentReservations = await db
         .select()
-        .from(activityTimeline)
+        .from(reservationsTable)
         .where(
-          and(
-            gte(activityTimeline.startDate, format(thirtyDaysAgo, "yyyy-MM-dd")),
-            eq(activityTimeline.type, "reservation")
-          )
+          gte(reservationsTable.startDate, format(thirtyDaysAgo, "yyyy-MM-dd"))
         );
 
       const totalRevenue = recentReservations.reduce(
-        (sum, res) => sum + Number(res.financials?.totalPrice || 0),
+        (sum, res) => sum + Number(res.totalPrice || 0),
         0
       );
 

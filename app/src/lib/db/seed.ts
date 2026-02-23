@@ -7,7 +7,8 @@ import { sql } from "drizzle-orm";
 import {
   listings,
   inventoryMaster,
-  activityTimeline,
+  reservations,
+  marketEvents,
 } from "./schema";
 
 const client = neon(process.env.DATABASE_URL!);
@@ -24,7 +25,7 @@ async function seed() {
   // Truncate all tables in reverse FK order for idempotent re-runs
   console.log("Truncating tables...");
   await db.execute(sql`
-    TRUNCATE TABLE activity_timeline, inventory_master, chat_messages, listings
+    TRUNCATE TABLE market_events, reservations, inventory_master, chat_messages, listings
     RESTART IDENTITY CASCADE
   `);
 
@@ -51,8 +52,6 @@ async function seed() {
         personCapacity: prop.personCapacity ?? null,
         amenities: prop.amenities ?? [],
         address: prop.address ?? null,
-        latitude: prop.latitude != null ? String(prop.latitude) : null,
-        longitude: prop.longitude != null ? String(prop.longitude) : null,
         priceFloor,
         priceCeiling,
       })
@@ -62,7 +61,7 @@ async function seed() {
     console.log(`  Listing: ${prop.name} (${prop.id} → DB ${inserted.id})`);
   }
 
-  // --- 2. Inventory Master (Merged Calendar + Proposals) ---
+  // --- 2. Inventory Master (Calendar + Proposals) ---
   console.log("Inserting inventory_master (calendar + proposals)...");
   const today = new Date();
   let totalInventoryDays = 0;
@@ -97,7 +96,6 @@ async function seed() {
     const calendar = generateMockCalendar(originalId, startDate, endDate);
 
     const inventoryBatch = calendar.map((day, i) => {
-      // Generate some mock proposal data for the next 30 days
       const isNearFuture = i < 30;
       let proposedPrice = null;
       let changePct = null;
@@ -118,7 +116,8 @@ async function seed() {
         date: day.date,
         status: day.status,
         currentPrice: String(day.price),
-        minMaxStay: { min: day.minimumStay, max: day.maximumStay },
+        minStay: day.minimumStay || 1,
+        maxStay: day.maximumStay || 30,
         proposedPrice,
         changePct,
         proposalStatus,
@@ -133,79 +132,75 @@ async function seed() {
   }
   console.log(`  Total: ${totalInventoryDays} inventory_master rows`);
 
-  // --- 3. Activity Timeline (Reservations & Events) ---
-  console.log("Inserting activity_timeline (reservations)...");
+  // --- 3. Reservations (dedicated table, no JSON) ---
+  console.log("Inserting reservations...");
 
-  const timelineBatch = [];
+  const reservationBatch = [];
   for (const res of MOCK_RESERVATIONS) {
     const dbListingId = listingIdMap.get(res.listingMapId) ?? 1;
-    timelineBatch.push({
+    reservationBatch.push({
       listingId: dbListingId,
-      type: "reservation",
       startDate: res.arrivalDate,
       endDate: res.departureDate,
-      title: res.guestName,
-      impactScore: null,
-      financials: {
-        totalPrice: res.totalPrice,
-        pricePerNight: res.pricePerNight,
-        channelCommission: res.channelCommission ?? 0,
-        cleaningFee: res.cleaningFee ?? 0,
-        channelName: res.channelName,
-        reservationStatus: res.status,
-      },
-      marketContext: null,
+      guestName: res.guestName,
+      guestEmail: null as string | null,
+      channelName: res.channelName,
+      reservationStatus: res.status || "confirmed",
+      totalPrice: String(res.totalPrice),
+      pricePerNight: String(res.pricePerNight),
+      channelCommission: String(res.channelCommission ?? 0),
+      cleaningFee: String(res.cleaningFee ?? 0),
     });
   }
 
-  for (let i = 0; i < timelineBatch.length; i += 50) {
-    await db.insert(activityTimeline).values(timelineBatch.slice(i, i + 50));
+  for (let i = 0; i < reservationBatch.length; i += 50) {
+    await db.insert(reservations).values(reservationBatch.slice(i, i + 50));
   }
-  console.log(`  ${timelineBatch.length} reservations mapped to activity_timeline`);
+  console.log(`  ${reservationBatch.length} reservations inserted`);
 
-  // Adding mock Market Events to Activity Timeline
-  const mockEvents = [
+  // --- 4. Market Events (dedicated table, no JSON for core fields) ---
+  console.log("Inserting market_events...");
+  const mockMarketEvents = [
     {
-      type: "market_event",
+      title: "Gitex Technology Week",
       startDate: new Date(today.getTime() + 15 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
       endDate: new Date(today.getTime() + 19 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-      title: "Gitex Technology Week",
-      impactScore: 40,
-      financials: null,
-      marketContext: {
-        eventType: "event",
-        description: "Massive international tech show at DWTC.",
-        suggestedPremiumPct: 40,
-        competitorMedianRate: 950,
+      eventType: "event",
+      location: "Dubai",
+      expectedImpact: "high",
+      confidence: 90,
+      description: "Massive international tech show at DWTC.",
+      source: "https://www.gitex.com",
+      suggestedPremium: "40",
+      competitorMedian: "950",
+      metadata: {
         insightVerdict: "UNDERPRICED",
-        source: "https://www.gitex.com",
-      }
+      },
     },
     {
-      type: "market_event",
+      title: "Eid Al Fitr Start",
       startDate: new Date(today.getTime() + 45 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
       endDate: new Date(today.getTime() + 48 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-      title: "Eid Al Fitr Start",
-      impactScore: 25,
-      financials: null,
-      marketContext: {
-        eventType: "holiday",
-        description: "Public holiday driving regional tourism.",
-        suggestedPremiumPct: 25,
-        competitorMedianRate: 750,
+      eventType: "holiday",
+      location: "Dubai",
+      expectedImpact: "medium",
+      confidence: 85,
+      description: "Public holiday driving regional tourism.",
+      source: "https://local-holidays.ae",
+      suggestedPremium: "25",
+      competitorMedian: "750",
+      metadata: {
         insightVerdict: "FAIR",
-        source: "https://local-holidays.ae",
-      }
-    }
+      },
+    },
   ];
 
-  for (const ev of mockEvents) {
-    await db.insert(activityTimeline).values(ev);
+  for (const ev of mockMarketEvents) {
+    await db.insert(marketEvents).values(ev);
   }
-  console.log(`  ${mockEvents.length} market events populated in activity_timeline`);
+  console.log(`  ${mockMarketEvents.length} market events inserted`);
 
-  console.log("\n✅ DB Seed complete for 3-table Agentic schema!");
+  console.log("\n✅ DB Seed complete for new 6-table relational schema!");
 }
 
 seed();
-
