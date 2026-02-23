@@ -10,7 +10,6 @@ const navigation = [
     { name: "Agent Chat", href: "/agent-chat", icon: MessageSquare },
     { name: "Pricing", href: "/pricing", icon: Activity },
     { name: "Operations", href: "/operations", icon: Settings },
-    { name: "Database", href: "/db-viewer", icon: Database },
     { name: "Settings", href: "/settings", icon: Settings },
 ];
 

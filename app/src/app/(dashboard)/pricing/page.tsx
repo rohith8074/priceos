@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { inventoryMaster, listings } from "@/lib/db/schema";
-import { eq, gte } from "drizzle-orm";
+import { eq, gte, and } from "drizzle-orm";
 import { PricingClient } from "./pricing-client";
 import { format } from "date-fns";
 
@@ -23,7 +23,12 @@ export default async function PricingPage() {
     })
     .from(inventoryMaster)
     .innerJoin(listings, eq(inventoryMaster.listingId, listings.id))
-    .where(gte(inventoryMaster.date, today))
+    .where(
+      and(
+        gte(inventoryMaster.date, today),
+        eq(inventoryMaster.proposalStatus, "pending")
+      )
+    )
     .orderBy(inventoryMaster.date);
 
   return (

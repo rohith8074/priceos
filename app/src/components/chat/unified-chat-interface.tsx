@@ -97,55 +97,48 @@ export function UnifiedChatInterface({ properties }: Props) {
   };
 
   // 1. Session Initialization & Hydration
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+
   useEffect(() => {
-    // Only run on client after mount (to avoid hydration mismatches if checking localStorage during SSR)
     if (typeof window === "undefined") return;
 
-    const currentKey = getContextKey();
-    const storedSessionJson = localStorage.getItem("priceos_chat_session");
-
-    if (storedSessionJson) {
+    const fetchHistory = async () => {
+      setIsHistoryLoading(true);
       try {
-        const session: ChatSession = JSON.parse(storedSessionJson);
-        const timeSinceActive = Date.now() - session.lastActivityDate;
+        const propParam = contextType === "property" && propertyId ? propertyId : "null";
+        const res = await fetch(`/api/chat/history?propertyId=${propParam}`);
 
-        // Valid session check: matches current context AND is within 15-minute timeout window
-        if (session.contextKey === currentKey && timeSinceActive < SESSION_TIMEOUT_MS) {
-          console.log("🔄 Restoring active chat session from local storage.");
-          setSessionId(session.sessionId);
-          setMessages(session.messages);
-          setIsChatActive(session.isChatActive);
-          return;
-        } else if (session.contextKey !== currentKey) {
-          console.log("🔄 Context changed. Starting new chat session.");
-        } else {
-          console.log("⏳ Chat session timed out (15 mins inactive). Starting new session.");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.messages && data.messages.length > 0) {
+            setMessages(data.messages);
+            setIsChatActive(true);
+
+            // Try to extract the last session ID to maintain continuity
+            const lastSessionData = data.rawHistory?.[data.rawHistory.length - 1];
+            if (lastSessionData?.sessionId) {
+              setSessionId(lastSessionData.sessionId);
+            } else {
+              setSessionId(generateSessionId());
+            }
+          } else {
+            setMessages([]);
+            setIsChatActive(false);
+            setSessionId(generateSessionId());
+          }
         }
       } catch (err) {
-        console.error("Failed to parse stored chat session", err);
+        console.error("Failed to fetch chat history", err);
+        setSessionId(generateSessionId());
+        setMessages([]);
+        setIsChatActive(false);
+      } finally {
+        setIsHistoryLoading(false);
       }
-    }
-
-    // If no valid session exists, reset everything to a blank slate for this new context
-    setSessionId(generateSessionId());
-    setMessages([]);
-    setIsChatActive(false);
-  }, [contextType, propertyId, dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
-
-  // 2. Persist Session on State Changes
-  useEffect(() => {
-    if (typeof window === "undefined" || (!isChatActive && messages.length === 0)) return;
-
-    const session: ChatSession = {
-      sessionId,
-      messages,
-      isChatActive,
-      lastActivityDate: Date.now(),
-      contextKey: getContextKey(),
     };
 
-    localStorage.setItem("priceos_chat_session", JSON.stringify(session));
-  }, [messages, isChatActive, sessionId]);
+    fetchHistory();
+  }, [contextType, propertyId]);
 
   // Fetch calendar metrics when date range or property changes
   useEffect(() => {
@@ -536,6 +529,12 @@ export function UnifiedChatInterface({ properties }: Props) {
         <div className="flex flex-col flex-1 overflow-hidden relative">
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {isHistoryLoading && (
+              <div className="flex justify-center p-4">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            )}
+
             {messages.map((message) => (
               <div
                 key={message.id}
