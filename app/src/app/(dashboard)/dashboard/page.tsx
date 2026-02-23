@@ -54,7 +54,7 @@ export default async function OverviewPage() {
     : Number(historicalResult.rows?.[0]?.total_historical_revenue || 0);
 
   const calendarQuery = sql`
-      SELECT listing_id, date, status, current_price
+      SELECT listing_id, date, status, current_price, min_stay, max_stay
       FROM inventory_master
       WHERE date BETWEEN CURRENT_DATE AND CURRENT_DATE + 29
       ORDER BY listing_id, date
@@ -63,7 +63,7 @@ export default async function OverviewPage() {
   const calRows = Array.isArray(calendarResult) ? calendarResult : calendarResult.rows || [];
 
   const reservationsQuery = sql`
-      SELECT listing_id, guest_name, start_date, end_date, total_price, price_per_night, channel_name, reservation_status
+      SELECT listing_id, guest_name, guest_email, start_date, end_date, total_price, price_per_night, channel_name, reservation_status
       FROM reservations
       WHERE start_date <= CURRENT_DATE + 29 
         AND end_date >= CURRENT_DATE
@@ -88,11 +88,14 @@ export default async function OverviewPage() {
     const listingCal = calRows.filter((r: any) => r.listing_id === listing.id).map(r => ({
       date: new Date(r.date).toISOString().split('T')[0],
       status: r.status,
-      price: Number(r.current_price)
+      price: Number(r.current_price),
+      minimumStay: Number(r.min_stay || 1),
+      maximumStay: Number(r.max_stay || 30)
     }));
 
     const listingRes = resRows.filter((r: any) => r.listing_id === listing.id).map(r => ({
       title: r.guest_name || 'Guest',
+      email: r.guest_email || null,
       startDate: new Date(r.start_date).toISOString().split('T')[0],
       endDate: new Date(r.end_date).toISOString().split('T')[0],
       financials: {

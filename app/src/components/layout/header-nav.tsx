@@ -29,32 +29,37 @@ export function HeaderNav() {
   const router = useRouter();
   const { setPortfolioContext } = useContextStore();
   const { switchContext } = useChatStore();
+  const { data: session } = authClient.useSession();
+  const user = session?.user;
 
   const handleSignOut = async () => {
     try {
       await authClient.signOut();
-      router.push("/");
+      // Force a refresh to clear any cached data
       router.refresh();
+      // Small delay to allow the cookie clearing to propagate before the redirect
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 100);
     } catch (error) {
       console.error("Sign out error:", error);
+      window.location.href = "/";
     }
   };
 
-  const handleProfile = () => {
-    router.push("/settings");
-  };
-
-  const handleLogoClick = () => {
-    setPortfolioContext();
-    switchContext({ type: "portfolio" });
-  };
+  const userInitial = user?.name?.[0] || user?.email?.[0] || "U";
+  const userName = user?.name || "User Account";
 
   return (
     <header className="flex h-16 items-center justify-between border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6 z-10">
       <div className="flex items-center gap-6 flex-1 min-w-0">
         {/* Logo/Brand - clickable to return to portfolio */}
         <button
-          onClick={handleLogoClick}
+          onClick={() => {
+            setPortfolioContext();
+            switchContext({ type: "portfolio" });
+            router.push("/dashboard");
+          }}
           className="flex items-center gap-3 shrink-0 group"
         >
           <div className="rounded-lg bg-amber-500 p-2 shadow-sm group-hover:shadow-md transition-shadow">
@@ -86,8 +91,8 @@ export function HeaderNav() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
               <Avatar className="h-8 w-8">
-                <AvatarFallback className="text-xs bg-primary text-primary-foreground font-semibold">
-                  U
+                <AvatarFallback className="text-xs bg-primary text-primary-foreground font-semibold uppercase">
+                  {userInitial}
                 </AvatarFallback>
               </Avatar>
             </Button>
@@ -95,27 +100,19 @@ export function HeaderNav() {
           <DropdownMenuContent align="end" className="w-56">
             <div className="flex items-center gap-2 px-2 py-1.5">
               <Avatar className="h-8 w-8">
-                <AvatarFallback className="text-xs bg-primary text-primary-foreground font-semibold">
-                  U
+                <AvatarFallback className="text-xs bg-primary text-primary-foreground font-semibold uppercase">
+                  {userInitial}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex flex-col">
-                <p className="text-sm font-medium">User Account</p>
-                <p className="text-xs text-muted-foreground">
-                  Property Manager
+              <div className="flex flex-col overflow-hidden">
+                <p className="text-sm font-medium truncate">{userName}</p>
+                <p className="text-[10px] text-muted-foreground truncate">
+                  {user?.email || "Property Manager"}
                 </p>
               </div>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleProfile} className="cursor-pointer">
-              <Settings className="mr-2 h-4 w-4" />
-              Settings
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/db-viewer")} className="cursor-pointer">
-              <Database className="mr-2 h-4 w-4" />
-              Database
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleProfile} className="cursor-pointer">
+            <DropdownMenuItem onClick={() => router.push("/profile")} className="cursor-pointer">
               <User className="mr-2 h-4 w-4" />
               Profile
             </DropdownMenuItem>

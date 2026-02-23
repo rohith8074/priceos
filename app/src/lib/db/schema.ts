@@ -28,7 +28,7 @@ export const listings = pgTable("listings", {
   price: numeric("price", { precision: 10, scale: 2 }).notNull(),
   currencyCode: varchar("currency_code", { length: 3 }).notNull().default("AED"),
   personCapacity: integer("person_capacity"),
-  amenities: text("amenities").array(), // PostgreSQL text[] — no JSON
+  amenities: jsonb("amenities").$type<string[]>(), // Postgres natively supports JSON array of strings
   address: text("address"),
   priceFloor: numeric("price_floor", { precision: 10, scale: 2 }).notNull().default('0'),
   priceCeiling: numeric("price_ceiling", { precision: 10, scale: 2 }).notNull().default('0'),
@@ -80,7 +80,7 @@ export const reservations = pgTable("reservations", {
   pricePerNight: numeric("price_per_night", { precision: 10, scale: 2 }),
   channelCommission: numeric("channel_commission", { precision: 10, scale: 2 }),
   cleaningFee: numeric("cleaning_fee", { precision: 10, scale: 2 }),
-  hostawayReservationId: text("hostaway_reservation_id"),
+  hostawayReservationId: text("hostaway_reservation_id").unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
   listingIdx: index("reservations_listing_idx").on(table.listingId),
@@ -133,6 +133,8 @@ export const chatMessages = pgTable("chat_messages", {
 export const userSettings = pgTable("user_settings", {
   id: serial("id").primaryKey(),
   userId: text("user_id").notNull().unique(),
+  fullName: text("full_name"),
+  email: text("email"),
   lyzrApiKey: text("lyzr_api_key"),
   hostawayApiKey: text("hostaway_api_key"),
   preferences: jsonb("preferences").$type<Record<string, unknown>>().default({}),

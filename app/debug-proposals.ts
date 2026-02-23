@@ -22,8 +22,9 @@ async function run() {
         }
 
         msgs.forEach((m, i) => {
-            const proposals = m.structured?.proposals;
-            if (proposals) {
+            const rawProposals = m.structured?.proposals;
+            if (rawProposals && Array.isArray(rawProposals)) {
+                const proposals = rawProposals as any[];
                 console.log(`\n--- Message ${i + 1} (Session: ${m.sessionId}) ---`);
                 console.log(`Listing ID: ${m.listingId}`);
                 console.log(`Number of proposals: ${proposals.length}`);

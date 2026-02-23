@@ -7,7 +7,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building2, TrendingUp, DollarSign, CalendarCheck, Search } from "lucide-react";
+import { RefreshCw, Building2, TrendingUp, DollarSign, CalendarCheck, Search } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
   BarChart,
   Bar,
@@ -26,12 +28,19 @@ interface PropertyMetric {
   id: number;
   name: string;
   area: string;
+  bedroomsNumber?: number;
   price: number | string;
   occupancy: number;
   avgPrice: number;
   revenue: number;
-  calendarDays?: { date: string; status: string; price: number }[];
-  reservations?: { title: string; startDate: string; endDate: string; financials: any }[];
+  calendarDays?: {
+    date: string;
+    status: string;
+    price: number;
+    minimumStay?: number;
+    maximumStay?: number;
+  }[];
+  reservations?: { title: string; email?: string; startDate: string; endDate: string; financials: any }[];
 }
 
 interface OverviewClientProps {
@@ -53,10 +62,31 @@ export function OverviewClient({
 }: OverviewClientProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [calendarStartDate, setCalendarStartDate] = useState(new Date());
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    toast.info("Syncing Hostaway data... (this may take up to 30 seconds)");
+    try {
+      const response = await fetch("/api/sync/trigger", {
+        method: "POST",
+      });
+      if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+      }
+      toast.success("Hostaway synchronization complete! Refreshing page...");
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (e: any) {
+      toast.error(`Sync failed: ${e.message}`);
+      setIsSyncing(false);
+    }
+  };
 
   const [revenueFilter, setRevenueFilter] = useState("10");
   const [occupancyFilter, setOccupancyFilter] = useState("10");
-  const [areaFilter, setAreaFilter] = useState("10");
+  const [propertyTypeFilter, setPropertyTypeFilter] = useState("all");
   const [channelFilter, setChannelFilter] = useState("all");
 
   const filteredProperties = properties.filter((prop) =>
@@ -104,14 +134,6 @@ export function OverviewClient({
     value: channelDataMap[key]
   })).sort((a, b) => b.value - a.value);
 
-  if (channelDataAll.length === 0) {
-    channelDataAll.push(
-      { name: 'Airbnb', value: 45000 },
-      { name: 'Booking.com', value: 30000 },
-      { name: 'Direct', value: 15000 }
-    );
-  }
-
   const channelLimit = channelFilter === 'all' ? channelDataAll.length : parseInt(channelFilter);
   const channelData = channelDataAll.slice(0, channelLimit);
 
@@ -121,25 +143,18 @@ export function OverviewClient({
     .sort((a, b) => b.occupancy - a.occupancy)
     .slice(0, occupancyLimit);
 
-  // Chart Data: Revenue by Area
-  const areaDataMap: Record<string, number> = {};
+  // Chart Data: Revenue by Property Type
+  const typeDataMap: Record<string, number> = {};
   filteredProperties.forEach(prop => {
-    const area = prop.area || 'Unknown';
-    areaDataMap[area] = (areaDataMap[area] || 0) + prop.revenue;
+    const bedrooms = prop.bedroomsNumber ?? 0;
+    const type = bedrooms === 0 ? "Studio" : `${bedrooms} Bedroom`;
+    typeDataMap[type] = (typeDataMap[type] || 0) + prop.revenue;
   });
 
-  const areaDataAll = Object.keys(areaDataMap).map(key => ({
+  const typeData = Object.keys(typeDataMap).map(key => ({
     name: key,
-    value: areaDataMap[key]
+    value: typeDataMap[key]
   })).sort((a, b) => b.value - a.value);
-
-  // Fallback if no revenue
-  if (areaDataAll.length === 0 || areaDataAll.every(d => d.value === 0)) {
-    areaDataAll.push({ name: 'Downtown Dubai', value: 120000 }, { name: 'Dubai Marina', value: 90000 });
-  }
-
-  const areaLimit = areaFilter === 'all' ? areaDataAll.length : parseInt(areaFilter);
-  const areaData = areaDataAll.slice(0, areaLimit);
 
   const PIE_COLORS: Record<string, string> = {
     'Airbnb': '#ef4444',
@@ -184,14 +199,26 @@ export function OverviewClient({
           </p>
         </div>
 
-        <div className="relative w-full md:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Filter properties or locations..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 bg-background/50 border-muted-foreground/20 focus-visible:ring-amber-500/30"
-          />
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <Button
+            onClick={handleSync}
+            disabled={isSyncing}
+            variant="outline"
+            className="gap-2 bg-background/50 backdrop-blur-sm border-amber-500/20 hover:border-amber-500/50 hover:bg-amber-500/10 text-amber-600 dark:text-amber-500"
+          >
+            <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
+            {isSyncing ? "Syncing..." : "Sync Hostaway"}
+          </Button>
+
+          <div className="relative w-full md:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Filter properties or locations..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 bg-background/50 border-muted-foreground/20 focus-visible:ring-amber-500/30"
+            />
+          </div>
         </div>
       </div>
 
@@ -382,30 +409,20 @@ export function OverviewClient({
           </CardContent>
         </Card>
 
-        {/* Revenue By Area */}
+        {/* Revenue By Property Type */}
         <Card className="shadow-xl dark:shadow-2xl border-border dark:border-white/5 bg-background/60 dark:bg-[#111113]/60 backdrop-blur-xl flex flex-col">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div>
-              <CardTitle className="text-foreground dark:text-white">Revenue By Area</CardTitle>
-              <CardDescription className="text-muted-foreground">Geographic distribution of revenue.</CardDescription>
+              <CardTitle className="text-foreground dark:text-white">Revenue By Property Type</CardTitle>
+              <CardDescription className="text-muted-foreground">Studio vs 1BR vs 2BR performance.</CardDescription>
             </div>
-            <Select value={areaFilter} onValueChange={setAreaFilter}>
-              <SelectTrigger className="w-[100px] h-8 text-xs">
-                <SelectValue placeholder="Filter" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="5">Top 5</SelectItem>
-                <SelectItem value="10">Top 10</SelectItem>
-                <SelectItem value="all">All</SelectItem>
-              </SelectContent>
-            </Select>
           </CardHeader>
           <CardContent className="flex-1 flex items-center justify-center p-0">
             <div className="h-[250px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={areaData}
+                    data={typeData}
                     cx="50%"
                     cy="50%"
                     innerRadius={60}
@@ -414,8 +431,8 @@ export function OverviewClient({
                     dataKey="value"
                     stroke="none"
                   >
-                    {areaData.map((entry, index) => (
-                      <Cell key={`cell-area-${index}`} fill={BAR_COLORS[(index + 3) % BAR_COLORS.length]} />
+                    {typeData.map((entry, index) => (
+                      <Cell key={`cell-type-${index}`} fill={BAR_COLORS[(index + 3) % BAR_COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip
@@ -428,7 +445,7 @@ export function OverviewClient({
             </div>
           </CardContent>
           <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 px-4 pb-6 mt-[-10px]">
-            {areaData.map((entry, index) => (
+            {typeData.map((entry, index) => (
               <div key={`legend-${index}`} className="flex items-center gap-1.5 min-w-[fit-content]">
                 <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: BAR_COLORS[(index + 3) % BAR_COLORS.length] }} />
                 <span className="text-[11px] text-muted-foreground font-medium truncate max-w-[120px]">{entry.name}</span>
@@ -617,42 +634,56 @@ export function OverviewClient({
                             borderColor = "border-rose-500/50";
                           }
 
-                          // We'll create small tooltips for the days
+                          // We'll create tooltips for all days
                           return (
                             <div key={i} className="flex-1 min-w-[32px] max-w-[40px] px-0.5 relative flex items-center">
-                              {(reservation || calDay?.status === 'blocked') ? (
-                                <UITooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className={`w-full h-8 rounded-md border ${bgColor} ${borderColor} transition-all duration-300 hover:brightness-105 dark:hover:brightness-125 z-0 cursor-pointer`} />
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top" className="flex flex-col bg-popover dark:bg-black border border-border dark:border-white/20 p-3 rounded-xl shadow-2xl z-[99999] w-64 backdrop-blur-xl">
-                                    {reservation ? (
-                                      <>
-                                        <div className="border-b border-border dark:border-white/10 pb-2 mb-2">
-                                          <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-1">Confirmed Guest</p>
-                                          <p className="text-sm font-bold text-foreground dark:text-white whitespace-nowrap overflow-hidden text-ellipsis">{reservation.title}</p>
-                                        </div>
-                                        <div className="flex justify-between items-center text-xs mb-1">
-                                          <span className="text-muted-foreground">Total Payout:</span>
-                                          <span className="font-bold text-emerald-600 dark:text-emerald-400">{reservation.financials?.hostPayout?.toLocaleString() || reservation.financials?.totalPrice?.toLocaleString() || 'Unknown'} AED</span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-xs mb-1">
-                                          <span className="text-muted-foreground">Channel:</span>
-                                          <span className="font-semibold text-foreground dark:text-white capitalize">{reservation.financials?.channelName || reservation.financials?.channel || 'Direct'}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-xs">
-                                          <span className="text-muted-foreground">Dates:</span>
-                                          <span className="font-medium text-foreground dark:text-white">{reservation.startDate} - {reservation.endDate}</span>
-                                        </div>
-                                      </>
-                                    ) : (
-                                      <div className="text-xs text-muted-foreground font-medium text-center text-foreground dark:text-muted-foreground">Owner Blocked</div>
-                                    )}
-                                  </TooltipContent>
-                                </UITooltip>
-                              ) : (
-                                <div className={`w-full h-8 rounded-md border ${bgColor} ${borderColor} transition-all duration-300 hover:brightness-105 dark:hover:brightness-125 z-0 cursor-default`} />
-                              )}
+                              <UITooltip>
+                                <TooltipTrigger asChild>
+                                  <div className={`w-full h-8 rounded-md border ${bgColor} ${borderColor} transition-all duration-300 hover:brightness-105 dark:hover:brightness-125 z-0 cursor-pointer`} />
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="flex flex-col bg-popover dark:bg-black border border-border dark:border-white/20 p-3 rounded-xl shadow-2xl z-[99999] w-64 backdrop-blur-xl">
+                                  {reservation ? (
+                                    <>
+                                      <div className="border-b border-border dark:border-white/10 pb-2 mb-2">
+                                        <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-1">Confirmed Guest</p>
+                                        <p className="text-sm font-bold text-foreground dark:text-white whitespace-nowrap overflow-hidden text-ellipsis">{reservation.title}</p>
+                                        {reservation.email && (
+                                          <p className="text-[10px] text-muted-foreground truncate">{reservation.email}</p>
+                                        )}
+                                      </div>
+                                      <div className="flex justify-between items-center text-xs mb-1">
+                                        <span className="text-muted-foreground">Total Payout:</span>
+                                        <span className="font-bold text-emerald-600 dark:text-emerald-400">{reservation.financials?.hostPayout?.toLocaleString() || reservation.financials?.totalPrice?.toLocaleString() || 'Unknown'} AED</span>
+                                      </div>
+                                      <div className="flex justify-between items-center text-xs mb-1">
+                                        <span className="text-muted-foreground">Channel:</span>
+                                        <span className="font-semibold text-foreground dark:text-white capitalize">{reservation.financials?.channelName || reservation.financials?.channel || 'Direct'}</span>
+                                      </div>
+                                      <div className="flex justify-between items-center text-xs">
+                                        <span className="text-muted-foreground">Dates:</span>
+                                        <span className="font-medium text-foreground dark:text-white">{reservation.startDate} - {reservation.endDate}</span>
+                                      </div>
+                                    </>
+                                  ) : calDay?.status === 'blocked' ? (
+                                    <div className="text-xs text-center font-bold py-1">Owner Blocked</div>
+                                  ) : (
+                                    <>
+                                      <div className="border-b border-border dark:border-white/10 pb-2 mb-2">
+                                        <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-1">{format(d, 'MMM dd, yyyy')}</p>
+                                        <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter">Available</p>
+                                      </div>
+                                      <div className="flex justify-between items-center text-xs mb-1">
+                                        <span className="text-muted-foreground">Current Rate:</span>
+                                        <span className="font-bold text-foreground dark:text-white">{calDay?.price?.toLocaleString() || property.price} AED</span>
+                                      </div>
+                                      <div className="flex justify-between items-center text-xs mb-1">
+                                        <span className="text-muted-foreground">Min Stay:</span>
+                                        <span className="font-semibold text-foreground dark:text-white">{calDay?.minimumStay || 1} Nights</span>
+                                      </div>
+                                    </>
+                                  )}
+                                </TooltipContent>
+                              </UITooltip>
                             </div>
                           );
                         })}

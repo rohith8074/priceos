@@ -1,6 +1,7 @@
 'use client';
 
 import { Building2 } from 'lucide-react';
+import Link from 'next/link';
 
 export function LandingFooter() {
   const currentYear = new Date().getFullYear();
@@ -15,9 +16,13 @@ export function LandingFooter() {
             <span className="font-semibold">PriceOS</span>
           </div>
 
-          {/* Copyright */}
-          <div className="text-center md:text-left">
-            © {currentYear} PriceOS. All rights reserved.
+          {/* Copyright & Links */}
+          <div className="flex flex-col md:flex-row items-center gap-4 text-center md:text-left">
+            <span>© {currentYear} PriceOS. All rights reserved.</span>
+            <span className="hidden md:inline text-border">|</span>
+            <Link href="/login" className="hover:text-foreground transition-colors font-medium">
+              Member Login
+            </Link>
           </div>
 
           {/* Attribution */}

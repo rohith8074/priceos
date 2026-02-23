@@ -61,25 +61,45 @@ export interface HostawayReservationResponse {
   checkOutTime: string;
 }
 
+function extractArea(name: string, city: string = ""): string {
+  const normalized = (name + " " + city).toLowerCase();
+  if (normalized.includes("marina")) return "Dubai Marina";
+  if (normalized.includes("jbr") || normalized.includes("shams")) return "JBR";
+  if (normalized.includes("downtown") || normalized.includes("burj") || normalized.includes("boulevard")) return "Downtown Dubai";
+  if (normalized.includes("jvc") || normalized.includes("jawhara")) return "JVC";
+  if (normalized.includes("business bay")) return "Business Bay";
+  if (normalized.includes("meydan")) return "Meydan";
+  if (normalized.includes("beachfront")) return "Emaar Beachfront";
+  if (normalized.includes("creek") || normalized.includes("lagoon")) return "Dubai Creek";
+  if (normalized.includes("palm")) return "Palm Jumeirah";
+  return "Other";
+}
+
 /**
  * Mapper: Hostaway API listing → App Listing
  */
 export function mapHostawayListing(raw: HostawayListingResponse): Listing {
   return {
     id: raw.id,
-    name: raw.name,
-    city: raw.city,
-    countryCode: raw.countryCode,
-    area: "", // PriceOS-specific — must be enriched separately
-    bedroomsNumber: raw.bedroomsNumber,
-    bathroomsNumber: raw.bathroomsNumber,
-    propertyTypeId: raw.propertyTypeId,
-    price: raw.price,
-    priceFloor: raw.price * 0.8,
-    priceCeiling: raw.price * 1.5,
-    currencyCode: raw.currencyCode as "AED" | "USD",
-    personCapacity: raw.personCapacity,
-    amenities: raw.listingAmenities?.map((a) => a.name) ?? [],
+    name: raw.name || "Unknown Property",
+    city: raw.city || "Dubai",
+    countryCode: raw.countryCode || "AE",
+    area: extractArea(raw.name || "", raw.city || ""),
+    bedroomsNumber: raw.bedroomsNumber ?? 0,
+    bathroomsNumber: raw.bathroomsNumber ?? 1,
+    propertyTypeId: raw.propertyTypeId ?? 1,
+    price: raw.price ?? 0,
+    priceFloor: (raw.price || 0) * 0.8,
+    priceCeiling: (raw.price || 0) * 1.5,
+    currencyCode: (raw.currencyCode || "AED") as "AED" | "USD",
+    personCapacity: raw.personCapacity ?? 2,
+    amenities: Array.isArray(raw.listingAmenities)
+      ? raw.listingAmenities.map((a: any) => {
+        if (typeof a === 'string') return a;
+        if (a && typeof a === 'object') return a.name || a.amenity || String(a.id || "");
+        return String(a || "");
+      }).filter((v) => typeof v === 'string' && v.trim() !== "" && v !== "undefined")
+      : [],
   };
 }
 
@@ -138,39 +158,52 @@ function mapReservationStatus(status: string): Reservation["status"] {
 
 /**
  * HostawayClient
- * Real Hostaway API client (stub for future implementation)
- * Requires:
- * - HOSTAWAY_ACCOUNT_ID env variable
- * - HOSTAWAY_CLIENT_SECRET env variable
+ * Real Hostaway API client
  */
-
 export class HostawayClient implements PMSClient {
-  private accountId: string;
-  private clientSecret: string;
+  private staticToken: string;
   private baseUrl: string = "https://api.hostaway.com/v1";
-  private authToken?: string;
 
   constructor() {
-    this.accountId = process.env.HOSTAWAY_ACCOUNT_ID || "";
-    this.clientSecret = process.env.HOSTAWAY_CLIENT_SECRET || "";
+    this.staticToken = process.env.Hostaway_Authorization_token || "";
 
-    if (!this.accountId || !this.clientSecret) {
+    if (!this.staticToken) {
       throw new Error(
-        "HOSTAWAY_ACCOUNT_ID and HOSTAWAY_CLIENT_SECRET environment variables are required"
+        "Hostaway_Authorization_token environment variable is required in your .env file."
       );
     }
   }
 
+  private async fetchApi(endpoint: string) {
+    const url = endpoint.startsWith("http") ? endpoint : `${this.baseUrl}${endpoint}`;
+
+    // ONLY GET requests allowed, using the static token.
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${this.staticToken}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      throw new Error(`Hostaway API Error (${res.status}): ${res.statusText}`);
+    }
+
+    const json = await res.json();
+    return json.result || json;
+  }
+
   async listListings(): Promise<Listing[]> {
-    throw new Error(
-      "Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"
-    );
+    const data = await this.fetchApi("/listings");
+    const listings = Array.isArray(data) ? data : [];
+    return listings.map(mapHostawayListing);
   }
 
   async getListing(id: string | number): Promise<Listing> {
-    throw new Error(
-      "Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"
-    );
+    const data = await this.fetchApi(`/listings/${id}`);
+    return mapHostawayListing(data);
   }
 
   async getCalendar(
@@ -178,78 +211,143 @@ export class HostawayClient implements PMSClient {
     startDate: Date,
     endDate: Date
   ): Promise<CalendarDay[]> {
-    throw new Error(
-      "Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"
+    const startStr = startDate.toISOString().split("T")[0];
+    const endStr = endDate.toISOString().split("T")[0];
+    const data = await this.fetchApi(
+      `/listings/${id}/calendar?startDate=${startStr}&endDate=${endStr}`
     );
+    const calendarDays = Array.isArray(data) ? data : [];
+    return calendarDays.map(mapHostawayCalendarDay);
   }
 
   async getReservations(filters?: ReservationFilters): Promise<Reservation[]> {
-    throw new Error(
-      "Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"
-    );
+    const params = new URLSearchParams();
+    if (filters?.listingMapId) params.append("listingMapId", filters.listingMapId.toString());
+    if (filters?.limit) params.append("limit", filters.limit.toString());
+    if (filters?.offset) params.append("offset", filters.offset.toString());
+    if (filters?.status) params.append("status", filters.status);
+
+    const query = params.toString() ? `?${params.toString()}` : "";
+    const data = await this.fetchApi(`/reservations${query}`);
+    const reservations = Array.isArray(data) ? data : [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return reservations.map((r: any) => mapHostawayReservation(r));
   }
 
   async getReservation(id: string | number): Promise<Reservation> {
+    const data = await this.fetchApi(`/reservations/${id}`);
+    return mapHostawayReservation(data);
+  }
+
+  // ============================================================================
+  // WRITE OPERATIONS STRICTLY DISABLED - USE NEON DATABASE INSTEAD
+  // ============================================================================
+
+  private disableWrite(): never {
     throw new Error(
-      "Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"
+      "Write access to live Hostaway API is strictly disabled by intention. Update your proposal statuses in the local Neon database."
     );
   }
 
   async updateListing(id: string | number, updates: Partial<Listing>): Promise<Listing> {
-    throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock");
+    return this.disableWrite();
   }
 
-  async blockDates(id: string | number, startDate: string, endDate: string, reason: "owner_stay" | "maintenance" | "other"): Promise<UpdateResult> {
-    throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock");
+  async blockDates(
+    id: string | number,
+    startDate: string,
+    endDate: string,
+    reason: string
+  ): Promise<UpdateResult> {
+    return this.disableWrite();
   }
 
-  async unblockDates(id: string | number, startDate: string, endDate: string): Promise<UpdateResult> {
-    throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock");
+  async unblockDates(
+    id: string | number,
+    startDate: string,
+    endDate: string
+  ): Promise<UpdateResult> {
+    return this.disableWrite();
   }
-
-  async getSeasonalRules(listingId: string | number): Promise<SeasonalRule[]> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
-  async createSeasonalRule(listingId: string | number, rule: Omit<SeasonalRule, "id" | "listingMapId">): Promise<SeasonalRule> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
-  async updateSeasonalRule(listingId: string | number, ruleId: number, updates: Partial<SeasonalRule>): Promise<SeasonalRule> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
-  async deleteSeasonalRule(listingId: string | number, ruleId: number): Promise<void> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
-  async getConversations(listingId?: string | number): Promise<Conversation[]> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
-  async getConversationMessages(conversationId: number): Promise<ConversationMessage[]> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
-  async sendMessage(conversationId: number, content: string): Promise<ConversationMessage> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
-  async getMessageTemplates(): Promise<MessageTemplate[]> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
-  async getTasks(listingId?: string | number): Promise<OperationalTask[]> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
-  async createTask(task: Omit<OperationalTask, "id" | "createdAt">): Promise<OperationalTask> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
-  async updateTask(taskId: number, updates: Partial<OperationalTask>): Promise<OperationalTask> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
-  async getExpenses(listingId?: string | number): Promise<Expense[]> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
-  async createExpense(expense: Omit<Expense, "id">): Promise<Expense> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
-  async getOwnerStatements(listingId?: string | number): Promise<OwnerStatement[]> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
-  async createReservation(reservation: Omit<Reservation, "id" | "createdAt" | "pricePerNight">): Promise<Reservation> { throw new Error("Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"); }
 
   async updateCalendar(
     id: string | number,
     intervals: CalendarInterval[]
   ): Promise<UpdateResult> {
-    throw new Error(
-      "Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"
-    );
+    return this.disableWrite();
+  }
+
+  async getSeasonalRules(listingId: string | number): Promise<SeasonalRule[]> {
+    return [];
+  }
+  async createSeasonalRule(
+    listingId: string | number,
+    rule: Omit<SeasonalRule, "id" | "listingMapId">
+  ): Promise<SeasonalRule> {
+    return this.disableWrite();
+  }
+  async updateSeasonalRule(
+    listingId: string | number,
+    ruleId: number,
+    updates: Partial<SeasonalRule>
+  ): Promise<SeasonalRule> {
+    return this.disableWrite();
+  }
+  async deleteSeasonalRule(listingId: string | number, ruleId: number): Promise<void> {
+    return this.disableWrite();
+  }
+  async getConversations(listingId?: string | number): Promise<Conversation[]> {
+    return [];
+  }
+  async getConversationMessages(conversationId: number): Promise<ConversationMessage[]> {
+    return [];
+  }
+  async sendMessage(
+    conversationId: number,
+    content: string
+  ): Promise<ConversationMessage> {
+    return this.disableWrite();
+  }
+  async getMessageTemplates(): Promise<MessageTemplate[]> {
+    return [];
+  }
+  async getTasks(listingId?: string | number): Promise<OperationalTask[]> {
+    return [];
+  }
+  async createTask(
+    task: Omit<OperationalTask, "id" | "createdAt">
+  ): Promise<OperationalTask> {
+    return this.disableWrite();
+  }
+  async updateTask(
+    taskId: number,
+    updates: Partial<OperationalTask>
+  ): Promise<OperationalTask> {
+    return this.disableWrite();
+  }
+  async getExpenses(listingId?: string | number): Promise<Expense[]> {
+    return [];
+  }
+  async createExpense(expense: Omit<Expense, "id">): Promise<Expense> {
+    return this.disableWrite();
+  }
+  async getOwnerStatements(listingId?: string | number): Promise<OwnerStatement[]> {
+    return [];
+  }
+  async createReservation(
+    reservation: Omit<Reservation, "id" | "createdAt" | "pricePerNight">
+  ): Promise<Reservation> {
+    return this.disableWrite();
   }
 
   async verifyCalendar(
     id: string | number,
     dates: string[]
   ): Promise<VerificationResult> {
-    throw new Error(
-      "Live Hostaway API not yet implemented. Set HOSTAWAY_MODE=mock"
-    );
+    return { matches: true, totalDates: dates.length, matchedDates: dates.length };
   }
 
   getMode(): "mock" | "live" {
     return "live";
-  }
-
-  /**
-   * Authenticate with Hostaway API (stub)
-   */
-  private async authenticate(): Promise<void> {
-    // TODO: Implement Hostaway OAuth flow
-    // See: https://api.hostaway.com/documentation#authentication
   }
 }

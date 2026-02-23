@@ -2,15 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, MessageSquare, Settings, Activity, Wrench, Sparkles } from "lucide-react";
+import { LayoutDashboard, MessageSquare, Database as DatabaseIcon, Activity, Wrench, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
     { name: "Portfolio", href: "/dashboard", icon: LayoutDashboard },
     { name: "Agent Chat", href: "/agent-chat", icon: MessageSquare },
     { name: "Pricing", href: "/pricing", icon: Activity },
-    { name: "Operations", href: "/operations", icon: Wrench },
-    { name: "Settings", href: "/settings", icon: Settings },
+    { name: "Database", href: "/db-viewer", icon: DatabaseIcon },
 ];
 
 export function AppSidebar() {
@@ -18,15 +17,7 @@ export function AppSidebar() {
 
     return (
         <div className="flex h-full w-16 flex-col items-center border-r bg-background/80 backdrop-blur-xl py-6 shrink-0 transition-all duration-500 ease-in-out hover:w-64 group z-50 shadow-2xl overflow-hidden">
-            {/* Logo Area */}
-            <div className="flex items-center justify-start w-full px-4 mb-10 overflow-hidden">
-                <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
-                    <Sparkles className="h-5 w-5 text-primary-foreground" />
-                </div>
-                <span className="ml-3 font-black text-xl tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
-                    Price<span className="text-primary italic">OS</span>
-                </span>
-            </div>
+
 
             <div className="flex flex-1 flex-col gap-2 w-full px-2">
                 {navigation.map((item) => {

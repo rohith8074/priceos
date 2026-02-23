@@ -2,14 +2,12 @@
 CRO (Chief Revenue Officer) Agent - Manager orchestrating workers
 """
 from api.agents.base import BaseAgent
-from api.agents.data_sync_agent import DataSyncAgent
 from api.agents.event_intelligence_agent import EventIntelligenceAgent
 from api.agents.pricing_analyst_agent import PricingAnalystAgent
 from typing import Dict
 import logging
 
 logger = logging.getLogger(__name__)
-
 
 class CROAgent(BaseAgent):
     """
@@ -35,7 +33,6 @@ class CROAgent(BaseAgent):
             You are the Chief Revenue Officer for a Dubai property portfolio.
 
             You coordinate worker agents:
-            - Data Sync Agent: Refreshes data from Hostaway
             - Event Intelligence Agent: Monitors Dubai events
             - Pricing Analyst Agent: Generates pricing proposals
 
@@ -60,23 +57,14 @@ class CROAgent(BaseAgent):
         )
 
         # Initialize worker agents (lazy initialization to avoid overhead)
-        self._data_sync = None
         self._event_intel = None
         self._pricing_analyst = None
 
         # Add delegation tools
-        self.agent.add_tool(self.delegate_to_data_sync)
         self.agent.add_tool(self.delegate_to_event_intel)
         self.agent.add_tool(self.delegate_to_pricing_analyst)
 
         logger.info("CRO Agent initialized")
-
-    @property
-    def data_sync(self) -> DataSyncAgent:
-        """Lazy initialization of Data Sync Agent"""
-        if self._data_sync is None:
-            self._data_sync = DataSyncAgent(self.api_key, self.env)
-        return self._data_sync
 
     @property
     def event_intel(self) -> EventIntelligenceAgent:
@@ -91,19 +79,6 @@ class CROAgent(BaseAgent):
         if self._pricing_analyst is None:
             self._pricing_analyst = PricingAnalystAgent(self.api_key, self.env)
         return self._pricing_analyst
-
-    def delegate_to_data_sync(self, listing_id: int) -> Dict:
-        """
-        Delegate sync task to Data Sync Agent
-
-        Args:
-            listing_id: Listing ID to sync
-
-        Returns:
-            Sync result
-        """
-        logger.info(f"CRO delegating sync task for listing {listing_id}")
-        return self.data_sync.run_sync(listing_id)
 
     def delegate_to_event_intel(self, start_date: str, end_date: str) -> Dict:
         """
