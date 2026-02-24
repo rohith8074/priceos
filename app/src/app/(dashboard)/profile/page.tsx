@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { authClient } from "@/lib/auth/client";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -10,13 +10,35 @@ import { User, Mail, Shield, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ProfilePage() {
-    const { data: session, isPending: isSessionPending } = authClient.useSession();
+    const router = useRouter();
+    const [user, setUser] = useState<any>(null);
+    const [isSessionPending, setIsSessionPending] = useState(true);
     const [settings, setSettings] = useState<any>(null);
     const [isSettingsLoading, setIsSettingsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
     const [fullName, setFullName] = useState("");
     const [email, setEmail] = useState("");
+
+    useEffect(() => {
+        // Load session from cookie
+        const cookies = document.cookie.split(';');
+        const sessionCookie = cookies.find(c => c.trim().startsWith('priceos-session='));
+
+        if (sessionCookie) {
+            try {
+                const sessionData = JSON.parse(decodeURIComponent(sessionCookie.split('=')[1]));
+                setUser({
+                    id: sessionData.username,
+                    name: sessionData.username,
+                    email: `${sessionData.username}@example.com`
+                });
+            } catch (e) {
+                console.error("Failed to parse session", e);
+            }
+        }
+        setIsSessionPending(false);
+    }, []);
 
     useEffect(() => {
         async function fetchSettings() {
@@ -34,12 +56,12 @@ export default function ProfilePage() {
                 setIsSettingsLoading(false);
             }
         }
-        if (session?.user) {
+        if (user) {
             fetchSettings();
         } else if (!isSessionPending) {
             setIsSettingsLoading(false);
         }
-    }, [session, isSessionPending]);
+    }, [user, isSessionPending]);
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -66,7 +88,7 @@ export default function ProfilePage() {
         }
     };
 
-    if (isSessionPending || (isSettingsLoading && session?.user)) {
+    if (isSessionPending || (isSettingsLoading && user)) {
         return (
             <div className="flex flex-col h-[80vh] items-center justify-center gap-4">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -75,7 +97,6 @@ export default function ProfilePage() {
         );
     }
 
-    const user = session?.user;
 
     if (!user) {
         return (
@@ -83,8 +104,11 @@ export default function ProfilePage() {
                 <Card className="max-w-md p-6 bg-background/60 backdrop-blur-xl border-dashed">
                     <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-20" />
                     <h2 className="text-lg font-bold mb-2">No active session found</h2>
-                    <p className="text-sm text-muted-foreground mb-4">Please try refreshing the page or signing in again to view your profile.</p>
-                    <Button onClick={() => window.location.reload()}>Refresh Page</Button>
+                    <p className="text-sm text-muted-foreground mb-4">Please sign in to view your profile.</p>
+                    <div className="flex gap-4 justify-center">
+                        <Button variant="outline" onClick={() => window.location.reload()}>Refresh Page</Button>
+                        <Button onClick={() => router.push('/login')}>Sign In</Button>
+                    </div>
                 </Card>
             </div>
         );
@@ -140,7 +164,7 @@ export default function ProfilePage() {
                         <div className="grid gap-8 md:grid-cols-2">
                             <div className="space-y-3">
                                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-                                    <Mail className="h-3 w-3" /> Email Address
+                                    <Mail className="h-3 w-3" /> Email Address <span className="text-red-500">*</span>
                                 </label>
                                 <div className="group relative">
                                     <Input
@@ -148,13 +172,14 @@ export default function ProfilePage() {
                                         onChange={(e) => setEmail(e.target.value)}
                                         className="bg-background/50 border-border/50 pl-10 focus:ring-primary/20 transition-all font-medium"
                                         placeholder="your@email.com"
+                                        required
                                     />
                                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
                                 </div>
                             </div>
                             <div className="space-y-3">
                                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-                                    <User className="h-3 w-3" /> Full Name
+                                    <User className="h-3 w-3" /> Full Name <span className="text-red-500">*</span>
                                 </label>
                                 <div className="group relative">
                                     <Input
@@ -162,6 +187,7 @@ export default function ProfilePage() {
                                         onChange={(e) => setFullName(e.target.value)}
                                         placeholder="Enter full name..."
                                         className="bg-background/50 border-border/50 pl-10 focus:ring-primary/20 transition-all font-medium"
+                                        required
                                     />
                                     <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
                                 </div>

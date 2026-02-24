@@ -387,28 +387,55 @@ export function UnifiedChatInterface({ properties }: Props) {
   return (
     <div className="flex flex-col flex-1 overflow-hidden h-full">
       {/* Header */}
-      <div className="border-b bg-muted/30 px-6 py-4 shrink-0">
-        <div className="flex items-center justify-between gap-4 flex-wrap overflow-hidden">
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="rounded-lg bg-primary/10 p-2">
-              <Send className="h-4 w-4 text-primary" />
+      <div className="border-b bg-background flex flex-col shrink-0 relative z-10 shadow-sm">
+        {/* Top Row: Context & Window Controls */}
+        <div className="flex flex-wrap items-center justify-between px-6 py-4 gap-4">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-emerald-500/10 p-2">
+              <Send className="h-5 w-5 text-emerald-600" />
             </div>
             <div>
-              <h3 className="text-lg font-bold">
+              <h3 className="text-lg font-black tracking-tight">
                 {contextType === "property" && propertyName
                   ? propertyName
-                  : "Portfolio Chat"}
+                  : "Portfolio Overview"}
               </h3>
-              <p className="text-xs text-muted-foreground line-clamp-1">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
                 {contextType === "property"
                   ? "Pricing & Market Copilot"
-                  : `Portfolio Revenue Analysis`}
+                  : "Portfolio Analysis"}
               </p>
             </div>
           </div>
 
-          {/* New Control Flow: Range -> Setup -> Activate */}
-          <div className="flex items-center gap-3 bg-background/50 p-1.5 rounded-xl border shadow-sm">
+          <div className="flex items-center gap-2">
+            {contextType === "property" && propertyId && (
+              <Button
+                variant={isCalendarOpen ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                className="h-9 gap-2"
+              >
+                <CalendarIcon className="h-4 w-4" />
+                <span className="hidden sm:inline font-bold">Calendar</span>
+              </Button>
+            )}
+            <Button
+              variant={isSidebarOpen ? "secondary" : "ghost"}
+              size="sm"
+              onClick={toggleSidebar}
+              className="h-9 gap-2"
+            >
+              {isSidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+              <span className="hidden sm:inline font-bold">Sidebar</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Bottom Row: Context Controls & Metrics */}
+        <div className="flex flex-wrap items-center justify-between gap-4 px-6 pb-4">
+          {/* Controls */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 bg-muted/30 p-1.5 rounded-xl border border-border/50 hover:bg-muted/50 transition-colors">
             <DateRangePicker
               date={dateRange}
               setDate={(newRange) => {
@@ -424,106 +451,82 @@ export function UnifiedChatInterface({ properties }: Props) {
               size="sm"
               onClick={handleMarketSetup}
               disabled={isLoading || isSettingUp || !dateRange?.from || !dateRange?.to}
-              className="h-9 gap-2 border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500/40 disabled:opacity-30"
+              className="h-9 gap-2 bg-background hover:bg-background/80 border-border/50 font-bold shadow-sm"
             >
-              <Settings className={`h-4 w-4 ${isSettingUp ? "animate-spin" : ""}`} />
-              <span className="hidden sm:inline">{isSettingUp ? "Processing..." : "Setup"}</span>
+              <Settings className={`h-4 w-4 ${isSettingUp ? "animate-spin text-amber-500" : ""}`} />
+              <span className="hidden sm:inline">{isSettingUp ? "Processing..." : "Setup Copilot"}</span>
             </Button>
 
-            <div className="flex items-center gap-3 pl-2 border-l ml-1">
-              <div className="flex flex-col items-end mr-1">
-                <Label htmlFor="activate-chat" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground leading-none mb-1">
-                  Activate
-                </Label>
-                <span className={`text-[10px] font-bold leading-none ${isChatActive ? 'text-amber-500' : 'text-muted-foreground opacity-50'}`}>
-                  {isChatActive ? 'ON' : 'OFF'}
+            <div className="hidden sm:block h-6 w-px bg-border/50 mx-1" />
+
+            <div className="flex items-center gap-3 px-2">
+              <div className="flex flex-col items-end">
+                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1">
+                  Agent
+                </span>
+                <span className={`text-[10px] font-black tracking-widest leading-none ${isChatActive ? 'text-amber-500' : 'text-muted-foreground/50'}`}>
+                  {isChatActive ? 'ONLINE' : 'OFFLINE'}
                 </span>
               </div>
               <Switch
                 id="activate-chat"
                 checked={isChatActive}
-                disabled={true} // Controlled by Setup button only
-                className="data-[state=checked]:bg-amber-500 disabled:opacity-100 cursor-default"
+                disabled={true}
+                className="data-[state=checked]:bg-amber-500 scale-90"
               />
             </div>
           </div>
 
-          <div className="flex items-center gap-4 shrink-0 ml-auto">
-            {/* Occupancy & Price Metrics — Dynamic from calendar_days */}
-            {contextType === "property" && propertyId && (
-              <div className="hidden lg:flex items-center gap-6 shrink-0 min-w-max bg-background border px-4 py-1.5 rounded-xl shadow-sm">
-                <div className="text-right">
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                    Occupancy
-                  </p>
-                  <div className="flex items-baseline gap-1 justify-end">
-                    {isLoadingMetrics ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    ) : calendarMetrics ? (
-                      <>
-                        <span className={`text-lg font-bold ${calendarMetrics.occupancy >= 70 ? 'text-emerald-500' :
-                          calendarMetrics.occupancy >= 50 ? 'text-amber-500' :
-                            'text-red-500'
-                          }`}>
-                          {calendarMetrics.occupancy}%
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-lg font-bold text-muted-foreground">—</span>
-                    )}
-                  </div>
-                  {calendarMetrics && (
-                    <p className="text-[9px] text-muted-foreground">
-                      {calendarMetrics.bookedDays}/{calendarMetrics.totalDays} days
-                    </p>
+          {/* Metrics */}
+          {contextType === "property" && propertyId && (
+            <div className="flex items-center gap-5 sm:gap-6 bg-muted/30 border border-border/50 px-5 py-2 rounded-xl shrink-0">
+              <div className="flex flex-col items-end">
+                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                  Occupancy
+                </span>
+                <div className="flex items-baseline gap-1 mt-0.5">
+                  {isLoadingMetrics ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : calendarMetrics ? (
+                    <>
+                      <span className={`text-lg font-black tracking-tighter ${calendarMetrics.occupancy >= 70 ? 'text-emerald-500' :
+                          calendarMetrics.occupancy >= 40 ? 'text-amber-500' :
+                            'text-rose-500'
+                        }`}>
+                        {calendarMetrics.occupancy}%
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-lg font-bold text-muted-foreground">—</span>
                   )}
                 </div>
-                <div className="h-8 w-px bg-border" />
-                <div className="text-right">
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                    Avg Price
-                  </p>
-                  <div className="flex items-baseline gap-1 justify-end">
-                    {isLoadingMetrics ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    ) : calendarMetrics ? (
-                      <>
-                        <span className="text-lg font-bold">
-                          {calendarMetrics.avgPrice.toFixed(0)}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground">
-                          AED
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-lg font-bold text-muted-foreground">—</span>
-                    )}
-                  </div>
+              </div>
+
+              <div className="h-8 w-px bg-border/50" />
+
+              <div className="flex flex-col items-end">
+                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                  Avg Rate
+                </span>
+                <div className="flex items-baseline gap-1 mt-0.5">
+                  {isLoadingMetrics ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : calendarMetrics ? (
+                    <>
+                      <span className="text-lg font-black tracking-tighter">
+                        {calendarMetrics.avgPrice.toFixed(0)}
+                      </span>
+                      <span className="text-[10px] font-bold text-muted-foreground mb-0.5">
+                        AED
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-lg font-bold text-muted-foreground">—</span>
+                  )}
                 </div>
               </div>
-            )}
-            {contextType === "property" && propertyId && (
-              <Button
-                variant={isCalendarOpen ? "secondary" : "outline"}
-                size="icon"
-                onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-                className="h-9 w-9 shrink-0 shadow-sm"
-                title={isCalendarOpen ? "Close Calendar" : "Open Calendar"}
-              >
-                <CalendarIcon className="h-4 w-4" />
-              </Button>
-            )}
-
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={toggleSidebar}
-              className="h-9 w-9 shrink-0 shadow-sm"
-              title={isSidebarOpen ? "Close Sidebar" : "Open Sidebar"}
-            >
-              {isSidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
-            </Button>
-          </div>
+            </div>
+          )}
         </div>
       </div>
 

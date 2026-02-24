@@ -1,20 +1,34 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { auth } from '@/lib/auth/server';
-
-// Create the auth middleware using v0.2 API
-const authMiddleware = auth.middleware({
-  loginUrl: '/auth/sign-in',
-});
 
 export default function middleware(request: NextRequest) {
-  // Allow root path (landing page) and auth routes without authentication
-  if (request.nextUrl.pathname === '/' || request.nextUrl.pathname.startsWith('/auth')) {
-    return NextResponse.next();
+  const session = request.cookies.get('priceos-session');
+  const { pathname } = request.nextUrl;
+
+  // Paths that don't require authentication
+  const publicPaths = ['/login', '/api/auth'];
+  const isPublicPath = publicPaths.some(path => pathname.startsWith(path));
+
+  // 1. If no session and trying to access private route, redirect to login
+  if (!session && !isPublicPath) {
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // Apply auth middleware to all other routes
-  return authMiddleware(request);
+  // 2. If session exists and trying to access login, redirect to dashboard
+  if (session && pathname === '/login') {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  // 3. Special case: redirect root to login or dashboard
+  if (pathname === '/') {
+    if (session) {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    } else {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
@@ -24,8 +38,7 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - api/auth (auth API routes)
      */
-    '/((?!_next/static|_next/image|favicon.ico|api/auth).*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };

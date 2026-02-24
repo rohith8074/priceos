@@ -12,20 +12,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { authClient } from "@/lib/auth/client";
 
 export function Header() {
   const { theme, setTheme } = useTheme();
   const router = useRouter();
 
-  const handleSignOut = async () => {
-    try {
-      await authClient.signOut();
-      router.push('/');
-      router.refresh();
-    } catch (error) {
-      console.error('Sign out error:', error);
-    }
+  const handleSignOut = () => {
+    document.cookie = 'priceos-session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    router.push('/login');
+    router.refresh();
   };
 
   const handleProfile = () => {

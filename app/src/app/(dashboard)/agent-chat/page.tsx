@@ -2,7 +2,6 @@ import { db, listings } from "@/lib/db";
 import { sql } from "drizzle-orm";
 import { ContextPanel } from "@/components/layout/context-panel";
 import { UnifiedChatInterface } from "@/components/chat/unified-chat-interface";
-import { SyncStatusSidebar } from "@/components/layout/sync-status-sidebar";
 import { MarketEventsTable } from "@/components/events/market-events-table";
 import { RightSidebarLayout } from "@/components/layout/right-sidebar-layout";
 
@@ -59,8 +58,6 @@ export default async function DashboardPage() {
       <RightSidebarLayout>
         <div className="flex flex-col h-full bg-background overflow-hidden relative">
           <MarketEventsTable />
-          <div className="h-px bg-border my-2 mx-4 shrink-0 transition-opacity" />
-          <SyncStatusSidebar />
         </div>
       </RightSidebarLayout>
     </div>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, MessageSquare, Database as DatabaseIcon, Activity, Wrench, Sparkles } from "lucide-react";
+import { LayoutDashboard, MessageSquare, Database as DatabaseIcon, Activity, Wrench, Sparkles, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
@@ -10,6 +10,7 @@ const navigation = [
     { name: "Agent Chat", href: "/agent-chat", icon: MessageSquare },
     { name: "Pricing", href: "/pricing", icon: Activity },
     { name: "Database", href: "/db-viewer", icon: DatabaseIcon },
+    { name: "Users", href: "/users", icon: User },
 ];
 
 export function AppSidebar() {

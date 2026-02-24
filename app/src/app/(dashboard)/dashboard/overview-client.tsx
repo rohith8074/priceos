@@ -666,6 +666,17 @@ export function OverviewClient({
                                     </>
                                   ) : calDay?.status === 'blocked' ? (
                                     <div className="text-xs text-center font-bold py-1">Owner Blocked</div>
+                                  ) : calDay?.status === 'reserved' || calDay?.status === 'booked' ? (
+                                    <>
+                                      <div className="border-b border-border dark:border-white/10 pb-2 mb-2">
+                                        <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-1">{format(d, 'MMM dd, yyyy')}</p>
+                                        <p className="text-sm font-bold text-rose-600 dark:text-rose-400 uppercase tracking-tighter">Booked</p>
+                                      </div>
+                                      <div className="flex justify-between items-center text-xs mb-1">
+                                        <span className="text-muted-foreground">Guest Details:</span>
+                                        <span className="font-medium text-foreground dark:text-white">Hidden / External</span>
+                                      </div>
+                                    </>
                                   ) : (
                                     <>
                                       <div className="border-b border-border dark:border-white/10 pb-2 mb-2">

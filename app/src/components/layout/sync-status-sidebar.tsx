@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Calendar, Loader2 } from "lucide-react";
+import { RefreshCw, Calendar, Loader2, Building2, CalendarCheck, Database } from "lucide-react";
 import { DataTypeCard } from "./data-type-card";
 import { useContextStore } from "@/stores/context-store";
 import { cn } from "@/lib/utils";
@@ -116,7 +116,12 @@ export function SyncStatusSidebar() {
     }));
 
     try {
-      // Re-fetch current counts from the database
+      // Trigger actual sync from PMS
+      console.log("Starting sync trigger...");
+      const triggerResponse = await fetch("/api/sync/trigger", { method: "POST" });
+      if (!triggerResponse.ok) throw new Error("PMS Sync trigger failed");
+
+      // After successful sync, fetch current counts from the database
       const params = new URLSearchParams({
         context: contextType,
         ...(contextType === "property" && propertyId
@@ -125,7 +130,7 @@ export function SyncStatusSidebar() {
       });
 
       const response = await fetch(`/api/sync/status?${params}`);
-      if (!response.ok) throw new Error("Sync failed");
+      if (!response.ok) throw new Error("Failed to fetch updated status");
 
       const data = await response.json();
       const timestamp = new Date();
@@ -203,28 +208,28 @@ export function SyncStatusSidebar() {
 
   return (
     <aside className="shrink-0 bg-background flex flex-col relative w-full pb-4">
-      {/* Header */}
       <div className="border-b p-4">
         <h3 className="font-semibold mb-2">Hostaway Data</h3>
-        <p className="text-xs text-muted-foreground mb-3">
+        <p className="text-xs text-muted-foreground">
           Agent context for{" "}
           {contextType === "portfolio" ? "portfolio" : propertyName}
         </p>
-        <Button
-          onClick={handleSyncAll}
-          disabled={isSyncing}
-          className="w-full"
-          variant="outline"
-        >
-          <RefreshCw className={cn("mr-2 h-4 w-4", isSyncing && "animate-spin")} />
-          Sync Now
-        </Button>
       </div>
 
       {/* Data Types */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
         <DataTypeCard
-          icon={Calendar}
+          icon={Building2}
+          label="Listings"
+          count={syncStatus.listings.count}
+          countLabel={listingsSubLabel}
+          lastSynced={syncStatus.listings.lastSyncedAt}
+          isLoading={syncStatus.listings.isLoading}
+          error={syncStatus.listings.error}
+        />
+
+        <DataTypeCard
+          icon={CalendarCheck}
           label="Reservations"
           count={syncStatus.reservations.count}
           countLabel={reservationsSubLabel}
@@ -232,6 +237,16 @@ export function SyncStatusSidebar() {
           isLoading={syncStatus.reservations.isLoading}
           error={syncStatus.reservations.error}
           onClick={handleOpenReservations}
+        />
+
+        <DataTypeCard
+          icon={Calendar}
+          label="Calendar Days"
+          count={syncStatus.calendar.daysCount}
+          countLabel={calendarSubLabel}
+          lastSynced={syncStatus.calendar.lastSyncedAt}
+          isLoading={syncStatus.calendar.isLoading}
+          error={syncStatus.calendar.error}
         />
       </div>
 

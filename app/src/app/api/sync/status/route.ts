@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, listings, reservations, inventoryMaster } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { eq, max } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   try {
@@ -20,18 +20,25 @@ export async function GET(req: NextRequest) {
       const allReservations = await db.select().from(reservations);
       const allCalendar = await db.select().from(inventoryMaster);
 
+      // Get the latest sync timestamp from reservations
+      const [latestRes] = await db
+        .select({ lastSync: max(reservations.createdAt) })
+        .from(reservations);
+
+      const lastSyncedAt = latestRes?.lastSync || null;
+
       return NextResponse.json({
         listings: {
           count: allListings.length,
-          lastSyncedAt: null,
+          lastSyncedAt: lastSyncedAt,
         },
         reservations: {
           count: allReservations.length,
-          lastSyncedAt: null,
+          lastSyncedAt: lastSyncedAt,
         },
         inventory_master: {
           daysCount: allCalendar.length,
-          lastSyncedAt: null,
+          lastSyncedAt: lastSyncedAt,
         },
       });
     } else {
@@ -59,18 +66,26 @@ export async function GET(req: NextRequest) {
         .from(inventoryMaster)
         .where(eq(inventoryMaster.listingId, listingId));
 
+      // Get latest sync (created_at) for this specific property
+      const [latestPropertyRes] = await db
+        .select({ lastSync: max(reservations.createdAt) })
+        .from(reservations)
+        .where(eq(reservations.listingId, listingId));
+
+      const lastSyncedAt = latestPropertyRes?.lastSync || null;
+
       return NextResponse.json({
         listings: {
           count: listing.length,
-          lastSyncedAt: null,
+          lastSyncedAt: lastSyncedAt,
         },
         reservations: {
           count: propertyReservations.length,
-          lastSyncedAt: null,
+          lastSyncedAt: lastSyncedAt,
         },
         inventory_master: {
           daysCount: propertyCalendar.length,
-          lastSyncedAt: null,
+          lastSyncedAt: lastSyncedAt,
         },
       });
     }

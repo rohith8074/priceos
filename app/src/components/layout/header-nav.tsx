@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import {
@@ -20,7 +21,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { authClient } from "@/lib/auth/client";
 import { useContextStore } from "@/stores/context-store";
 import { useChatStore } from "@/stores/chat-store";
 
@@ -29,26 +29,30 @@ export function HeaderNav() {
   const router = useRouter();
   const { setPortfolioContext } = useContextStore();
   const { switchContext } = useChatStore();
-  const { data: session } = authClient.useSession();
-  const user = session?.user;
 
-  const handleSignOut = async () => {
-    try {
-      await authClient.signOut();
-      // Force a refresh to clear any cached data
-      router.refresh();
-      // Small delay to allow the cookie clearing to propagate before the redirect
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 100);
-    } catch (error) {
-      console.error("Sign out error:", error);
-      window.location.href = "/";
+  // Custom session logic
+  const [userName, setUserName] = useState("User Account");
+  const [userInitial, setUserInitial] = useState("U");
+
+  useEffect(() => {
+    const cookies = document.cookie.split(';');
+    const sessionCookie = cookies.find(c => c.trim().startsWith('priceos-session='));
+    if (sessionCookie) {
+      try {
+        const session = JSON.parse(decodeURIComponent(sessionCookie.split('=')[1]));
+        setUserName(session.username || "User Account");
+        setUserInitial(session.username?.[0]?.toUpperCase() || "U");
+      } catch (e) {
+        console.error("Failed to parse session", e);
+      }
     }
-  };
+  }, []);
 
-  const userInitial = user?.name?.[0] || user?.email?.[0] || "U";
-  const userName = user?.name || "User Account";
+  const handleSignOut = () => {
+    document.cookie = 'priceos-session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    router.push('/login');
+    router.refresh();
+  };
 
   return (
     <header className="flex h-16 items-center justify-between border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6 z-10">
@@ -107,7 +111,7 @@ export function HeaderNav() {
               <div className="flex flex-col overflow-hidden">
                 <p className="text-sm font-medium truncate">{userName}</p>
                 <p className="text-[10px] text-muted-foreground truncate">
-                  {user?.email || "Property Manager"}
+                  Property Manager
                 </p>
               </div>
             </div>

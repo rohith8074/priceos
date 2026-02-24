@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Loader2 } from "lucide-react";
 
 interface TableData {
     summary: {
@@ -99,7 +100,7 @@ export default function DbViewerPage() {
     ];
 
     const renderTable = (rows: Record<string, unknown>[]) => {
-        if (!rows || !rows.length) return <p style={{ color: "#8b90a5", padding: "20px" }}>No data found</p>;
+        if (!rows || !rows.length) return <p style={{ color: "hsl(var(--muted-foreground))", padding: "20px" }}>No data found</p>;
 
         const filteredRows = rows.filter(row => {
             if (!filterText) return true;
@@ -110,7 +111,7 @@ export default function DbViewerPage() {
             );
         });
 
-        if (!filteredRows.length) return <p style={{ color: "#8b90a5", padding: "20px" }}>No matching rows found</p>;
+        if (!filteredRows.length) return <p style={{ color: "hsl(var(--muted-foreground))", padding: "20px" }}>No matching rows found</p>;
 
         const columns = Object.keys(rows[0]);
         return (
@@ -122,10 +123,10 @@ export default function DbViewerPage() {
                                 <th
                                     key={col}
                                     style={{
-                                        background: "#1a1d27",
+                                        backgroundColor: "hsl(var(--card))",
                                         color: "#00cec9",
                                         padding: "8px 12px",
-                                        border: "1px solid #2d3348",
+                                        border: "1px solid hsl(var(--border))",
                                         textAlign: "left",
                                         whiteSpace: "nowrap",
                                         fontWeight: 600,
@@ -144,8 +145,8 @@ export default function DbViewerPage() {
                                         key={col}
                                         style={{
                                             padding: "6px 12px",
-                                            border: "1px solid #2d3348",
-                                            color: "#e4e7f1",
+                                            border: "1px solid hsl(var(--border))",
+                                            color: "hsl(var(--foreground))",
                                             verticalAlign: "top"
                                         }}
                                     >
@@ -171,8 +172,8 @@ export default function DbViewerPage() {
             style={{
                 height: "100%",
                 overflowY: "auto",
-                background: "#0f1117",
-                color: "#e4e7f1",
+                backgroundColor: "hsl(var(--background))",
+                color: "hsl(var(--foreground))",
                 fontFamily: "'Segoe UI', system-ui, sans-serif",
                 padding: "40px 24px",
             }}
@@ -191,7 +192,7 @@ export default function DbViewerPage() {
                 >
                     🗄️ Database Viewer
                 </h1>
-                <p style={{ color: "#8b90a5", marginBottom: "24px" }}>
+                <p style={{ color: "hsl(var(--muted-foreground))", marginBottom: "24px" }}>
                     Inspect all 6 tables — READ-ONLY snapshot (all rows)
                 </p>
 
@@ -200,8 +201,8 @@ export default function DbViewerPage() {
                     onClick={fetchData}
                     disabled={loading}
                     style={{
-                        background: loading ? "#2d3348" : "linear-gradient(135deg, #6c5ce7, #00cec9)",
-                        color: "#fff",
+                        background: loading ? "hsl(var(--muted))" : "linear-gradient(135deg, #6c5ce7, #00cec9)",
+                        color: loading ? "hsl(var(--foreground))" : "#fff",
                         border: "none",
                         padding: "12px 32px",
                         borderRadius: "8px",
@@ -209,9 +210,21 @@ export default function DbViewerPage() {
                         fontWeight: 600,
                         cursor: loading ? "wait" : "pointer",
                         marginBottom: "24px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
                     }}
                 >
-                    {loading ? "Loading..." : data ? "🔄 Refresh Data" : "📊 Load Database Data"}
+                    {loading ? (
+                        <>
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            Loading...
+                        </>
+                    ) : data ? (
+                        "🔄 Refresh Data"
+                    ) : (
+                        "📊 Load Database Data"
+                    )}
                 </button>
 
                 {error && (
@@ -245,21 +258,21 @@ export default function DbViewerPage() {
                                     key={t.key}
                                     onClick={() => setActiveTable(t.key)}
                                     style={{
-                                        background: activeTable === t.key ? "#222633" : "#1a1d27",
-                                        border: `2px solid ${activeTable === t.key ? t.color : "#2d3348"}`,
+                                        backgroundColor: activeTable === t.key ? "hsl(var(--muted))" : "hsl(var(--card))",
+                                        border: `2px solid ${activeTable === t.key ? t.color : "hsl(var(--border))"}`,
                                         borderRadius: "12px",
                                         padding: "16px",
                                         cursor: "pointer",
                                         transition: "all 0.2s",
                                     }}
                                 >
-                                    <div style={{ fontSize: "0.8rem", color: "#8b90a5", marginBottom: "4px" }}>
+                                    <div style={{ fontSize: "0.8rem", color: "hsl(var(--muted-foreground))", marginBottom: "4px" }}>
                                         {t.label}
                                     </div>
                                     <div style={{ fontSize: "1.8rem", fontWeight: 700, color: t.color }}>
                                         {data.summary[t.key]}
                                     </div>
-                                    <div style={{ fontSize: "0.75rem", color: "#8b90a5" }}>rows</div>
+                                    <div style={{ fontSize: "0.75rem", color: "hsl(var(--muted-foreground))" }}>rows</div>
                                 </div>
                             ))}
                         </div>
@@ -267,8 +280,8 @@ export default function DbViewerPage() {
                         {/* Date Ranges */}
                         <div
                             style={{
-                                background: "#1a1d27",
-                                border: "1px solid #2d3348",
+                                backgroundColor: "hsl(var(--card))",
+                                border: "1px solid hsl(var(--border))",
                                 borderRadius: "8px",
                                 padding: "12px 16px",
                                 marginBottom: "24px",
@@ -295,9 +308,9 @@ export default function DbViewerPage() {
                                     key={t.key}
                                     onClick={() => setActiveTable(t.key)}
                                     style={{
-                                        background: activeTable === t.key ? t.color + "30" : "#1a1d27",
+                                        backgroundColor: activeTable === t.key ? t.color + "30" : "hsl(var(--card))",
                                         color: activeTable === t.key ? t.color : "#8b90a5",
-                                        border: `1px solid ${activeTable === t.key ? t.color : "#2d3348"}`,
+                                        border: `1px solid ${activeTable === t.key ? t.color : "hsl(var(--border))"}`,
                                         padding: "8px 16px",
                                         borderRadius: "8px",
                                         fontSize: "0.85rem",
@@ -313,8 +326,8 @@ export default function DbViewerPage() {
                         {/* Data Table */}
                         <div
                             style={{
-                                background: "#1a1d27",
-                                border: "1px solid #2d3348",
+                                backgroundColor: "hsl(var(--card))",
+                                border: "1px solid hsl(var(--border))",
                                 borderRadius: "12px",
                                 overflow: "hidden",
                             }}
@@ -322,9 +335,9 @@ export default function DbViewerPage() {
                             <div
                                 style={{
                                     padding: "12px 16px",
-                                    borderBottom: "1px solid #2d3348",
+                                    borderBottom: "1px solid hsl(var(--border))",
                                     fontSize: "0.85rem",
-                                    color: "#8b90a5",
+                                    color: "hsl(var(--muted-foreground))",
                                     display: "flex",
                                     justifyContent: "space-between",
                                     alignItems: "center"
@@ -342,9 +355,9 @@ export default function DbViewerPage() {
                                     value={filterText}
                                     onChange={(e) => setFilterText(e.target.value)}
                                     style={{
-                                        background: "#12141c",
-                                        border: "1px solid #2d3348",
-                                        color: "#e4e7f1",
+                                        backgroundColor: "hsl(var(--background))",
+                                        border: "1px solid hsl(var(--border))",
+                                        color: "hsl(var(--foreground))",
                                         padding: "8px 12px",
                                         borderRadius: "6px",
                                         fontSize: "0.85rem",

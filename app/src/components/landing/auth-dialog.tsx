@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { SignInForm, SignUpForm, authLocalization } from '@neondatabase/auth/react/ui';
+import { authClient } from '@/lib/auth/client';
 import {
   Dialog,
   DialogContent,
@@ -18,34 +19,17 @@ interface AuthDialogProps {
 
 export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
   const router = useRouter();
+  const { data: session } = authClient.useSession();
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
 
   // Listen for successful auth and redirect
   useEffect(() => {
-    if (!open) return;
-
-    const checkAuth = async () => {
-      try {
-        const response = await fetch('/api/auth/get-session');
-        const data = await response.json();
-
-        if (data && data.session) {
-          // User is authenticated, close dialog and redirect
-          setTimeout(() => {
-            onOpenChange(false);
-          }, 0);
-          router.push('/dashboard');
-          router.refresh();
-        }
-      } catch {
-        // Ignore errors, form will handle them
-      }
-    };
-
-    // Poll for auth status after form submission
-    const interval = setInterval(checkAuth, 1000);
-    return () => clearInterval(interval);
-  }, [open, onOpenChange, router]);
+    if (session) {
+      onOpenChange(false);
+      router.push('/dashboard');
+      router.refresh();
+    }
+  }, [session, onOpenChange, router]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
