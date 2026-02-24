@@ -6,14 +6,13 @@ import { useRouter } from "next/navigation";
 // 15 minutes in milliseconds
 const INACTIVITY_TIME = 15 * 60 * 1000;
 
-export function InactivityWrapper({ children }: { children: React.ReactNode }) {
+export function InactivityMonitor() {
     const router = useRouter();
 
     useEffect(() => {
         let timeoutId: NodeJS.Timeout;
 
         const handleLogout = () => {
-            // Clear cookie and redirect
             document.cookie = 'priceos-session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
             router.push('/login');
         };
@@ -23,10 +22,8 @@ export function InactivityWrapper({ children }: { children: React.ReactNode }) {
             timeoutId = setTimeout(handleLogout, INACTIVITY_TIME);
         };
 
-        // Initialize timer
         resetTimer();
 
-        // Listen to activity
         window.addEventListener("mousemove", resetTimer);
         window.addEventListener("mousedown", resetTimer);
         window.addEventListener("keydown", resetTimer);
@@ -43,5 +40,5 @@ export function InactivityWrapper({ children }: { children: React.ReactNode }) {
         };
     }, [router]);
 
-    return <>{children}</>;
+    return null;
 }

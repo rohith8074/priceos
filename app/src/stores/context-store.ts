@@ -20,6 +20,16 @@ interface ContextStore {
   // UI State
   isSidebarOpen: boolean;
   toggleSidebar: () => void;
+  activeSidebarTab: "summary" | "signals" | "calendar";
+  setSidebarTab: (tab: "summary" | "signals" | "calendar") => void;
+
+  // Shared Data
+  calendarMetrics: any | null;
+  setCalendarMetrics: (metrics: any | null) => void;
+
+  // Conversation Summary (shared between chat interface and sidebar)
+  conversationSummary: any | null;
+  setConversationSummary: (summary: any | null) => void;
 
   // Sync Trigger
   marketRefreshTrigger: number;
@@ -41,6 +51,9 @@ export const useContextStore = create<ContextStore>()(
       contextType: "portfolio",
       propertyId: null,
       propertyName: null,
+      activeSidebarTab: "summary",
+      calendarMetrics: null,
+      conversationSummary: null,
       isSidebarOpen: true,
 
       // Initial Date Range (Next 30 days)
@@ -53,6 +66,11 @@ export const useContextStore = create<ContextStore>()(
 
       // UI Actions
       toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+      setSidebarTab: (tab: "summary" | "signals" | "calendar") => set({ activeSidebarTab: tab }),
+
+      setCalendarMetrics: (metrics: any | null) => set({ calendarMetrics: metrics }),
+
+      setConversationSummary: (summary: any | null) => set({ conversationSummary: summary }),
 
       triggerMarketRefresh: () => set((state) => ({ marketRefreshTrigger: state.marketRefreshTrigger + 1 })),
 

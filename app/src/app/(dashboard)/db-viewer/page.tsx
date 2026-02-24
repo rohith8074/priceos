@@ -11,6 +11,9 @@ interface TableData {
         market_events: number;
         chat_messages: number;
         user_settings: number;
+        guest_summaries: number;
+        mock_hostaway_replies: number;
+        hostaway_conversations: number;
     };
     date_ranges: {
         calendar: { min: string; max: string };
@@ -23,10 +26,13 @@ interface TableData {
         market_events: Record<string, unknown>[];
         chat_messages: Record<string, unknown>[];
         user_settings: Record<string, unknown>[];
+        guest_summaries: Record<string, unknown>[];
+        mock_hostaway_replies: Record<string, unknown>[];
+        hostaway_conversations: Record<string, unknown>[];
     };
 }
 
-type TableName = "listings" | "inventory_master" | "reservations" | "market_events" | "chat_messages" | "user_settings";
+type TableName = "listings" | "inventory_master" | "reservations" | "market_events" | "chat_messages" | "user_settings" | "guest_summaries" | "mock_hostaway_replies" | "hostaway_conversations";
 
 export default function DbViewerPage() {
     const [data, setData] = useState<TableData | null>(null);
@@ -34,6 +40,19 @@ export default function DbViewerPage() {
     const [error, setError] = useState<string | null>(null);
     const [activeTable, setActiveTable] = useState<TableName>("listings");
     const [filterText, setFilterText] = useState("");
+    const [viewMode, setViewMode] = useState<"data" | "schema">("data");
+
+    const schemas: Record<TableName, string> = {
+        listings: "id (serial), hostawayId (varchar), title (varchar), address (varchar), status (varchar), beds (integer), baths (integer), maxGuests (integer), platformLinks (jsonb), defaultPrice (integer), configuration (jsonb), timezone (varchar), createdAt (timestamp), updatedAt (timestamp)",
+        inventory_master: "id (serial), date (date), listingId (integer) FK, status (varchar), price (integer), isAvailable (boolean), minimumStay (integer), maximumStay (integer), createdAt (timestamp), updatedAt (timestamp)",
+        reservations: "id (serial), hostawayId (varchar), listingMapId (varchar), status (varchar), checkIn (date), checkOut (date), guestName (varchar), totalPaid (numeric), source (varchar), numberOfGuests (integer), notes (text), isManual (boolean), createdAt (timestamp), updatedAt (timestamp)",
+        market_events: "id (serial), title (varchar), dateFrom (date), dateTo (date), impactLevel (varchar), category (varchar), location (varchar), description (text), expectedDemandIncrease (integer), estimatedPriceMultiplier (numeric), source (varchar), active (boolean), radiusMiles (integer), metadata (jsonb), scope (varchar), createdAt (timestamp), updatedAt (timestamp)",
+        chat_messages: "id (serial), userId (text), sessionId (text), role (text), content (text), listingId (integer) FK, structured (jsonb), createdAt (timestamp)",
+        user_settings: "id (serial), userId (text), fullName (text), email (text), lyzrApiKey (text), hostawayApiKey (text), preferences (jsonb), createdAt (timestamp), updatedAt (timestamp)",
+        guest_summaries: "id (serial) PK, listingId (integer) FK, dateFrom (date), dateTo (date), sentiment (text), themes (jsonb), actionItems (jsonb), bulletPoints (jsonb), totalConversations (integer), needsReplyCount (integer), createdAt (timestamp), updatedAt (timestamp)",
+        mock_hostaway_replies: "id (serial) PK, conversationId (text), text (text), createdAt (timestamp)",
+        hostaway_conversations: "id (serial) PK, listingId (integer) FK, hostawayConversationId (text), guestName (text), guestEmail (text), reservationId (text), messages (jsonb), dateFrom (date), dateTo (date), syncedAt (timestamp), createdAt (timestamp)"
+    };
 
     const TableCellContent = ({ content }: { content: string }) => {
         const [expanded, setExpanded] = useState(false);
@@ -97,6 +116,9 @@ export default function DbViewerPage() {
         { key: "market_events", label: "Market Events", color: "#e17055" },
         { key: "chat_messages", label: "Chat Messages", color: "#fdcb6e" },
         { key: "user_settings", label: "User Settings", color: "#e84393" },
+        { key: "guest_summaries", label: "Guest Summaries", color: "#6caddf" },
+        { key: "mock_hostaway_replies", label: "Mock Replies", color: "#b8b800" },
+        { key: "hostaway_conversations", label: "Conversations", color: "#00cec9" },
     ];
 
     const renderTable = (rows: Record<string, unknown>[]) => {
@@ -302,28 +324,63 @@ export default function DbViewerPage() {
                         </div>
 
                         {/* Table Tabs */}
-                        <div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap" }}>
-                            {tables.map((t) => (
+                        <div style={{ display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap", justifyContent: "space-between" }}>
+                            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                                {tables.map((t) => (
+                                    <button
+                                        key={t.key}
+                                        onClick={() => setActiveTable(t.key)}
+                                        style={{
+                                            backgroundColor: activeTable === t.key ? t.color + "30" : "hsl(var(--card))",
+                                            color: activeTable === t.key ? t.color : "#8b90a5",
+                                            border: `1px solid ${activeTable === t.key ? t.color : "hsl(var(--border))"}`,
+                                            padding: "8px 16px",
+                                            borderRadius: "8px",
+                                            fontSize: "0.85rem",
+                                            fontWeight: 600,
+                                            cursor: "pointer",
+                                        }}
+                                    >
+                                        {t.label} ({data.summary[t.key]})
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div style={{ display: "flex", gap: "8px", backgroundColor: "hsl(var(--card))", padding: "4px", borderRadius: "8px", border: "1px solid hsl(var(--border))" }}>
                                 <button
-                                    key={t.key}
-                                    onClick={() => setActiveTable(t.key)}
+                                    onClick={() => setViewMode("data")}
                                     style={{
-                                        backgroundColor: activeTable === t.key ? t.color + "30" : "hsl(var(--card))",
-                                        color: activeTable === t.key ? t.color : "#8b90a5",
-                                        border: `1px solid ${activeTable === t.key ? t.color : "hsl(var(--border))"}`,
-                                        padding: "8px 16px",
-                                        borderRadius: "8px",
+                                        backgroundColor: viewMode === "data" ? "hsl(var(--primary))" : "transparent",
+                                        color: viewMode === "data" ? "hsl(var(--primary-foreground))" : "hsl(var(--muted-foreground))",
+                                        border: "none",
+                                        padding: "6px 12px",
+                                        borderRadius: "6px",
                                         fontSize: "0.85rem",
                                         fontWeight: 600,
-                                        cursor: "pointer",
+                                        cursor: "pointer"
                                     }}
                                 >
-                                    {t.label} ({data.summary[t.key]})
+                                    Data
                                 </button>
-                            ))}
+                                <button
+                                    onClick={() => setViewMode("schema")}
+                                    style={{
+                                        backgroundColor: viewMode === "schema" ? "hsl(var(--primary))" : "transparent",
+                                        color: viewMode === "schema" ? "hsl(var(--primary-foreground))" : "hsl(var(--muted-foreground))",
+                                        border: "none",
+                                        padding: "6px 12px",
+                                        borderRadius: "6px",
+                                        fontSize: "0.85rem",
+                                        fontWeight: 600,
+                                        cursor: "pointer"
+                                    }}
+                                >
+                                    Schema
+                                </button>
+                            </div>
                         </div>
 
-                        {/* Data Table */}
+                        {/* Data or Schema Table */}
                         <div
                             style={{
                                 backgroundColor: "hsl(var(--card))",
@@ -344,29 +401,45 @@ export default function DbViewerPage() {
                                 }}
                             >
                                 <div>
-                                    Showing rows from{" "}
+                                    Showing {viewMode === "data" ? "rows" : "schema definition"} from{" "}
                                     <strong style={{ color: tables.find((t) => t.key === activeTable)?.color }}>
                                         {activeTable}
                                     </strong>
                                 </div>
-                                <input
-                                    type="text"
-                                    placeholder="🔍 Search in this table..."
-                                    value={filterText}
-                                    onChange={(e) => setFilterText(e.target.value)}
-                                    style={{
-                                        backgroundColor: "hsl(var(--background))",
-                                        border: "1px solid hsl(var(--border))",
-                                        color: "hsl(var(--foreground))",
-                                        padding: "8px 12px",
-                                        borderRadius: "6px",
-                                        fontSize: "0.85rem",
-                                        width: "250px",
-                                        outline: "none"
-                                    }}
-                                />
+                                {viewMode === "data" && (
+                                    <input
+                                        type="text"
+                                        placeholder="🔍 Search in this table..."
+                                        value={filterText}
+                                        onChange={(e) => setFilterText(e.target.value)}
+                                        style={{
+                                            backgroundColor: "hsl(var(--background))",
+                                            border: "1px solid hsl(var(--border))",
+                                            color: "hsl(var(--foreground))",
+                                            padding: "8px 12px",
+                                            borderRadius: "6px",
+                                            fontSize: "0.85rem",
+                                            width: "250px",
+                                            outline: "none"
+                                        }}
+                                    />
+                                )}
                             </div>
-                            {renderTable(data.data[activeTable])}
+
+                            {viewMode === "data" ? (
+                                renderTable(data.data[activeTable])
+                            ) : (
+                                <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                                    <h3 style={{ color: tables.find((t) => t.key === activeTable)?.color, marginBottom: "10px" }}>Table Schema</h3>
+                                    <div style={{ backgroundColor: "hsl(var(--background))", padding: "16px", borderRadius: "8px", border: `1px solid hsl(var(--border))`, fontFamily: "monospace", fontSize: "0.9rem", color: "hsl(var(--foreground))" }}>
+                                        {schemas[activeTable].split(', ').map((col, idx) => (
+                                            <div key={idx} style={{ padding: "4px 0", borderBottom: idx !== schemas[activeTable].split(', ').length - 1 ? "1px solid hsl(var(--border))" : "none" }}>
+                                                {col}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </>
                 )}

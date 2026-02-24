@@ -11,7 +11,7 @@ async function listTables() {
 
         if (tablesToClear.length > 0) {
             console.log("Truncating:", tablesToClear.join(', '));
-            const query = `TRUNCATE TABLE ${tablesToClear.map(t => `"${t}"`).join(', ')} CASCADE`;
+            const query = `TRUNCATE TABLE ${tablesToClear.map((t: string) => `"${t}"`).join(', ')} CASCADE`;
             await db.execute(query);
             console.log("✅ All dummy data removed successfully.");
         } else {

@@ -80,6 +80,7 @@ export const reservations = pgTable("reservations", {
   pricePerNight: numeric("price_per_night", { precision: 10, scale: 2 }),
   channelCommission: numeric("channel_commission", { precision: 10, scale: 2 }),
   cleaningFee: numeric("cleaning_fee", { precision: 10, scale: 2 }),
+  notes: text("notes"),
   hostawayReservationId: text("hostaway_reservation_id").unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
@@ -145,6 +146,62 @@ export const userSettings = pgTable("user_settings", {
 }));
 
 // ─────────────────────────────────────────────────────────
+// Table 7: GUEST_SUMMARIES — Cached AI Analysis of Guest Comms
+// ─────────────────────────────────────────────────────────
+export const guestSummaries = pgTable("guest_summaries", {
+  id: serial("id").primaryKey(),
+  listingId: integer("listing_id")
+    .references(() => listings.id)
+    .notNull(),
+  dateFrom: date("date_from").notNull(),
+  dateTo: date("date_to").notNull(),
+  sentiment: text("sentiment").notNull(), // 'Positive' | 'Neutral' | 'Needs Attention'
+  themes: jsonb("themes").$type<string[]>().default([]).notNull(),
+  actionItems: jsonb("action_items").$type<string[]>().default([]).notNull(),
+  bulletPoints: jsonb("bullet_points").$type<string[]>().default([]).notNull(),
+  totalConversations: integer("total_conversations").notNull().default(0),
+  needsReplyCount: integer("needs_reply_count").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  listingDatesIdx: index("guest_summaries_listing_dates_idx").on(table.listingId, table.dateFrom, table.dateTo),
+}));
+
+// ─────────────────────────────────────────────────────────
+// Table 9: HOSTAWAY_CONVERSATIONS — Cached Conversations from Hostaway (GET only)
+// ─────────────────────────────────────────────────────────
+export const hostawayConversations = pgTable("hostaway_conversations", {
+  id: serial("id").primaryKey(),
+  listingId: integer("listing_id")
+    .references(() => listings.id)
+    .notNull(),
+  hostawayConversationId: text("hostaway_conversation_id").notNull(),
+  guestName: text("guest_name").notNull().default("Unknown Guest"),
+  guestEmail: text("guest_email"),
+  reservationId: text("reservation_id"),
+  messages: jsonb("messages").$type<{ sender: string; text: string; timestamp: string }[]>().default([]).notNull(),
+  dateFrom: date("date_from").notNull(),
+  dateTo: date("date_to").notNull(),
+  syncedAt: timestamp("synced_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  listingConvIdx: index("hostaway_conv_listing_idx").on(table.listingId, table.dateFrom, table.dateTo),
+  hwConvIdIdx: index("hostaway_conv_id_idx").on(table.hostawayConversationId),
+}));
+
+// ─────────────────────────────────────────────────────────
+// Table 8: MOCK_HOSTAWAY_REPLIES — Shadow Table for Safe Admin Replies
+// ─────────────────────────────────────────────────────────
+export const mockHostawayReplies = pgTable("mock_hostaway_replies", {
+  id: serial("id").primaryKey(),
+  conversationId: text("conversation_id").notNull(),
+  text: text("text").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  convIdIdx: index("mock_replies_conv_id_idx").on(table.conversationId),
+}));
+
+// ─────────────────────────────────────────────────────────
 // Type Exports
 // ─────────────────────────────────────────────────────────
 export type ListingRow = typeof listings.$inferSelect;
@@ -159,6 +216,10 @@ export type ChatMessage = typeof chatMessages.$inferSelect;
 export type NewChatMessage = typeof chatMessages.$inferInsert;
 export type UserSettingsRow = typeof userSettings.$inferSelect;
 export type NewUserSettings = typeof userSettings.$inferInsert;
+export type HostawayConversationRow = typeof hostawayConversations.$inferSelect;
+export type NewHostawayConversation = typeof hostawayConversations.$inferInsert;
+export type GuestSummaryRow = typeof guestSummaries.$inferSelect;
+export type NewGuestSummary = typeof guestSummaries.$inferInsert;
 
 // ─────────────────────────────────────────────────────────
 // Legacy Aliases (for migration period — remove after full refactor)

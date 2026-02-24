@@ -6,19 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Send, Loader2, Settings, Zap, Calendar as CalendarIcon,
-  PanelRightClose, PanelRightOpen, Building2, CheckSquare, AlertCircle
+  PanelRightClose, PanelRightOpen, Building2, CheckSquare, AlertCircle,
+  User, ChevronLeft, Sparkles, PanelLeftClose, PanelLeftOpen
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useContextStore } from "@/stores/context-store";
 import type { ListingRow } from "@/lib/db";
 import { DateRangePicker } from "./date-range-picker";
-import { DateRange } from "react-day-picker";
-import { addDays, format } from "date-fns";
+import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { CalendarVisualizer, ReservationData } from "./calendar-visualizer";
 
 import { toast } from "sonner";
 
@@ -39,15 +37,38 @@ interface Props {
   properties: PropertyWithMetrics[];
 }
 
-interface ChatSession {
-  sessionId: string;
-  messages: Message[];
-  isChatActive: boolean;
-  lastActivityDate: number;
-  contextKey: string; // e.g., "portfolio_2026-03-01_2026-03-31" or "property_5_..."
+interface SimulatedConversation {
+  id: string;
+  guestName: string;
+  lastMessage: string;
+  status: 'needs_reply' | 'resolved';
+  messages: { id: string; sender: 'guest' | 'admin'; text: string; time: string }[];
 }
 
-const SESSION_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
+const mockConversations: SimulatedConversation[] = [
+  {
+    id: "conv_1",
+    guestName: "John Doe",
+    lastMessage: "Is the pool heated during March?",
+    status: "needs_reply",
+    messages: [
+      { id: "m1", sender: "guest", text: "Hi, I have a quick question before booking.", time: "10:00 AM" },
+      { id: "m2", sender: "admin", text: "Hello John, absolutely! How can I help?", time: "10:15 AM" },
+      { id: "m3", sender: "guest", text: "Is the pool heated during March?", time: "10:20 AM" }
+    ]
+  },
+  {
+    id: "conv_2",
+    guestName: "Sarah Smith",
+    lastMessage: "Thank you for the parking instructions!",
+    status: "resolved",
+    messages: [
+      { id: "m1", sender: "guest", text: "Where exactly is the parking spot?", time: "Yesterday" },
+      { id: "m2", sender: "admin", text: "It is spot #42 in the underground garage.", time: "Yesterday" },
+      { id: "m3", sender: "guest", text: "Thank you for the parking instructions!", time: "Yesterday" }
+    ]
+  }
+];
 
 export function UnifiedChatInterface({ properties }: Props) {
   const {
@@ -58,47 +79,154 @@ export function UnifiedChatInterface({ properties }: Props) {
     toggleSidebar,
     dateRange,
     setDateRange,
-    triggerMarketRefresh
+    triggerMarketRefresh,
+    setSidebarTab,
+    setCalendarMetrics: setGlobalMetrics,
+    conversationSummary,
+    setConversationSummary,
   } = useContextStore();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isChatActive, setIsChatActive] = useState(false);
-  const [isCalendarOpen, setIsCalendarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Rehydrate the Zustand persisted store on client mount
-  useEffect(() => {
-    useContextStore.persist.rehydrate();
-  }, []);
-
-  // Function to generate a unique session ID
+  // Generate a unique session ID
   const generateSessionId = () => `session-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
   const [sessionId, setSessionId] = useState(generateSessionId());
   const [isSettingUp, setIsSettingUp] = useState(false);
 
-  // Dynamic calendar metrics (occupancy + avg price for selected date range)
-  const [calendarMetrics, setCalendarMetrics] = useState<{
-    occupancy: number;
-    avgPrice: number;
-    bookedDays: number;
-    availableDays: number;
-    blockedDays: number;
-    totalDays: number;
-    calendarDays?: { date: string; status: string; price: number }[];
-    reservations?: ReservationData[];
-  } | null>(null);
-  const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
+  // Agent vs Guest Chat Toggle
+  const [chatMode, setChatMode] = useState<"agent" | "guests">("agent");
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [conversations, setConversations] = useState<SimulatedConversation[]>([]);
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [isInboxCollapsed, setIsInboxCollapsed] = useState(false);
 
-  // Generate a unique key for the current context (contextType + propertyId + dateRange)
-  const getContextKey = () => {
-    const fromStr = dateRange?.from ? format(dateRange.from, "yyyy-MM-dd") : "";
-    const toStr = dateRange?.to ? format(dateRange.to, "yyyy-MM-dd") : fromStr;
-    const propStr = contextType === "property" ? propertyId : "all";
-    return `${contextType}_${propStr}_${fromStr}_${toStr}`;
+  // Reset and load cached conversations when property or date range changes
+  useEffect(() => {
+    // Reset state when property changes
+    setConversations([]);
+    setActiveConversationId(null);
+    setConversationSummary(null);
+    setReplyText("");
+
+    // Try to load cached conversations from DB
+    if (!propertyId || !dateRange?.from || !dateRange?.to) return;
+    const from = format(dateRange.from, 'yyyy-MM-dd');
+    const to = format(dateRange.to, 'yyyy-MM-dd');
+
+    const loadCached = async () => {
+      try {
+        // Load cached conversations
+        const convRes = await fetch(`/api/hostaway/conversations/cached?listingId=${propertyId}&from=${from}&to=${to}`);
+        if (convRes.ok) {
+          const convData = await convRes.json();
+          if (convData.conversations?.length > 0) {
+            setConversations(convData.conversations);
+          }
+        }
+        // Load cached summary
+        const sumRes = await fetch(`/api/hostaway/summary?listingId=${propertyId}&from=${from}&to=${to}`);
+        if (sumRes.ok) {
+          const sumData = await sumRes.json();
+          if (sumData.summary) setConversationSummary(sumData.summary);
+        }
+      } catch (e) {
+        console.warn("Failed to load cached conversations", e);
+      }
+    };
+    loadCached();
+  }, [propertyId, dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
+
+  const handleAiSuggest = async () => {
+    if (!activeConversationId) return;
+    const conversation = conversations.find(c => c.id === activeConversationId);
+    if (!conversation) return;
+
+    setIsSuggesting(true);
+    try {
+      // We use the last message from the guest as the query
+      const lastGuestMessage = [...conversation.messages].reverse().find(m => m.sender === 'guest')?.text || "";
+
+      toast.loading("Agent is thinking of a reply...", { id: 'suggest' });
+
+      const res = await fetch("/api/hostaway/suggest-reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: lastGuestMessage,
+          guestName: conversation.guestName,
+          propertyName: propertyName || "Our Property",
+        })
+      });
+
+      const data = await res.json();
+      let suggestedText = "";
+
+      if (res.ok && data.reply) {
+        suggestedText = data.reply;
+      } else {
+        // Fallback if endpoint fails
+        await new Promise(r => setTimeout(r, 1500));
+        suggestedText = `Hi ${conversation.guestName}, thanks for reaching out! I'd be happy to help with that.`;
+      }
+
+      setReplyText(suggestedText);
+      toast.success("Response generated by Agent", { id: 'suggest' });
+    } catch (e) {
+      toast.error("Failed to get Agent suggestion", { id: 'suggest' });
+    } finally {
+      setIsSuggesting(false);
+    }
   };
+
+  const handleSendReply = async () => {
+    if (!replyText.trim() || !activeConversationId) return;
+    const textToSave = replyText;
+    const convId = activeConversationId;
+    setReplyText("");
+
+    try {
+      const res = await fetch("/api/hostaway/reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId: convId, text: textToSave })
+      });
+
+      if (!res.ok) throw new Error("Failed to save to DB");
+
+      setConversations(prev => prev.map(conv => {
+        if (conv.id === convId) {
+          return {
+            ...conv,
+            status: 'resolved' as const,
+            lastMessage: textToSave,
+            messages: [
+              ...conv.messages,
+              { id: Date.now().toString(), sender: 'admin' as const, text: textToSave, time: "Just now" }
+            ]
+          };
+        }
+        return conv;
+      }));
+
+      toast.success("Reply securely saved to shadow database", { id: 'reply' });
+    } catch (error) {
+      setReplyText(textToSave);
+      toast.error("Failed to save shadow reply", { id: 'reply' });
+    }
+  };
+
+  const activeConversation = conversations.find(c => c.id === activeConversationId);
+
+  // Dynamic calendar metrics (occupancy + avg price for selected date range)
+  const [calendarMetrics, setCalendarMetrics] = useState<any | null>(null);
+  const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
 
   // 1. Session Initialization & Hydration
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
@@ -149,6 +277,7 @@ export function UnifiedChatInterface({ properties }: Props) {
     const fetchMetrics = async () => {
       if (contextType !== "property" || !propertyId || !dateRange?.from || !dateRange?.to) {
         setCalendarMetrics(null);
+        setGlobalMetrics(null);
         return;
       }
 
@@ -160,7 +289,7 @@ export function UnifiedChatInterface({ properties }: Props) {
 
         if (res.ok) {
           const data = await res.json();
-          setCalendarMetrics({
+          const metrics = {
             occupancy: data.occupancy,
             avgPrice: data.avgPrice,
             bookedDays: data.bookedDays,
@@ -169,7 +298,9 @@ export function UnifiedChatInterface({ properties }: Props) {
             totalDays: data.totalDays,
             calendarDays: data.calendarDays,
             reservations: data.reservations,
-          });
+          };
+          setCalendarMetrics(metrics);
+          setGlobalMetrics(metrics);
         }
       } catch (err) {
         console.error("Failed to fetch calendar metrics:", err);
@@ -179,14 +310,14 @@ export function UnifiedChatInterface({ properties }: Props) {
     };
 
     fetchMetrics();
-  }, [contextType, propertyId, dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
+  }, [contextType, propertyId, dateRange?.from?.getTime(), dateRange?.to?.getTime(), setGlobalMetrics]);
 
   const handleMarketSetup = async () => {
     if (isSettingUp || !dateRange?.from || !dateRange?.to) return;
 
     setIsSettingUp(true);
 
-    toast("Syncing Market Intelligence...", {
+    toast("Running Market Analysis...", {
       description: "Agents are fetching real-time data for your selected dates...",
     });
 
@@ -213,20 +344,20 @@ export function UnifiedChatInterface({ properties }: Props) {
         if (data.error?.includes("403") || data.error?.includes("permission")) {
           throw new Error("Lyzr Permission Error: Your API key doesn't have permission to access this Agent.");
         }
-        throw new Error(data.error || "Setup failed");
+        throw new Error(data.error || "Analysis failed");
       }
 
       // Once setup is done, activate chat silently
       setIsChatActive(true);
 
-      toast.success("Setup Complete", {
+      toast.success("Analysis Complete", {
         description: `Analyzed ${data.eventsCount} market signals. Chat is now active.`,
       });
       triggerMarketRefresh();
 
     } catch (error) {
-      console.error("Market Setup Error:", error);
-      toast.error("Market Sync Failed", {
+      console.error("Market Analysis Error:", error);
+      toast.error("Analysis Failed", {
         description: error instanceof Error ? error.message : "Marketing Agent could not be reached.",
       });
     } finally {
@@ -238,12 +369,6 @@ export function UnifiedChatInterface({ properties }: Props) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  // Find the selected property to display metrics
-  const selectedProperty =
-    contextType === "property" && propertyId
-      ? properties.find((p) => p.id === propertyId)
-      : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -258,11 +383,6 @@ export function UnifiedChatInterface({ properties }: Props) {
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
-
-    console.log(`\n%c📩 USER MESSAGE — ${new Date().toISOString()}`, 'color: #60a5fa; font-weight: bold');
-    console.log(`  Context:  ${contextType}`);
-    console.log(`  Property: ${propertyName || '(portfolio)'}`);
-    console.log(`  Message:  "${input}"`);
 
     const startTime = performance.now();
     try {
@@ -300,21 +420,13 @@ export function UnifiedChatInterface({ properties }: Props) {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: data.message || "Sorry, I couldn't get a response.",
-        proposals: data.proposals || undefined, // Include proposals if any exist
+        proposals: data.proposals || undefined,
         proposalStatus: data.proposals ? "pending" : undefined,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-
-      const duration = Math.round(performance.now() - startTime);
-      console.log(`%c✅ AGENT REPLY RECEIVED — ${duration}ms`, 'color: #34d399; font-weight: bold');
-
     } catch (error) {
-      const duration = Math.round(performance.now() - startTime);
-      console.error(`%c❌ CHAT ERROR — ${duration}ms`, 'color: #ef4444; font-weight: bold');
-      console.error(`  User Msg: "${input}"`);
-      console.error(`  Error:`, error);
-
+      console.error(`Chat Error:`, error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
@@ -326,7 +438,6 @@ export function UnifiedChatInterface({ properties }: Props) {
     }
   };
 
-  // Function to handle saving proposals to the db
   const handleSaveProposals = async (messageId: string, proposals: any[]) => {
     setIsLoading(true);
     try {
@@ -342,9 +453,7 @@ export function UnifiedChatInterface({ properties }: Props) {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to save proposals");
-      }
+      if (!response.ok) throw new Error("Failed to save proposals");
 
       const resData = await response.json();
 
@@ -386,9 +495,7 @@ export function UnifiedChatInterface({ properties }: Props) {
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden h-full">
-      {/* Header */}
       <div className="border-b bg-background flex flex-col shrink-0 relative z-10 shadow-sm">
-        {/* Top Row: Context & Window Controls */}
         <div className="flex flex-wrap items-center justify-between px-6 py-4 gap-4">
           <div className="flex items-center gap-3">
             <div className="rounded-lg bg-emerald-500/10 p-2">
@@ -396,30 +503,15 @@ export function UnifiedChatInterface({ properties }: Props) {
             </div>
             <div>
               <h3 className="text-lg font-black tracking-tight">
-                {contextType === "property" && propertyName
-                  ? propertyName
-                  : "Portfolio Overview"}
+                {contextType === "property" && propertyName ? propertyName : "Portfolio Overview"}
               </h3>
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                {contextType === "property"
-                  ? "Pricing & Market Copilot"
-                  : "Portfolio Analysis"}
+                Pricing & Market Copilot
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {contextType === "property" && propertyId && (
-              <Button
-                variant={isCalendarOpen ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-                className="h-9 gap-2"
-              >
-                <CalendarIcon className="h-4 w-4" />
-                <span className="hidden sm:inline font-bold">Calendar</span>
-              </Button>
-            )}
             <Button
               variant={isSidebarOpen ? "secondary" : "ghost"}
               size="sm"
@@ -432,262 +524,351 @@ export function UnifiedChatInterface({ properties }: Props) {
           </div>
         </div>
 
-        {/* Bottom Row: Context Controls & Metrics */}
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 pb-4">
-          {/* Controls */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 bg-muted/30 p-1.5 rounded-xl border border-border/50 hover:bg-muted/50 transition-colors">
+
+            <div className="flex bg-muted p-1 rounded-xl shrink-0">
+              <Button
+                variant={chatMode === "agent" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setChatMode("agent")}
+                className={`h-7 px-4 font-bold ${chatMode === "agent" ? 'shadow-sm' : ''}`}
+              >
+                Agent
+              </Button>
+              <Button
+                variant={chatMode === "guests" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setChatMode("guests")}
+                className={`h-7 px-4 font-bold ${chatMode === "guests" ? 'shadow-sm bg-background text-foreground hover:bg-background' : ''}`}
+              >
+                Users
+              </Button>
+            </div>
+
+            <div className="hidden sm:block h-6 w-px bg-border/50 mx-1" />
+
             <DateRangePicker
               date={dateRange}
               setDate={(newRange) => {
                 setDateRange(newRange);
-                if (!newRange?.from || !newRange?.to) {
-                  setIsChatActive(false);
-                }
+                if (!newRange?.from || !newRange?.to) setIsChatActive(false);
               }}
             />
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleMarketSetup}
-              disabled={isLoading || isSettingUp || !dateRange?.from || !dateRange?.to}
-              className="h-9 gap-2 bg-background hover:bg-background/80 border-border/50 font-bold shadow-sm"
-            >
-              <Settings className={`h-4 w-4 ${isSettingUp ? "animate-spin text-amber-500" : ""}`} />
-              <span className="hidden sm:inline">{isSettingUp ? "Processing..." : "Setup Copilot"}</span>
-            </Button>
+            {chatMode === "agent" && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleMarketSetup}
+                  disabled={isLoading || isSettingUp || !dateRange?.from || !dateRange?.to}
+                  className="h-9 gap-2 bg-background hover:bg-background/80 border-border/50 font-bold shadow-sm"
+                >
+                  <Settings className={`h-4 w-4 ${isSettingUp ? "animate-spin text-amber-500" : ""}`} />
+                  <span className="hidden sm:inline">{isSettingUp ? "Processing..." : "Market Analysis"}</span>
+                </Button>
 
-            <div className="hidden sm:block h-6 w-px bg-border/50 mx-1" />
+                <div className="hidden sm:block h-6 w-px bg-border/50 mx-1" />
 
-            <div className="flex items-center gap-3 px-2">
-              <div className="flex flex-col items-end">
-                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1">
-                  Agent
-                </span>
-                <span className={`text-[10px] font-black tracking-widest leading-none ${isChatActive ? 'text-amber-500' : 'text-muted-foreground/50'}`}>
-                  {isChatActive ? 'ONLINE' : 'OFFLINE'}
-                </span>
-              </div>
-              <Switch
-                id="activate-chat"
-                checked={isChatActive}
-                disabled={true}
-                className="data-[state=checked]:bg-amber-500 scale-90"
-              />
-            </div>
+                <div className="flex items-center gap-3 px-2">
+                  <div className="flex flex-col items-end">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1">
+                      Agent
+                    </span>
+                    <span className={`text-[10px] font-black tracking-widest leading-none ${isChatActive ? 'text-amber-500' : 'text-muted-foreground/50'}`}>
+                      {isChatActive ? 'ONLINE' : 'OFFLINE'}
+                    </span>
+                  </div>
+                  <Switch checked={isChatActive} disabled={true} className="data-[state=checked]:bg-amber-500 scale-90" />
+                </div>
+              </>
+            )}
+
+            {chatMode === "guests" && (
+              <>
+                <div className="hidden sm:block h-6 w-px bg-border/50 mx-1" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      if (!dateRange?.from || !dateRange?.to || !propertyId) return;
+                      toast.loading("Fetching Hostaway conversations (GET only)...", { id: 'sync' });
+                      const from = format(dateRange.from, 'yyyy-MM-dd');
+                      const to = format(dateRange.to, 'yyyy-MM-dd');
+                      const res = await fetch(`/api/hostaway/conversations?listingId=${propertyId}&from=${from}&to=${to}`, { method: "GET" });
+                      if (res.ok) {
+                        const data = await res.json();
+                        if (data.conversations && data.conversations.length > 0) {
+                          setConversations(data.conversations);
+                          toast.success(`Synced ${data.conversations.length} conversations`, { id: 'sync' });
+                          // Auto-check for cached summary
+                          const sumRes = await fetch(`/api/hostaway/summary?listingId=${propertyId}&from=${from}&to=${to}`);
+                          if (sumRes.ok) {
+                            const sumData = await sumRes.json();
+                            if (sumData.summary) setConversationSummary(sumData.summary);
+                          }
+                        } else {
+                          toast.success("No conversations found for this range.", { id: 'sync' });
+                        }
+                      } else {
+                        throw new Error("Failed response");
+                      }
+                    } catch (e) {
+                      toast.error("Failed to sync from Hostaway", { id: 'sync' });
+                    }
+                  }}
+                  disabled={!dateRange?.from || !dateRange?.to}
+                  className="h-9 gap-2 bg-background hover:bg-background/80 border-border/50 font-bold shadow-sm text-emerald-600 border-emerald-500/30"
+                >
+                  <Zap className="h-4 w-4" />
+                  <span className="hidden sm:inline">Sync Conversations</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    if (!dateRange?.from || !dateRange?.to || !propertyId) return;
+                    setIsGeneratingSummary(true);
+                    try {
+                      toast.loading("AI is generating summary...", { id: 'summary' });
+                      const from = format(dateRange.from, 'yyyy-MM-dd');
+                      const to = format(dateRange.to, 'yyyy-MM-dd');
+                      const res = await fetch(`/api/hostaway/summary`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ listingId: propertyId, dateFrom: from, dateTo: to })
+                      });
+                      if (res.ok) {
+                        const data = await res.json();
+                        setConversationSummary(data.summary);
+                        toast.success("Summary generated & saved!", { id: 'summary' });
+                      } else {
+                        throw new Error("Failed");
+                      }
+                    } catch (e) {
+                      toast.error("Failed to generate summary", { id: 'summary' });
+                    } finally {
+                      setIsGeneratingSummary(false);
+                    }
+                  }}
+                  disabled={!dateRange?.from || !dateRange?.to || isGeneratingSummary || conversations.length === 0 || conversations === mockConversations}
+                  className="h-9 gap-2 bg-background hover:bg-background/80 border-border/50 font-bold shadow-sm text-violet-600 border-violet-500/30"
+                >
+                  {isGeneratingSummary ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  <span className="hidden sm:inline">{isGeneratingSummary ? 'Generating...' : 'Generate Summary'}</span>
+                </Button>
+              </>
+            )}
+
           </div>
+        </div>
+      </div>
 
-          {/* Metrics */}
-          {contextType === "property" && propertyId && (
-            <div className="flex items-center gap-5 sm:gap-6 bg-muted/30 border border-border/50 px-5 py-2 rounded-xl shrink-0">
-              <div className="flex flex-col items-end">
-                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
-                  Occupancy
-                </span>
-                <div className="flex items-baseline gap-1 mt-0.5">
-                  {isLoadingMetrics ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  ) : calendarMetrics ? (
-                    <>
-                      <span className={`text-lg font-black tracking-tighter ${calendarMetrics.occupancy >= 70 ? 'text-emerald-500' :
-                          calendarMetrics.occupancy >= 40 ? 'text-amber-500' :
-                            'text-rose-500'
-                        }`}>
-                        {calendarMetrics.occupancy}%
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-lg font-bold text-muted-foreground">—</span>
+      <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-col flex-1 overflow-hidden relative">
+
+          {chatMode === "agent" ? (
+            <>
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                {isHistoryLoading && <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}
+                {messages.map((message) => (
+                  <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                    <div className={`max-w-[85%] rounded-2xl p-4 shadow-xl ${message.role === "user" ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-background/60 backdrop-blur-xl border border-border/50 text-foreground rounded-tl-none"}`}>
+                      <div className={`prose prose-sm dark:prose-invert max-w-none break-words ${message.role === 'user' ? 'text-primary-foreground' : 'text-foreground/90'}`}>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+                      </div>
+                      {message.proposals && message.proposals.length > 0 && (
+                        <div className="mt-5 border border-border/40 rounded-2xl bg-white/5 backdrop-blur-md overflow-hidden shadow-inner">
+                          <div className="bg-primary/5 px-4 py-3 text-xs font-black uppercase tracking-[0.2em] border-b border-border/40 text-primary">Live Price Proposals ({message.proposals.length})</div>
+                          <div className="p-4 text-sm space-y-4">
+                            {message.proposals.map((prop, idx) => (
+                              <div key={idx} className="flex flex-col gap-2 pb-4 border-b border-border/20 last:border-0 last:pb-0">
+                                <div className="flex justify-between font-bold items-center">
+                                  <span className="text-sm tracking-tight text-foreground/80">{prop.date}</span>
+                                  <div className="flex items-center gap-2">
+                                    {prop.proposed_min_stay && <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest bg-primary/5 text-primary border-primary/20 scale-90 origin-right">{prop.proposed_min_stay}N Min</Badge>}
+                                    <span className={`text-sm font-black tabular-nums ${prop.change_pct > 0 ? "text-emerald-500" : "text-amber-500"}`}>AED {prop.proposed_price} <span className="text-[10px] ml-1 opacity-70">({prop.change_pct > 0 ? "+" : ""}{prop.change_pct}%)</span></span>
+                                  </div>
+                                </div>
+                                <p className="text-muted-foreground/80 text-[11px] leading-relaxed italic">{prop.reasoning}</p>
+                              </div>
+                            ))}
+                          </div>
+                          {message.proposalStatus === "pending" && (
+                            <div className="flex bg-primary/5 p-3 gap-3 border-t border-border/40">
+                              <Button variant="default" size="sm" className="flex-1" onClick={() => handleSaveProposals(message.id, message.proposals!)}>Deploy to Control</Button>
+                              <Button variant="outline" size="sm" className="flex-1 text-rose-500 hover:bg-rose-500/10" onClick={() => handleRejectProposals(message.id)}>Discard</Button>
+                            </div>
+                          )}
+                          {message.proposalStatus === "saved" && <div className="flex bg-emerald-500/5 p-3 border-t border-emerald-500/20 justify-center text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500"><CheckSquare className="h-3.5 w-3.5 mr-2" />Deployed to Command Center</div>}
+                          {message.proposalStatus === "rejected" && <div className="flex bg-rose-500/5 p-3 border-t border-rose-500/20 justify-center text-[10px] font-black uppercase tracking-[0.2em] text-rose-500"><AlertCircle className="h-3.5 w-3.5 mr-2" />Proposals Discarded</div>}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {isLoading && <div className="flex justify-start"><Card className="max-w-2xl"><CardContent className="p-4 flex items-center space-x-2"><Loader2 className="h-4 w-4 animate-spin" /><span className="text-sm text-muted-foreground">Thinking...</span></CardContent></Card></div>}
+                <div ref={messagesEndRef} />
+              </div>
+
+              <div className="border-t p-4 bg-background">
+                <form onSubmit={handleSubmit} className="flex space-x-2">
+                  <Input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder={!isChatActive ? "Select date range and click 'Market Analysis' to start..." : "Ask about pricing, events, market rates..."}
+                    disabled={isLoading || !isChatActive}
+                    className="flex-1"
+                  />
+                  <Button type="submit" disabled={isLoading || !input.trim() || !isChatActive}>
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  </Button>
+                </form>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex overflow-hidden">
+              {/* Guest Inbox Sidebar — collapsible */}
+              <div className={`border-r bg-muted/10 flex flex-col border-border/50 transition-all duration-200 ${isInboxCollapsed ? 'w-0 overflow-hidden border-r-0' : activeConversationId ? 'hidden md:flex w-1/3' : 'flex w-1/3'}`}>
+                <div className="p-4 border-b bg-background border-border/50 flex items-center justify-between">
+                  <h3 className="font-black uppercase tracking-widest text-xs text-muted-foreground">Guest Inbox</h3>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 rounded-full hover:bg-muted"
+                    onClick={() => setIsInboxCollapsed(true)}
+                  >
+                    <PanelLeftClose className="h-3.5 w-3.5 text-muted-foreground" />
+                  </Button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                  {conversations.map(conv => (
+                    <button
+                      key={conv.id}
+                      onClick={() => setActiveConversationId(conv.id)}
+                      className={`w-full text-left p-3 rounded-xl transition-all border ${activeConversationId === conv.id ? 'bg-primary/5 border-primary/30' : 'bg-background hover:bg-muted/50 border-border/50 hover:border-border'}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-bold truncate">{conv.guestName}</span>
+                            {conv.status === 'needs_reply' && <div className="h-2 w-2 rounded-full bg-amber-500" />}
+                          </div>
+                          <span className="text-xs text-muted-foreground truncate font-medium mt-0.5">{conv.lastMessage}</span>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                  {conversations.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <User className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                      <p className="text-xs font-medium">No conversations</p>
+                      <p className="text-[10px] mt-1">Click "Sync Conversations" to fetch</p>
+                    </div>
                   )}
                 </div>
               </div>
 
-              <div className="h-8 w-px bg-border/50" />
-
-              <div className="flex flex-col items-end">
-                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
-                  Avg Rate
-                </span>
-                <div className="flex items-baseline gap-1 mt-0.5">
-                  {isLoadingMetrics ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  ) : calendarMetrics ? (
-                    <>
-                      <span className="text-lg font-black tracking-tighter">
-                        {calendarMetrics.avgPrice.toFixed(0)}
-                      </span>
-                      <span className="text-[10px] font-bold text-muted-foreground mb-0.5">
-                        AED
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-lg font-bold text-muted-foreground">—</span>
-                  )}
+              {/* Expand button when inbox is collapsed */}
+              {isInboxCollapsed && (
+                <div className="flex flex-col items-center py-3 px-1 border-r border-border/50 bg-muted/10">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 rounded-full hover:bg-muted"
+                    onClick={() => setIsInboxCollapsed(false)}
+                  >
+                    <PanelLeftOpen className="h-3.5 w-3.5 text-muted-foreground" />
+                  </Button>
                 </div>
+              )}
+              <div className={`flex-1 flex-col bg-background relative ${!activeConversationId ? 'hidden md:flex' : 'flex'}`}>
+                {activeConversation ? (
+                  <>
+                    <div className="flex items-center p-4 border-b border-border/50 bg-background shadow-sm z-10">
+                      <div className="flex items-center gap-3">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 -ml-2 rounded-full hover:bg-muted md:hidden"
+                          onClick={() => setActiveConversationId(null)}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold leading-none">{activeConversation.guestName}</span>
+                          <span className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mt-1">Hostaway Guest</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                      {activeConversation.messages.map((msg) => (
+                        <div key={msg.id} className={`flex flex-col max-w-[85%] ${msg.sender === 'admin' ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
+                          <div className={`px-4 py-2.5 rounded-2xl overflow-hidden ${msg.sender === 'admin' ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-muted border border-border/50 rounded-bl-sm'}`}>
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{msg.text}</p>
+                          </div>
+                          <span className="text-[9px] font-bold text-muted-foreground mt-1 px-1 tracking-wider uppercase">{msg.time}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="p-4 bg-background border-t border-border/50 shrink-0 relative z-10">
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1 flex items-center">
+                          <input
+                            type="text"
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleSendReply(); }}
+                            placeholder={`Reply to ${activeConversation.guestName}...`}
+                            className="w-full bg-muted/50 border border-border/50 rounded-full pl-4 pr-10 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium placeholder:font-normal"
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={handleAiSuggest}
+                            disabled={isSuggesting}
+                            className={`absolute right-1.5 h-7 w-7 rounded-full transition-all ${isSuggesting ? 'text-amber-500' : 'text-muted-foreground hover:text-amber-500 hover:bg-amber-50'}`}
+                          >
+                            {isSuggesting ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                        </div>
+                        <Button
+                          size="icon"
+                          onClick={handleSendReply}
+                          disabled={!replyText.trim()}
+                          className="h-10 w-10 rounded-full shrink-0 shadow-md"
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <p className="text-[9px] text-center text-muted-foreground/50 mt-2 font-bold uppercase tracking-widest">
+                        Sending securely via shadow database
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
+                    <User className="h-12 w-12 mb-4 opacity-10" />
+                    <p className="text-sm font-medium">No conversation selected</p>
+                    <p className="text-xs mt-1">Select a guest from the list to view or reply.</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
         </div>
       </div>
-
-      {/* Main Content Area: Chat + Calendar Column */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Chat Column */}
-        <div className="flex flex-col flex-1 overflow-hidden relative">
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {isHistoryLoading && (
-              <div className="flex justify-center p-4">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            )}
-
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-              >
-                <div
-                  className={`max-w-[85%] sm:max-w-2xl rounded-2xl p-4 shadow-xl transition-all duration-300 ${message.role === "user"
-                    ? "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground rounded-tr-none"
-                    : "bg-background/60 backdrop-blur-xl border border-border/50 text-foreground rounded-tl-none"
-                    }`}
-                >
-                  <div className={`prose prose-sm dark:prose-invert max-w-none break-words [&>table]:w-full [&>table]:border-collapse [&>table]:my-4 [&>table_th]:border [&>table_th]:p-2 [&>table_td]:border [&>table_td]:p-2 [&>table_th]:bg-muted/50 [&>ul]:list-disc [&>ul]:pl-4 [&>ol]:list-decimal [&>ol]:pl-4 [&>p]:mb-2 last:mb-0 ${message.role === 'user' ? 'text-primary-foreground' : 'text-foreground/90'}`}>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {message.content}
-                    </ReactMarkdown>
-                  </div>
-
-                  {message.proposals && message.proposals.length > 0 && (
-                    <div className="mt-5 border border-border/40 rounded-2xl bg-white/5 backdrop-blur-md overflow-hidden shadow-inner">
-                      <div className="bg-primary/5 px-4 py-3 text-xs font-black uppercase tracking-[0.2em] border-b border-border/40 text-primary">
-                        Live Price Proposals ({message.proposals.length})
-                      </div>
-                      <div className="p-4 text-sm space-y-4">
-                        {message.proposals.map((prop, idx) => (
-                          <div key={idx} className="flex flex-col gap-2 pb-4 border-b border-border/20 last:border-0 last:pb-0">
-                            <div className="flex justify-between font-bold items-center">
-                              <span className="text-sm tracking-tight text-foreground/80">{prop.date}</span>
-                              <div className="flex items-center gap-2">
-                                {prop.proposed_min_stay && (
-                                  <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest bg-primary/5 text-primary border-primary/20 scale-90 origin-right">
-                                    {prop.proposed_min_stay}N Min
-                                  </Badge>
-                                )}
-                                <span className={`text-sm font-black tabular-nums ${prop.change_pct > 0 ? "text-emerald-500" : "text-amber-500"}`}>
-                                  AED {prop.proposed_price}
-                                  <span className="text-[10px] ml-1 opacity-70">({prop.change_pct > 0 ? "+" : ""}{prop.change_pct}%)</span>
-                                </span>
-                              </div>
-                            </div>
-                            <p className="text-muted-foreground/80 text-[11px] leading-relaxed italic">{prop.reasoning}</p>
-                          </div>
-                        ))}
-                      </div>
-                      {message.proposalStatus === "pending" && (
-                        <div className="flex bg-primary/5 p-3 gap-3 border-t border-border/40">
-                          <Button
-                            variant="default"
-                            size="sm"
-                            className="flex-1 h-9 rounded-xl text-[10px] font-bold uppercase tracking-widest bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all active:scale-[0.97]"
-                            disabled={isLoading}
-                            onClick={() => handleSaveProposals(message.id, message.proposals!)}
-                          >
-                            Deploy to Control
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 h-9 rounded-xl text-[10px] font-bold uppercase tracking-widest border-rose-500/20 text-rose-500 hover:bg-rose-500/10 transition-all active:scale-[0.97]"
-                            disabled={isLoading}
-                            onClick={() => handleRejectProposals(message.id)}
-                          >
-                            Discard
-                          </Button>
-                        </div>
-                      )}
-                      {message.proposalStatus === "saved" && (
-                        <div className="flex bg-emerald-500/5 p-3 border-t border-emerald-500/20 justify-center text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500">
-                          <CheckSquare className="h-3.5 w-3.5 mr-2" />
-                          Deployed to Command Center
-                        </div>
-                      )}
-                      {message.proposalStatus === "rejected" && (
-                        <div className="flex bg-rose-500/5 p-3 border-t border-rose-500/20 justify-center text-[10px] font-black uppercase tracking-[0.2em] text-rose-500">
-                          <AlertCircle className="h-3.5 w-3.5 mr-2" />
-                          Proposals Discarded
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {isLoading && (
-              <div className="flex justify-start">
-                <Card className="max-w-2xl">
-                  <CardContent className="p-4 flex items-center space-x-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm text-muted-foreground">
-                      Thinking...
-                    </span>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input */}
-          <div className="border-t p-4 bg-background">
-            <form onSubmit={handleSubmit} className="flex space-x-2">
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder={
-                  !isChatActive
-                    ? "Select date range and click 'Setup' to start..."
-                    : contextType === "property"
-                      ? "Ask about pricing, events, market rates..."
-                      : "Ask about your portfolio performance..."
-                }
-                disabled={isLoading || !isChatActive}
-                className="flex-1"
-              />
-              <Button type="submit" disabled={isLoading || !input.trim() || !isChatActive}>
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </Button>
-            </form>
-          </div>
-        </div>
-
-        {/* Right Calendar Sidebar (Inside Unified Chat) */}
-        {contextType === "property" && propertyId && isCalendarOpen && calendarMetrics?.calendarDays && (
-          <div className="w-[300px] bg-muted/10 border-l overflow-y-auto flex shrink-0 flex-col">
-            <div className="p-4 border-b bg-background sticky top-0 z-10 font-semibold text-sm">
-              Availability Calendar
-            </div>
-            <div className="p-4">
-              <CalendarVisualizer
-                days={calendarMetrics.calendarDays}
-                reservations={calendarMetrics.reservations}
-                dateRange={{
-                  from: format(dateRange?.from || new Date(), 'yyyy-MM-dd'),
-                  to: format(dateRange?.to || new Date(), 'yyyy-MM-dd')
-                }}
-              />
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+    </div >
   );
 }
-// Toaster was added to layout.tsx

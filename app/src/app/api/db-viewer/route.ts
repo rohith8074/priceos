@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { listings, inventoryMaster, reservations, marketEvents, chatMessages, userSettings } from "@/lib/db/schema";
+import { listings, inventoryMaster, reservations, marketEvents, chatMessages, userSettings, guestSummaries, mockHostawayReplies, hostawayConversations } from "@/lib/db/schema";
 import { sql, desc, count } from "drizzle-orm";
 
 export async function GET() {
@@ -12,6 +12,9 @@ export async function GET() {
         const [marketEventsCount] = await db.select({ count: count() }).from(marketEvents);
         const [chatMessagesCount] = await db.select({ count: count() }).from(chatMessages);
         const [userSettingsCount] = await db.select({ count: count() }).from(userSettings);
+        const [guestSummariesCount] = await db.select({ count: count() }).from(guestSummaries);
+        const [mockRepliesCount] = await db.select({ count: count() }).from(mockHostawayReplies);
+        const [hwConversationsCount] = await db.select({ count: count() }).from(hostawayConversations);
 
         // All data
         const listingsData = await db.select().from(listings);
@@ -34,6 +37,15 @@ export async function GET() {
             .orderBy(desc(chatMessages.createdAt));
 
         const userSettingsData = await db.select().from(userSettings);
+
+        const guestSummariesData = await db.select().from(guestSummaries)
+            .orderBy(desc(guestSummaries.createdAt));
+
+        const mockRepliesData = await db.select().from(mockHostawayReplies)
+            .orderBy(desc(mockHostawayReplies.createdAt));
+
+        const hwConversationsData = await db.select().from(hostawayConversations)
+            .orderBy(desc(hostawayConversations.syncedAt));
 
         // Date ranges
         const [calendarRange] = await db
@@ -58,6 +70,9 @@ export async function GET() {
                 market_events: marketEventsCount.count,
                 chat_messages: chatMessagesCount.count,
                 user_settings: userSettingsCount.count,
+                guest_summaries: guestSummariesCount.count,
+                mock_hostaway_replies: mockRepliesCount.count,
+                hostaway_conversations: hwConversationsCount.count,
             },
             date_ranges: {
                 calendar: calendarRange,
@@ -70,6 +85,9 @@ export async function GET() {
                 market_events: marketEventsData,
                 chat_messages: chatMessagesData,
                 user_settings: userSettingsData,
+                guest_summaries: guestSummariesData,
+                mock_hostaway_replies: mockRepliesData,
+                hostaway_conversations: hwConversationsData,
             },
         });
     } catch (error) {
