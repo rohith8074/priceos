@@ -4,9 +4,9 @@ import { marketEvents, benchmarkData } from "@/lib/db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
 
 const LYZR_API_URL = "https://agent-prod.studio.lyzr.ai/v3/inference/chat/";
-const LYZR_API_KEY = process.env.LYZR_API_KEY || "";
-const MARKETING_AGENT_ID = process.env.Marketing_Agent_ID || "";
-const BENCHMARK_AGENT_ID = process.env.LYZR_Competitor_Benchmark_Agent_ID || "";
+const LYZR_API_KEY = process.env.LYZR_API_KEY!;
+const MARKETING_AGENT_ID = process.env.Marketing_Agent_ID!;
+const BENCHMARK_AGENT_ID = process.env.LYZR_Competitor_Benchmark_Agent_ID!;
 
 export async function POST(req: NextRequest) {
     try {

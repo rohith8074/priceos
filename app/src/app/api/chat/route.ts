@@ -15,10 +15,8 @@ import { and, eq } from "drizzle-orm";
  *   Body:    { user_id, agent_id, session_id, message }
  */
 
-const LYZR_API_URL =
-  process.env.LYZR_API_URL ||
-  "https://agent-prod.studio.lyzr.ai/v3/inference/chat/";
-const LYZR_API_KEY = process.env.LYZR_API_KEY || "";
+const LYZR_API_URL = process.env.LYZR_API_URL!;
+const LYZR_API_KEY = process.env.LYZR_API_KEY!;
 const AGENT_ID = process.env.AGENT_ID || MANAGER_AGENT_ID;
 
 interface ChatContext {

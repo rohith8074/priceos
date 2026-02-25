@@ -47,7 +47,7 @@ export class EventIntelligenceAgent {
         )
       );
 
-    return cachedEvents.map((event) => ({
+    return cachedEvents.map((event: any) => ({
       name: event.title,
       startDate: event.startDate,
       endDate: event.endDate,

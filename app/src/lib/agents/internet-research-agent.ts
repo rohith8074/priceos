@@ -93,7 +93,7 @@ export class InternetResearchAgent {
     private baseUrl: string = "https://api.perplexity.ai/chat/completions";
 
     constructor(apiKey?: string) {
-        this.apiKey = apiKey || process.env.PERPLEXITY_API_KEY || "";
+        this.apiKey = apiKey || process.env.PERPLEXITY_API_KEY!;
     }
 
     /**
