@@ -58,27 +58,29 @@ export function DateRangePicker({
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                        initialFocus
-                        mode="range"
-                        defaultMonth={today}
-                        selected={date}
-                        onSelect={setDate}
-                        numberOfMonths={2}
-                        fromDate={today}
-                        toDate={maxDate}
-                        disabled={[
-                            { before: today },
-                            { after: maxDate },
-                        ]}
-                    />
-                    <div className="px-3 pb-3 pt-0 text-center">
-                        <p className="text-[10px] text-muted-foreground font-medium">
-                            Selectable range: today to{" "}
-                            <span className="text-amber-500 font-bold">
+                    <div className="flex flex-col sm:flex-row divide-x divide-border">
+                        <Calendar
+                            initialFocus
+                            mode="range"
+                            defaultMonth={today}
+                            selected={date}
+                            onSelect={setDate}
+                            numberOfMonths={2}
+                            fromDate={today}
+                            toDate={maxDate}
+                            disabled={[
+                                { before: today },
+                                { after: maxDate },
+                            ]}
+                        />
+                    </div>
+                    <div className="px-3 pb-3 pt-2 text-center border-t border-border bg-muted/20">
+                        <p className="text-[10px] text-muted-foreground font-semibold">
+                            Selectable: Today to{" "}
+                            <span className="text-amber-600 font-bold">
                                 {format(maxDate, "LLL dd, y")}
                             </span>{" "}
-                            (2 weeks max)
+                            (Next 2 weeks only)
                         </p>
                     </div>
                 </PopoverContent>
