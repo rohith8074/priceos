@@ -1,6 +1,12 @@
 # Archive
 /archive
 
+# Python
+venv/
+__pycache__/
+*.pyc
+backend/
+
 # OS
 .DS_Store
 
