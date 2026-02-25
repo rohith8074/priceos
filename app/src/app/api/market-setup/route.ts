@@ -116,6 +116,8 @@ Search for 10-15 comparable properties on Airbnb, Booking.com, and Vrbo in the e
                     description: ev.description || "",
                     source: ev.source || null,
                     suggestedPremium: ev.suggested_premium_pct ? String(ev.suggested_premium_pct) : null,
+                    location: ev.location || null,
+                    metadata: ev.metadata || {},
                     listingId,
                 });
             });
@@ -141,6 +143,8 @@ Search for 10-15 comparable properties on Airbnb, Booking.com, and Vrbo in the e
                     description: hol.impact || "",
                     source: hol.source || null,
                     suggestedPremium: hol.premium_pct ? String(hol.premium_pct) : null,
+                    location: hol.location || "Dubai",
+                    metadata: hol.metadata || {},
                     listingId,
                 });
             });
@@ -241,6 +245,8 @@ Search for 10-15 comparable properties on Airbnb, Booking.com, and Vrbo in the e
                 positioningVerdict: r.positioningVerdict ?? null,
                 positioningPercentile: r.positioningPercentile ?? null,
                 demandTrend: r.demandTrend ?? null,
+                location: r.location ?? null,
+                metadata: r.metadata ?? {},
             }));
             await db.insert(marketEvents).values(finalRecords);
         }

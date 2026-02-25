@@ -108,6 +108,8 @@ export const marketEvents = pgTable("market_events", {
   suggestedPremium: numeric("suggested_premium", { precision: 5, scale: 2 }),
   source: text("source"),
   description: text("description"),
+  location: text("location"),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>().default({}),
 
   // ── competitor_intel fields ──
   compSampleSize: integer("comp_sample_size"),
