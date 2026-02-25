@@ -152,15 +152,6 @@ function LoginContent() {
                         and
                         <Link href="#" className="text-amber-500/50 hover:text-amber-500 transition-colors mx-1 font-bold">Privacy Policy</Link>.
                     </p>
-
-                    <div className="flex justify-center">
-                        <Button variant="ghost" className="text-white/40 hover:text-white hover:bg-white/5" asChild>
-                            <Link href="/">
-                                <ArrowLeft className="h-4 w-4 mr-2" />
-                                Back to Landing Page
-                            </Link>
-                        </Button>
-                    </div>
                 </div>
             </div>
 

@@ -35,9 +35,19 @@ export default function WaitlistPage() {
         try {
             await authClient.signOut();
         } catch { }
-        document.cookie = 'priceos-session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-        router.push("/login");
-        router.refresh();
+        // Clear all auth-related cookies
+        const cookiesToClear = [
+            'priceos-session',
+            '__Secure-neon-auth.session_token',
+            '__Secure-neon-auth.local.session_data',
+            'neon-auth.session_token',
+            'better-auth.session_token',
+        ];
+        cookiesToClear.forEach(name => {
+            document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+            document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; secure; samesite=lax`;
+        });
+        window.location.href = '/login';
     };
 
     return (

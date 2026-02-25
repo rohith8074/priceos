@@ -18,6 +18,7 @@ export async function POST(req: Request) {
             userId: cleanUserId,
             fullName,
             email,
+            isApproved: true, // Manually added users are auto-approved
             preferences: prefs
         }).onConflictDoNothing().returning();
 
@@ -40,6 +41,7 @@ export async function GET() {
             userId: u.userId,
             fullName: u.fullName,
             email: u.email,
+            isApproved: u.isApproved,
             role: (u.preferences as any)?.role || 'user'
         }));
         return NextResponse.json(users);
@@ -64,7 +66,7 @@ export async function DELETE(req: Request) {
 export async function PUT(req: Request) {
     try {
         const body = await req.json();
-        const { userId, role, fullName, email } = body;
+        const { userId, role, fullName, email, isApproved } = body;
 
         if (!userId) {
             return NextResponse.json({ error: "Missing userId" }, { status: 400 });
@@ -84,6 +86,7 @@ export async function PUT(req: Request) {
         const updateData: any = { preferences: newPrefs };
         if (fullName !== undefined) updateData.fullName = fullName;
         if (email !== undefined) updateData.email = email;
+        if (isApproved !== undefined) updateData.isApproved = isApproved;
 
         await db.update(userSettings)
             .set(updateData)
