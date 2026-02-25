@@ -176,7 +176,7 @@ export default function UsersPage() {
                 <Card className="border-amber-500/20 bg-amber-500/[0.02]">
                     <CardHeader>
                         <CardTitle className="text-lg font-bold">Add New User</CardTitle>
-                        <CardDescription>Grant access to new team members.</CardDescription>
+                        <CardDescription>Authorize a new user. They will be added directly to the Neon Database with immediate access.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleAddUser} className="grid grid-cols-1 md:grid-cols-3 gap-4">
