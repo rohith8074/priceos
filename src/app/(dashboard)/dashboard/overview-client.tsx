@@ -66,7 +66,7 @@ export function OverviewClient({
 
   const handleSync = async () => {
     setIsSyncing(true);
-    toast.info("Triggering Hostaway sync in the background...");
+    const syncToast = toast.loading("Syncing Hostaway data... This may take a few minutes.");
     try {
       const response = await fetch("/api/sync/trigger", {
         method: "POST",
@@ -74,10 +74,34 @@ export function OverviewClient({
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }
-      toast.success("Hostaway sync queued! Data will stream in the background.");
-      setTimeout(() => setIsSyncing(false), 2000); // just unspin the button after a couple seconds
+      const data = await response.json();
+      // Poll for sync completion
+      const pollSync = async () => {
+        try {
+          const statusRes = await fetch("/api/sync/status");
+          if (statusRes.ok) {
+            const statusData = await statusRes.json();
+            if (statusData.status === 'complete') {
+              toast.success("Hostaway data synced successfully! Refreshing...", { id: syncToast });
+              setIsSyncing(false);
+              setTimeout(() => window.location.reload(), 1500);
+              return;
+            } else if (statusData.status === 'error') {
+              toast.error("Sync encountered errors. Check logs.", { id: syncToast });
+              setIsSyncing(false);
+              return;
+            }
+          }
+          // Still syncing, poll again
+          setTimeout(pollSync, 5000);
+        } catch {
+          setTimeout(pollSync, 5000);
+        }
+      };
+      // Start polling after 3 seconds
+      setTimeout(pollSync, 3000);
     } catch (e: any) {
-      toast.error(`Sync failed: ${e.message}`);
+      toast.error(`Sync failed: ${e.message}`, { id: syncToast });
       setIsSyncing(false);
     }
   };

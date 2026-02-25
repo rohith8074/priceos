@@ -245,10 +245,6 @@ export default function UsersPage() {
                                                     <Mail className="h-3 w-3" />
                                                     {user.email || 'No email'}
                                                 </div>
-                                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                                    <Shield className="h-3 w-3" />
-                                                    ID: {user.userId}
-                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -334,10 +330,6 @@ export default function UsersPage() {
                                                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                                         <Mail className="h-3 w-3" />
                                                         {user.email}
-                                                    </div>
-                                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                                        <Shield className="h-3 w-3" />
-                                                        ID: {user.userId}
                                                     </div>
                                                 </div>
                                             </>

@@ -38,7 +38,7 @@ export function DateRangePicker({
                         id="date"
                         variant={"outline"}
                         className={cn(
-                            "w-[260px] justify-start text-left font-normal border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500/40 transition-all",
+                            "w-[280px] justify-start text-left font-normal border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500/40 transition-all",
                             !date && "text-muted-foreground"
                         )}
                     >
@@ -61,12 +61,16 @@ export function DateRangePicker({
                     <Calendar
                         initialFocus
                         mode="range"
-                        defaultMonth={date?.from ?? today}
+                        defaultMonth={today}
                         selected={date}
                         onSelect={setDate}
-                        numberOfMonths={1}
+                        numberOfMonths={2}
                         fromDate={today}
                         toDate={maxDate}
+                        disabled={[
+                            { before: today },
+                            { after: maxDate },
+                        ]}
                     />
                     <div className="px-3 pb-3 pt-0 text-center">
                         <p className="text-[10px] text-muted-foreground font-medium">
@@ -82,3 +86,4 @@ export function DateRangePicker({
         </div>
     );
 }
+

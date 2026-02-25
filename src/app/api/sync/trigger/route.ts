@@ -5,7 +5,15 @@ import { listings, reservations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { syncListingsToDb, syncReservationsToDb, syncCalendarToDb } from "@/lib/sync-server-utils";
 
+// Global sync status tracker
+declare global {
+    var syncStatus: { status: 'idle' | 'syncing' | 'complete' | 'error'; message: string; startedAt?: number };
+}
+
+globalThis.syncStatus = globalThis.syncStatus || { status: 'idle', message: '' };
+
 async function performBackgroundSync() {
+    globalThis.syncStatus = { status: 'syncing', message: 'Starting sync...', startedAt: Date.now() };
     try {
         const client = new HostawayClient();
         console.log("------------------------------------------");
@@ -13,6 +21,7 @@ async function performBackgroundSync() {
         console.log("------------------------------------------");
 
         // 1. Fetch & Sync Listings
+        globalThis.syncStatus.message = 'Syncing listings...';
         const hListings = await client.listListings();
         const existingListings = await db.select({ id: listings.id }).from(listings);
         const existingListingIds = new Set(existingListings.map(l => l.id));
@@ -33,6 +42,7 @@ async function performBackgroundSync() {
         console.log(`✅ Step 1 Complete: ${dbListings.length} listings in DB (${newListingCount} new).`);
 
         // 2. Fetch & Sync Calendars (for the next 90 days)
+        globalThis.syncStatus.message = 'Syncing calendar data...';
         console.log("📥 Step 2: Fetching Calendar data (90-day window)...");
         const startDate = new Date();
         const endDate = new Date();
@@ -46,6 +56,7 @@ async function performBackgroundSync() {
             const internalId = hostawayToInternalIdMap.get(hl.id);
             if (internalId) {
                 try {
+                    globalThis.syncStatus.message = `Syncing calendar ${i + 1}/${hListings.length}...`;
                     console.log(`   [${i + 1}/${hListings.length}] Syncing calendar for ${hl.name} (${hl.id})...`);
                     await syncCalendarToDb(client, [internalId], startDate, endDate, hl.id);
                     calendarsSynced++;
@@ -59,6 +70,7 @@ async function performBackgroundSync() {
         console.log(`✅ Step 2 Complete: Synced ${calendarsSynced} property calendars (${calendarErrors} failed).`);
 
         // 3. Fetch & Sync Reservations
+        globalThis.syncStatus.message = 'Syncing reservations...';
         console.log("📥 Step 3: Fetching Reservations (Limit: 1000)...");
         const hReservations = await client.getReservations({ limit: 1000 } as any);
         console.log(`📥 Fetched ${hReservations.length} reservations from Hostaway.`);
@@ -85,6 +97,7 @@ async function performBackgroundSync() {
         console.log(`✅ Step 3 Complete: ${finalDbReservations.length} reservations in DB (${newReservationCount} new).`);
 
         // 4. Fetch & Sync Conversations
+        globalThis.syncStatus.message = 'Syncing conversations...';
         console.log("📥 Step 4: Fetching Conversations...");
         const { syncConversationsToDb } = await import("@/lib/sync-server-utils");
         const convStats = await syncConversationsToDb(hostawayToInternalIdMap);
@@ -94,21 +107,33 @@ async function performBackgroundSync() {
         console.log("🎉 Hostaway Sync Finished Successfully.");
         console.log("------------------------------------------");
 
+        globalThis.syncStatus = { status: 'complete', message: 'Sync completed successfully!' };
+
     } catch (err: any) {
         console.error("❌ Critical Sync Error in Background Job:", err);
+        globalThis.syncStatus = { status: 'error', message: err.message || 'Unknown sync error' };
     }
 }
 
 export async function POST(req: Request) {
-    // Fire the heavy syncing function without awaiting it so it processes totally in the background
+    // Prevent duplicate syncs
+    if (globalThis.syncStatus?.status === 'syncing') {
+        return NextResponse.json({
+            success: false,
+            status: "already_syncing",
+            message: "A sync is already in progress."
+        }, { status: 409 });
+    }
+
+    // Fire the heavy syncing function without awaiting it
     performBackgroundSync()
         .then(() => console.log("Background sync promise resolved."))
         .catch((err) => console.error("Unhandled background sync error:", err));
 
-    // Return immediately to the client to unblock UI
+    // Return immediately to the client
     return NextResponse.json({
         success: true,
-        status: "queued",
-        message: "Hostaway synchronization queued directly in the background! Please keep the server running."
+        status: "syncing",
+        message: "Hostaway synchronization started."
     }, { status: 202 });
 }

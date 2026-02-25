@@ -14,12 +14,15 @@ export function InactivityMonitor() {
         let timeoutId: NodeJS.Timeout;
 
         const handleLogout = async () => {
-            try {
-                await authClient.signOut();
-            } catch { }
-            // Clear legacy cookie too
-            document.cookie = 'priceos-session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-            router.push('/login');
+            const cookiesToClear = ['priceos-session', '__Secure-neon-auth.session_token', '__Secure-neon-auth.local.session_data', 'neon-auth.session_token', 'better-auth.session_token'];
+            cookiesToClear.forEach(name => {
+                document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+                document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; secure; samesite=lax`;
+            });
+            const signOutPromise = authClient.signOut().catch(() => { });
+            const timeoutPromise = new Promise(resolve => setTimeout(resolve, 2000));
+            await Promise.race([signOutPromise, timeoutPromise]);
+            window.location.href = '/login';
         };
 
         const resetTimer = () => {
