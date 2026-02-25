@@ -32,11 +32,8 @@ export default function WaitlistPage() {
     }, [router]);
 
     const handleSignOut = async () => {
-        try {
-            const signOutPromise = authClient.signOut();
-            const timeoutPromise = new Promise(resolve => setTimeout(resolve, 2000));
-            await Promise.race([signOutPromise, timeoutPromise]);
-        } catch { }
+        // VERSION: 2.1 - Sign out Fix
+        // 1. Clear all auth cookies immediately and synchronously
         const cookiesToClear = [
             'priceos-session',
             '__Secure-neon-auth.session_token',
@@ -49,6 +46,11 @@ export default function WaitlistPage() {
             document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; secure; samesite=lax`;
             document.cookie = `${name}=; path=/; domain=${window.location.hostname}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
         });
+
+        // 2. Fire and forget the API sign out
+        authClient.signOut().catch(() => { });
+
+        // 3. Instant hard redirect
         window.location.href = '/login';
     };
 
