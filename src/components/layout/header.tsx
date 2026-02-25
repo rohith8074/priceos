@@ -34,6 +34,11 @@ export function Header() {
   }, []);
 
   const handleSignOut = async () => {
+    try {
+      const signOutPromise = authClient.signOut();
+      const timeoutPromise = new Promise(resolve => setTimeout(resolve, 2000));
+      await Promise.race([signOutPromise, timeoutPromise]);
+    } catch { }
     const cookiesToClear = [
       'priceos-session',
       '__Secure-neon-auth.session_token',
@@ -46,9 +51,6 @@ export function Header() {
       document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; secure; samesite=lax`;
       document.cookie = `${name}=; path=/; domain=${window.location.hostname}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
     });
-    const signOutPromise = authClient.signOut().catch(() => { });
-    const timeoutPromise = new Promise(resolve => setTimeout(resolve, 2000));
-    await Promise.race([signOutPromise, timeoutPromise]);
     window.location.href = '/login';
   };
 

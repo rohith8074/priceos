@@ -52,7 +52,15 @@ export function HeaderNav() {
   }, []);
 
   const handleSignOut = async () => {
-    // Clear cookies immediately before any async call
+    // 1. Try to sign out via API first (needs session cookie)
+    //    Race against 2s timeout so we always proceed
+    try {
+      const signOutPromise = authClient.signOut();
+      const timeoutPromise = new Promise(resolve => setTimeout(resolve, 2000));
+      await Promise.race([signOutPromise, timeoutPromise]);
+    } catch { }
+
+    // 2. Clear all auth cookies AFTER the API call
     const cookiesToClear = [
       'priceos-session',
       '__Secure-neon-auth.session_token',
@@ -66,11 +74,7 @@ export function HeaderNav() {
       document.cookie = `${name}=; path=/; domain=${window.location.hostname}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
     });
 
-    // Race: try to sign out via API, but redirect after 2s max regardless
-    const signOutPromise = authClient.signOut().catch(() => { });
-    const timeoutPromise = new Promise(resolve => setTimeout(resolve, 2000));
-    await Promise.race([signOutPromise, timeoutPromise]);
-
+    // 3. Hard redirect to login
     window.location.href = '/login';
   };
 
