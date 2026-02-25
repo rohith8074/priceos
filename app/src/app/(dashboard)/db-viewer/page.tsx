@@ -14,6 +14,7 @@ interface TableData {
         guest_summaries: number;
         mock_hostaway_replies: number;
         hostaway_conversations: number;
+        benchmark_data: number;
     };
     date_ranges: {
         calendar: { min: string; max: string };
@@ -29,10 +30,11 @@ interface TableData {
         guest_summaries: Record<string, unknown>[];
         mock_hostaway_replies: Record<string, unknown>[];
         hostaway_conversations: Record<string, unknown>[];
+        benchmark_data: Record<string, unknown>[];
     };
 }
 
-type TableName = "listings" | "inventory_master" | "reservations" | "market_events" | "chat_messages" | "user_settings" | "guest_summaries" | "mock_hostaway_replies" | "hostaway_conversations";
+type TableName = "listings" | "inventory_master" | "reservations" | "market_events" | "chat_messages" | "user_settings" | "guest_summaries" | "mock_hostaway_replies" | "hostaway_conversations" | "benchmark_data";
 
 export default function DbViewerPage() {
     const [data, setData] = useState<TableData | null>(null);
@@ -46,12 +48,13 @@ export default function DbViewerPage() {
         listings: "id (serial), hostawayId (varchar), title (varchar), address (varchar), status (varchar), beds (integer), baths (integer), maxGuests (integer), platformLinks (jsonb), defaultPrice (integer), configuration (jsonb), timezone (varchar), createdAt (timestamp), updatedAt (timestamp)",
         inventory_master: "id (serial), date (date), listingId (integer) FK, status (varchar), price (integer), isAvailable (boolean), minimumStay (integer), maximumStay (integer), createdAt (timestamp), updatedAt (timestamp)",
         reservations: "id (serial), hostawayId (varchar), listingMapId (varchar), status (varchar), checkIn (date), checkOut (date), guestName (varchar), totalPaid (numeric), source (varchar), numberOfGuests (integer), notes (text), isManual (boolean), createdAt (timestamp), updatedAt (timestamp)",
-        market_events: "id (serial), title (varchar), dateFrom (date), dateTo (date), impactLevel (varchar), category (varchar), location (varchar), description (text), expectedDemandIncrease (integer), estimatedPriceMultiplier (numeric), source (varchar), active (boolean), radiusMiles (integer), metadata (jsonb), scope (varchar), createdAt (timestamp), updatedAt (timestamp)",
+        market_events: "id (serial) PK, listingId (integer) FK → listings [null=portfolio], title (text), startDate (date), endDate (date), eventType (text: 'event'|'holiday'|'competitor_intel'|'positioning'|'demand_outlook'|'market_summary') — EVENT+HOLIDAY: expectedImpact (text: high|medium|low), confidence (integer 0-100), suggestedPremium (numeric 5,2), source (text), description (text) — COMPETITOR_INTEL: compSampleSize (integer), compMinRate (numeric 10,2), compMaxRate (numeric 10,2), compMedianRate (numeric 10,2) — POSITIONING: positioningVerdict (text: UNDERPRICED|FAIR|SLIGHTLY_ABOVE|OVERPRICED), positioningPercentile (integer 0-100) — DEMAND_OUTLOOK: demandTrend (text: strong|moderate|weak) — createdAt (timestamp) [19 columns total]",
         chat_messages: "id (serial), userId (text), sessionId (text), role (text), content (text), listingId (integer) FK, structured (jsonb), createdAt (timestamp)",
         user_settings: "id (serial), userId (text), fullName (text), email (text), lyzrApiKey (text), hostawayApiKey (text), preferences (jsonb), createdAt (timestamp), updatedAt (timestamp)",
         guest_summaries: "id (serial) PK, listingId (integer) FK, dateFrom (date), dateTo (date), sentiment (text), themes (jsonb), actionItems (jsonb), bulletPoints (jsonb), totalConversations (integer), needsReplyCount (integer), createdAt (timestamp), updatedAt (timestamp)",
         mock_hostaway_replies: "id (serial) PK, conversationId (text), text (text), createdAt (timestamp)",
-        hostaway_conversations: "id (serial) PK, listingId (integer) FK, hostawayConversationId (text), guestName (text), guestEmail (text), reservationId (text), messages (jsonb), dateFrom (date), dateTo (date), syncedAt (timestamp), createdAt (timestamp)"
+        hostaway_conversations: "id (serial) PK, listingId (integer) FK, hostawayConversationId (text), guestName (text), guestEmail (text), reservationId (text), messages (jsonb), dateFrom (date), dateTo (date), syncedAt (timestamp), createdAt (timestamp)",
+        benchmark_data: "id (serial) PK, listingId (integer) FK → listings, dateFrom (date), dateTo (date) — DISTRIBUTION: p25Rate (numeric 10,2), p50Rate (numeric 10,2) [PRIMARY ANCHOR], p75Rate (numeric 10,2), p90Rate (numeric 10,2), avgWeekday (numeric 10,2), avgWeekend (numeric 10,2) — VERDICT: yourPrice (numeric 10,2), percentile (integer 0-100), verdict (text: UNDERPRICED|FAIR|SLIGHTLY_ABOVE|OVERPRICED) — TREND: rateTrend (text: rising|stable|falling), trendPct (numeric 5,2) — RECOMMENDED: recommendedWeekday (numeric 10,2), recommendedWeekend (numeric 10,2), recommendedEvent (numeric 10,2), reasoning (text) — COMPS: comps (jsonb[] — array of {name,source,sourceUrl,rating,reviews,avgRate,weekdayRate,weekendRate,minRate,maxRate}) — createdAt (timestamp) [20 columns | 1 row per listing+dateRange | ⚡ aedGap = yourPrice−p50Rate in JS | ⚡ sampleCount = comps.length]"
     };
 
     const TableCellContent = ({ content }: { content: string }) => {
@@ -119,10 +122,75 @@ export default function DbViewerPage() {
         { key: "guest_summaries", label: "Guest Summaries", color: "#6caddf" },
         { key: "mock_hostaway_replies", label: "Mock Replies", color: "#b8b800" },
         { key: "hostaway_conversations", label: "Conversations", color: "#00cec9" },
+        { key: "benchmark_data", label: "Benchmark Data", color: "#f39c12" },
     ];
 
+    const renderSchema = (tableName: TableName) => (
+        <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
+            <h3 style={{ color: tables.find((t) => t.key === tableName)?.color, marginBottom: "10px" }}>Table Schema</h3>
+            <div style={{ backgroundColor: "hsl(var(--background))", padding: "16px", borderRadius: "8px", border: `1px solid hsl(var(--border))`, fontFamily: "monospace", fontSize: "0.9rem", color: "hsl(var(--foreground))" }}>
+                {schemas[tableName].split(', ').map((col, idx) => (
+                    <div key={idx} style={{ padding: "4px 0", borderBottom: idx !== schemas[tableName].split(', ').length - 1 ? "1px solid hsl(var(--border))" : "none" }}>
+                        {col}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+
     const renderTable = (rows: Record<string, unknown>[]) => {
-        if (!rows || !rows.length) return <p style={{ color: "hsl(var(--muted-foreground))", padding: "20px" }}>No data found</p>;
+        if (!rows || !rows.length) {
+            // Parse column names from the schema string (format: "colName (type), colName (type), ...")
+            const cols = schemas[activeTable]
+                .split(', ')
+                .map(c => c.split(' ')[0])
+                .filter(Boolean);
+            const tableColor = tables.find((t) => t.key === activeTable)?.color ?? "#8b90a5";
+            return (
+                <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
+                        <thead>
+                            <tr>
+                                {cols.map((col) => (
+                                    <th
+                                        key={col}
+                                        style={{
+                                            backgroundColor: "hsl(var(--card))",
+                                            color: tableColor,
+                                            padding: "8px 12px",
+                                            border: "1px solid hsl(var(--border))",
+                                            textAlign: "left",
+                                            whiteSpace: "nowrap",
+                                            fontWeight: 600,
+                                            fontFamily: "monospace",
+                                        }}
+                                    >
+                                        {col}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td
+                                    colSpan={cols.length}
+                                    style={{
+                                        padding: "32px 20px",
+                                        textAlign: "center",
+                                        color: "hsl(var(--muted-foreground))",
+                                        border: "1px solid hsl(var(--border))",
+                                        fontSize: "0.85rem",
+                                        fontStyle: "italic",
+                                    }}
+                                >
+                                    📭 This table is empty
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            );
+        }
 
         const filteredRows = rows.filter(row => {
             if (!filterText) return true;
@@ -215,7 +283,7 @@ export default function DbViewerPage() {
                     🗄️ Database Viewer
                 </h1>
                 <p style={{ color: "hsl(var(--muted-foreground))", marginBottom: "24px" }}>
-                    Inspect all 6 tables — READ-ONLY snapshot (all rows)
+                    Inspect all 10 tables — READ-ONLY snapshot (all rows)
                 </p>
 
                 {/* Fetch Button */}
@@ -429,16 +497,7 @@ export default function DbViewerPage() {
                             {viewMode === "data" ? (
                                 renderTable(data.data[activeTable])
                             ) : (
-                                <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
-                                    <h3 style={{ color: tables.find((t) => t.key === activeTable)?.color, marginBottom: "10px" }}>Table Schema</h3>
-                                    <div style={{ backgroundColor: "hsl(var(--background))", padding: "16px", borderRadius: "8px", border: `1px solid hsl(var(--border))`, fontFamily: "monospace", fontSize: "0.9rem", color: "hsl(var(--foreground))" }}>
-                                        {schemas[activeTable].split(', ').map((col, idx) => (
-                                            <div key={idx} style={{ padding: "4px 0", borderBottom: idx !== schemas[activeTable].split(', ').length - 1 ? "1px solid hsl(var(--border))" : "none" }}>
-                                                {col}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
+                                renderSchema(activeTable)
                             )}
                         </div>
                     </>

@@ -66,7 +66,7 @@ export function OverviewClient({
 
   const handleSync = async () => {
     setIsSyncing(true);
-    toast.info("Syncing Hostaway data... (this may take up to 30 seconds)");
+    toast.info("Triggering Hostaway sync in the background...");
     try {
       const response = await fetch("/api/sync/trigger", {
         method: "POST",
@@ -74,10 +74,8 @@ export function OverviewClient({
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }
-      toast.success("Hostaway synchronization complete! Refreshing page...");
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      toast.success("Hostaway sync queued! Data will stream in the background.");
+      setTimeout(() => setIsSyncing(false), 2000); // just unspin the button after a couple seconds
     } catch (e: any) {
       toast.error(`Sync failed: ${e.message}`);
       setIsSyncing(false);

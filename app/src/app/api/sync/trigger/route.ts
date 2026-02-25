@@ -5,11 +5,11 @@ import { listings, reservations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { syncListingsToDb, syncReservationsToDb, syncCalendarToDb } from "@/lib/sync-server-utils";
 
-export async function POST(req: Request) {
+async function performBackgroundSync() {
     try {
         const client = new HostawayClient();
         console.log("------------------------------------------");
-        console.log("🚀 Starting Hostaway Synchronization...");
+        console.log("🚀 Starting Hostaway Synchronization (BACKGROUND)...");
         console.log("------------------------------------------");
 
         // 1. Fetch & Sync Listings
@@ -25,7 +25,6 @@ export async function POST(req: Request) {
         const dbListings = await db.select({ id: listings.id, hostawayId: listings.hostawayId }).from(listings);
         const hostawayToInternalIdMap = new Map(dbListings.map(l => [Number(l.hostawayId), l.id]));
 
-        // Calculate newly added listings
         let newListingCount = 0;
         dbListings.forEach(l => {
             if (!existingListingIds.has(l.id)) newListingCount++;
@@ -42,7 +41,6 @@ export async function POST(req: Request) {
         let calendarsSynced = 0;
         let calendarErrors = 0;
 
-        // Sequential sync with logging to track progress
         for (let i = 0; i < hListings.length; i++) {
             const hl = hListings[i];
             const internalId = hostawayToInternalIdMap.get(hl.id);
@@ -62,15 +60,12 @@ export async function POST(req: Request) {
 
         // 3. Fetch & Sync Reservations
         console.log("📥 Step 3: Fetching Reservations (Limit: 1000)...");
-        // Passing limit via filters
         const hReservations = await client.getReservations({ limit: 1000 } as any);
-
         console.log(`📥 Fetched ${hReservations.length} reservations from Hostaway.`);
 
         const existingRes = await db.select({ id: reservations.id }).from(reservations);
         const existingResIds = new Set(existingRes.map(r => r.id));
 
-        // Convert Hostaway Reservation mapping -> internal DB ID mapping
         const mappedReservations = hReservations.map(r => {
             const internalListingId = hostawayToInternalIdMap.get(r.listingMapId);
             return {
@@ -82,31 +77,38 @@ export async function POST(req: Request) {
         await syncReservationsToDb(mappedReservations as any, new Date());
 
         const finalDbReservations = await db.select({ id: reservations.id }).from(reservations);
-
         let newReservationCount = 0;
         finalDbReservations.forEach(r => {
             if (!existingResIds.has(r.id)) newReservationCount++;
         });
 
         console.log(`✅ Step 3 Complete: ${finalDbReservations.length} reservations in DB (${newReservationCount} new).`);
+
+        // 4. Fetch & Sync Conversations
+        console.log("📥 Step 4: Fetching Conversations...");
+        const { syncConversationsToDb } = await import("@/lib/sync-server-utils");
+        const convStats = await syncConversationsToDb(hostawayToInternalIdMap);
+        console.log(`✅ Step 4 Complete: Synced ${convStats.synced} conversations (${convStats.errors} errors).`);
+
         console.log("------------------------------------------");
         console.log("🎉 Hostaway Sync Finished Successfully.");
         console.log("------------------------------------------");
 
-        return NextResponse.json({
-            success: true,
-            stats: {
-                totalListings: dbListings.length,
-                newListings: newListingCount,
-                syncedCalendars: calendarsSynced,
-                totalReservations: finalDbReservations.length,
-                newReservations: newReservationCount,
-                calendarErrors
-            }
-        }, { status: 200 });
-
-    } catch (error: any) {
-        console.error("❌ Critical Sync Error:", error);
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    } catch (err: any) {
+        console.error("❌ Critical Sync Error in Background Job:", err);
     }
+}
+
+export async function POST(req: Request) {
+    // Fire the heavy syncing function without awaiting it so it processes totally in the background
+    performBackgroundSync()
+        .then(() => console.log("Background sync promise resolved."))
+        .catch((err) => console.error("Unhandled background sync error:", err));
+
+    // Return immediately to the client to unblock UI
+    return NextResponse.json({
+        success: true,
+        status: "queued",
+        message: "Hostaway synchronization queued directly in the background! Please keep the server running."
+    }, { status: 202 });
 }

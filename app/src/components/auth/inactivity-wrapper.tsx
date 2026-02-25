@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth/client";
 
 // 15 minutes in milliseconds
 const INACTIVITY_TIME = 15 * 60 * 1000;
@@ -12,7 +13,11 @@ export function InactivityMonitor() {
     useEffect(() => {
         let timeoutId: NodeJS.Timeout;
 
-        const handleLogout = () => {
+        const handleLogout = async () => {
+            try {
+                await authClient.signOut();
+            } catch { }
+            // Clear legacy cookie too
             document.cookie = 'priceos-session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
             router.push('/login');
         };

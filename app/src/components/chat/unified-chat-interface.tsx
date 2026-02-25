@@ -7,10 +7,67 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Send, Loader2, Settings, Zap, Calendar as CalendarIcon,
   PanelRightClose, PanelRightOpen, Building2, CheckSquare, AlertCircle,
-  User, ChevronLeft, Sparkles, PanelLeftClose, PanelLeftOpen
+  User, ChevronLeft, Sparkles, PanelLeftClose, PanelLeftOpen, RefreshCw
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+// Custom markdown renderer — handles tables, headings, lists, code without @tailwindcss/typography
+function MarkdownMessage({ content, isUser }: { content: string; isUser: boolean }) {
+  const mutedText = isUser ? "text-primary-foreground/70" : "text-muted-foreground";
+  const baseText = isUser ? "text-primary-foreground" : "text-foreground/90";
+
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        // Tables
+        table: ({ children }) => (
+          <div className="overflow-x-auto my-3 rounded-lg border border-border/40">
+            <table className="w-full text-xs border-collapse">{children}</table>
+          </div>
+        ),
+        thead: ({ children }) => (
+          <thead className="bg-muted/50 text-muted-foreground uppercase tracking-wider text-[10px]">{children}</thead>
+        ),
+        tbody: ({ children }) => <tbody className="divide-y divide-border/30">{children}</tbody>,
+        tr: ({ children }) => <tr className="hover:bg-muted/20 transition-colors">{children}</tr>,
+        th: ({ children }) => (
+          <th className="px-3 py-2 text-left font-black whitespace-nowrap">{children}</th>
+        ),
+        td: ({ children }) => <td className="px-3 py-2 whitespace-nowrap">{children}</td>,
+        // Headings
+        h1: ({ children }) => <h1 className={`text-base font-black mt-3 mb-1 ${baseText}`}>{children}</h1>,
+        h2: ({ children }) => <h2 className={`text-sm font-black mt-3 mb-1 ${baseText}`}>{children}</h2>,
+        h3: ({ children }) => <h3 className={`text-xs font-black uppercase tracking-wider mt-3 mb-1 ${mutedText}`}>{children}</h3>,
+        // Inline
+        strong: ({ children }) => <strong className={`font-black ${baseText}`}>{children}</strong>,
+        em: ({ children }) => <em className="italic opacity-80">{children}</em>,
+        // Paragraphs & lists
+        p: ({ children }) => <p className={`text-sm leading-relaxed mb-2 last:mb-0 ${baseText}`}>{children}</p>,
+        ul: ({ children }) => <ul className={`list-disc pl-4 mb-2 space-y-0.5 text-sm ${baseText}`}>{children}</ul>,
+        ol: ({ children }) => <ol className={`list-decimal pl-4 mb-2 space-y-0.5 text-sm ${baseText}`}>{children}</ol>,
+        li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+        // Code
+        code: ({ children, className }) => {
+          const isBlock = className?.includes("language-");
+          return isBlock
+            ? <pre className="bg-muted/40 rounded-lg p-3 my-2 overflow-x-auto text-xs font-mono border border-border/30"><code>{children}</code></pre>
+            : <code className="bg-muted/40 px-1.5 py-0.5 rounded text-[11px] font-mono border border-border/20">{children}</code>;
+        },
+        // Blockquote
+        blockquote: ({ children }) => (
+          <blockquote className={`border-l-2 border-primary/40 pl-3 my-2 ${mutedText} italic text-sm`}>{children}</blockquote>
+        ),
+        // Horizontal rule
+        hr: () => <hr className="border-border/30 my-3" />,
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
+}
+
 import { useContextStore } from "@/stores/context-store";
 import type { ListingRow } from "@/lib/db";
 import { DateRangePicker } from "./date-range-picker";
@@ -107,6 +164,35 @@ export function UnifiedChatInterface({ properties }: Props) {
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [isInboxCollapsed, setIsInboxCollapsed] = useState(false);
 
+  const fetchConversations = async (showLoadingToast = false) => {
+    if (!propertyId || !dateRange?.from || !dateRange?.to) return;
+
+    if (showLoadingToast) toast.loading("Fetching conversations...", { id: "fetch_conv" });
+
+    const from = format(dateRange.from, 'yyyy-MM-dd');
+    const to = format(dateRange.to, 'yyyy-MM-dd');
+
+    try {
+      // Load cached conversations
+      const convRes = await fetch(`/api/hostaway/conversations/cached?listingId=${propertyId}&from=${from}&to=${to}`);
+      if (convRes.ok) {
+        const convData = await convRes.json();
+        setConversations(convData.conversations || []);
+        if (showLoadingToast) toast.success(`Loaded ${convData.conversations?.length || 0} active threads`, { id: "fetch_conv" });
+      }
+
+      // Load cached summary
+      const sumRes = await fetch(`/api/hostaway/summary?listingId=${propertyId}&from=${from}&to=${to}`);
+      if (sumRes.ok) {
+        const sumData = await sumRes.json();
+        if (sumData.summary) setConversationSummary(sumData.summary);
+      }
+    } catch (e) {
+      console.warn("Failed to load cached conversations", e);
+      if (showLoadingToast) toast.error("Failed to load conversations", { id: "fetch_conv" });
+    }
+  };
+
   // Reset and load cached conversations when property or date range changes
   useEffect(() => {
     // Reset state when property changes
@@ -115,32 +201,7 @@ export function UnifiedChatInterface({ properties }: Props) {
     setConversationSummary(null);
     setReplyText("");
 
-    // Try to load cached conversations from DB
-    if (!propertyId || !dateRange?.from || !dateRange?.to) return;
-    const from = format(dateRange.from, 'yyyy-MM-dd');
-    const to = format(dateRange.to, 'yyyy-MM-dd');
-
-    const loadCached = async () => {
-      try {
-        // Load cached conversations
-        const convRes = await fetch(`/api/hostaway/conversations/cached?listingId=${propertyId}&from=${from}&to=${to}`);
-        if (convRes.ok) {
-          const convData = await convRes.json();
-          if (convData.conversations?.length > 0) {
-            setConversations(convData.conversations);
-          }
-        }
-        // Load cached summary
-        const sumRes = await fetch(`/api/hostaway/summary?listingId=${propertyId}&from=${from}&to=${to}`);
-        if (sumRes.ok) {
-          const sumData = await sumRes.json();
-          if (sumData.summary) setConversationSummary(sumData.summary);
-        }
-      } catch (e) {
-        console.warn("Failed to load cached conversations", e);
-      }
-    };
-    loadCached();
+    fetchConversations();
   }, [propertyId, dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
 
   const handleAiSuggest = async () => {
@@ -438,38 +499,46 @@ export function UnifiedChatInterface({ properties }: Props) {
     }
   };
 
-  const handleSaveProposals = async (messageId: string, proposals: any[]) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/proposals/bulk-save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          proposals,
-          dateRange: dateRange ? {
-            from: format(dateRange.from!, "yyyy-MM-dd"),
-            to: dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : format(dateRange.from!, "yyyy-MM-dd"),
-          } : undefined,
-        }),
+  const handleSaveProposals = (messageId: string, proposals: any[]) => {
+    // ── OPTIMISTIC: flip UI to "saved" immediately, don't wait for API ──
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.id === messageId ? { ...msg, proposalStatus: "saved" } : msg
+      )
+    );
+    toast.success(`Deploying ${proposals.length} price updates…`, {
+      description: "Saved to Control Panel. Pricing page updated.",
+    });
+
+    // ── BACKGROUND: fire-and-forget the actual DB write ──
+    const payload = JSON.stringify({
+      proposals,
+      dateRange: dateRange ? {
+        from: format(dateRange.from!, "yyyy-MM-dd"),
+        to: dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : format(dateRange.from!, "yyyy-MM-dd"),
+      } : undefined,
+    });
+
+    fetch("/api/proposals/bulk-save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: payload,
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Save failed");
+        const data = await res.json();
+        console.log(`✅ Deployed ${data.savedCount} proposals to Pricing`);
+      })
+      .catch((err) => {
+        console.error("Proposal deploy error:", err);
+        // Revert UI on failure
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === messageId ? { ...msg, proposalStatus: "pending" } : msg
+          )
+        );
+        toast.error("Deploy failed — please try again.");
       });
-
-      if (!response.ok) throw new Error("Failed to save proposals");
-
-      const resData = await response.json();
-
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === messageId ? { ...msg, proposalStatus: "saved" } : msg
-        )
-      );
-
-      toast.success(`Successfully saved ${resData.savedCount} price updates to database.`);
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to save price proposals. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const handleRejectProposals = (messageId: string) => {
@@ -592,44 +661,6 @@ export function UnifiedChatInterface({ properties }: Props) {
                   variant="outline"
                   size="sm"
                   onClick={async () => {
-                    try {
-                      if (!dateRange?.from || !dateRange?.to || !propertyId) return;
-                      toast.loading("Fetching Hostaway conversations (GET only)...", { id: 'sync' });
-                      const from = format(dateRange.from, 'yyyy-MM-dd');
-                      const to = format(dateRange.to, 'yyyy-MM-dd');
-                      const res = await fetch(`/api/hostaway/conversations?listingId=${propertyId}&from=${from}&to=${to}`, { method: "GET" });
-                      if (res.ok) {
-                        const data = await res.json();
-                        if (data.conversations && data.conversations.length > 0) {
-                          setConversations(data.conversations);
-                          toast.success(`Synced ${data.conversations.length} conversations`, { id: 'sync' });
-                          // Auto-check for cached summary
-                          const sumRes = await fetch(`/api/hostaway/summary?listingId=${propertyId}&from=${from}&to=${to}`);
-                          if (sumRes.ok) {
-                            const sumData = await sumRes.json();
-                            if (sumData.summary) setConversationSummary(sumData.summary);
-                          }
-                        } else {
-                          toast.success("No conversations found for this range.", { id: 'sync' });
-                        }
-                      } else {
-                        throw new Error("Failed response");
-                      }
-                    } catch (e) {
-                      toast.error("Failed to sync from Hostaway", { id: 'sync' });
-                    }
-                  }}
-                  disabled={!dateRange?.from || !dateRange?.to}
-                  className="h-9 gap-2 bg-background hover:bg-background/80 border-border/50 font-bold shadow-sm text-emerald-600 border-emerald-500/30"
-                >
-                  <Zap className="h-4 w-4" />
-                  <span className="hidden sm:inline">Sync Conversations</span>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
                     if (!dateRange?.from || !dateRange?.to || !propertyId) return;
                     setIsGeneratingSummary(true);
                     try {
@@ -677,8 +708,8 @@ export function UnifiedChatInterface({ properties }: Props) {
                 {messages.map((message) => (
                   <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
                     <div className={`max-w-[85%] rounded-2xl p-4 shadow-xl ${message.role === "user" ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-background/60 backdrop-blur-xl border border-border/50 text-foreground rounded-tl-none"}`}>
-                      <div className={`prose prose-sm dark:prose-invert max-w-none break-words ${message.role === 'user' ? 'text-primary-foreground' : 'text-foreground/90'}`}>
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+                      <div className="break-words">
+                        <MarkdownMessage content={message.content} isUser={message.role === "user"} />
                       </div>
                       {message.proposals && message.proposals.length > 0 && (
                         <div className="mt-5 border border-border/40 rounded-2xl bg-white/5 backdrop-blur-md overflow-hidden shadow-inner">
@@ -735,14 +766,25 @@ export function UnifiedChatInterface({ properties }: Props) {
               <div className={`border-r bg-muted/10 flex flex-col border-border/50 transition-all duration-200 ${isInboxCollapsed ? 'w-0 overflow-hidden border-r-0' : activeConversationId ? 'hidden md:flex w-1/3' : 'flex w-1/3'}`}>
                 <div className="p-4 border-b bg-background border-border/50 flex items-center justify-between">
                   <h3 className="font-black uppercase tracking-widest text-xs text-muted-foreground">Guest Inbox</h3>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 rounded-full hover:bg-muted"
-                    onClick={() => setIsInboxCollapsed(true)}
-                  >
-                    <PanelLeftClose className="h-3.5 w-3.5 text-muted-foreground" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 rounded-full hover:bg-muted"
+                      onClick={() => fetchConversations(true)}
+                      disabled={isLoading || !propertyId}
+                    >
+                      <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 rounded-full hover:bg-muted"
+                      onClick={() => setIsInboxCollapsed(true)}
+                    >
+                      <PanelLeftClose className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 space-y-2">
@@ -770,7 +812,7 @@ export function UnifiedChatInterface({ properties }: Props) {
                     <div className="text-center py-8 text-muted-foreground">
                       <User className="h-8 w-8 mx-auto mb-2 opacity-20" />
                       <p className="text-xs font-medium">No conversations</p>
-                      <p className="text-[10px] mt-1">Click "Sync Conversations" to fetch</p>
+                      <p className="text-[10px] mt-1 text-center px-4">No activity in this date range.<br />Sync from Dashboard if needed.</p>
                     </div>
                   )}
                 </div>

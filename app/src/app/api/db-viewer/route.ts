@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { listings, inventoryMaster, reservations, marketEvents, chatMessages, userSettings, guestSummaries, mockHostawayReplies, hostawayConversations } from "@/lib/db/schema";
+import { listings, inventoryMaster, reservations, marketEvents, chatMessages, userSettings, guestSummaries, mockHostawayReplies, hostawayConversations, benchmarkData } from "@/lib/db/schema";
 import { sql, desc, count } from "drizzle-orm";
 
 export async function GET() {
@@ -15,6 +15,7 @@ export async function GET() {
         const [guestSummariesCount] = await db.select({ count: count() }).from(guestSummaries);
         const [mockRepliesCount] = await db.select({ count: count() }).from(mockHostawayReplies);
         const [hwConversationsCount] = await db.select({ count: count() }).from(hostawayConversations);
+        const [benchmarkCount] = await db.select({ count: count() }).from(benchmarkData);
 
         // All data
         const listingsData = await db.select().from(listings);
@@ -47,6 +48,9 @@ export async function GET() {
         const hwConversationsData = await db.select().from(hostawayConversations)
             .orderBy(desc(hostawayConversations.syncedAt));
 
+        const benchmarkDataRows = await db.select().from(benchmarkData)
+            .orderBy(desc(benchmarkData.createdAt));
+
         // Date ranges
         const [calendarRange] = await db
             .select({
@@ -73,6 +77,7 @@ export async function GET() {
                 guest_summaries: guestSummariesCount.count,
                 mock_hostaway_replies: mockRepliesCount.count,
                 hostaway_conversations: hwConversationsCount.count,
+                benchmark_data: benchmarkCount.count,
             },
             date_ranges: {
                 calendar: calendarRange,
@@ -88,6 +93,7 @@ export async function GET() {
                 guest_summaries: guestSummariesData,
                 mock_hostaway_replies: mockRepliesData,
                 hostaway_conversations: hwConversationsData,
+                benchmark_data: benchmarkDataRows,
             },
         });
     } catch (error) {

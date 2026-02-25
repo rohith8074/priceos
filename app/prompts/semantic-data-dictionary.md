@@ -212,118 +212,259 @@ WHERE listing_id = 1 AND reservation_status = 'confirmed';
 
 # Table: `market_events`
 
-**Table Description:** The AI-generated market intelligence store. Populated during the **Setup** phase when the Marketing Agent (Agent 6) searches the internet for Dubai events, holidays, competitor pricing, and market positioning. Each row is one market signal. Agent 4 (Market Research) reads from this table during chat. This data is ephemeral — it is cleared and re-populated on every Setup click.
+**Table Description:** The AI-generated market intelligence store. Populated during the **Setup phase** when the Marketing Agent (Agent 6) searches the internet for Dubai events, holidays, competitor pricing, demand trends, and market positioning. Each row is one typed market signal. Agent 4 (Market Research) reads from this table during chat. Data is scoped per `listing_id` + date range — re-running Setup for the same property/dates **replaces** only that scope, leaving other records intact.
+
+**Event types and which fields they populate:**
+| `event_type` | Key fields populated |
+|---|---|
+| `event` | `expected_impact`, `confidence`, `suggested_premium`, `source`, `description` |
+| `holiday` | `expected_impact`, `confidence`, `suggested_premium`, `description` |
+| `competitor_intel` | `comp_sample_size`, `comp_min_rate`, `comp_max_rate`, `comp_median_rate`, `description` |
+| `positioning` | `positioning_verdict`, `positioning_percentile`, `description` |
+| `demand_outlook` | `demand_trend`, `description` |
+| `market_summary` | `description` only |
 
 ### `id`
-**Description:** The primary key and unique internal identifier for the market signal.
+**Description:** Primary key.
 **SQL Query:** `SELECT id FROM market_events LIMIT 5;`
 
+### `listing_id`
+**Description:** FK to `listings`. Null = portfolio-level signal. Always filter by `listing_id` when in property context.
+**SQL Query:** `SELECT * FROM market_events WHERE listing_id = 1 ORDER BY start_date;`
+
 ### `title`
-**Description:** The name of the event, holiday, or intelligence record (e.g., 'Art Dubai 2026', 'Eid Al Fitr').
+**Description:** Signal name (e.g., 'Art Dubai 2026', 'Competitor Rate Snapshot').
 **SQL Query:** `SELECT title FROM market_events WHERE event_type = 'event';`
 
-### `start_date`
-**Description:** The start date of the event or applicable period.
-**SQL Query:** `SELECT title, start_date FROM market_events WHERE start_date >= '2026-03-01';`
-
-### `end_date`
-**Description:** The end date of the event or applicable period.
-**SQL Query:** `SELECT title, start_date, end_date FROM market_events WHERE event_type = 'holiday';`
+### `start_date` / `end_date`
+**Description:** Date range the signal applies to.
+**SQL Query:** `SELECT title, start_date, end_date FROM market_events WHERE start_date <= '2026-03-31' AND end_date >= '2026-03-01';`
 
 ### `event_type`
-**Description:** The category of the market signal. Values: `'event'`, `'holiday'`, `'competitor_intel'`, `'positioning'`, `'market_summary'`.
+**Description:** Signal category: `'event'`, `'holiday'`, `'competitor_intel'`, `'positioning'`, `'demand_outlook'`, `'market_summary'`.
 **SQL Query:** `SELECT event_type, COUNT(*) FROM market_events GROUP BY event_type;`
 
-### `location`
-**Description:** The geographic location of the event (default: 'Dubai').
-**SQL Query:** `SELECT title, location FROM market_events WHERE location = 'Dubai';`
-
 ### `expected_impact`
-**Description:** The anticipated demand impact: 'high', 'medium', or 'low'.
+**Description:** Demand impact: `'high'`, `'medium'`, `'low'`. Populated for events + holidays.
 **SQL Query:** `SELECT title, expected_impact FROM market_events WHERE expected_impact = 'high';`
 
 ### `confidence`
-**Description:** An integer score (0-100) representing the confidence level of the AI in this data point.
-**SQL Query:** `SELECT title, confidence FROM market_events WHERE confidence >= 80 ORDER BY confidence DESC;`
-
-### `description`
-**Description:** A text description of the event or market insight.
-**SQL Query:** `SELECT title, description FROM market_events WHERE event_type = 'event' AND title ILIKE '%Art Dubai%';`
-
-### `source`
-**Description:** The source URL or attribution for the data (e.g., a website link or "Lyzr Marketing Agent").
-**SQL Query:** `SELECT title, source FROM market_events WHERE source IS NOT NULL;`
+**Description:** Integer 0-100. AI confidence in this signal.
+**SQL Query:** `SELECT title, confidence FROM market_events WHERE confidence >= 80;`
 
 ### `suggested_premium`
-**Description:** The suggested price premium percentage for this event (e.g., 15.00 means +15%).
-**SQL Query:**
-```sql
-SELECT title, suggested_premium
-FROM market_events
-WHERE event_type = 'event' AND suggested_premium > 0
-ORDER BY suggested_premium DESC;
-```
+**Description:** % price premium suggested for this event (e.g., 15.00 = +15%). Events + holidays only.
+**SQL Query:** `SELECT title, suggested_premium FROM market_events WHERE event_type IN ('event','holiday') AND suggested_premium > 0 ORDER BY suggested_premium DESC;`
 
-### `competitor_median`
-**Description:** The median competitor rate in AED, sourced from Airbnb/Booking.com research.
-**SQL Query:**
-```sql
-SELECT competitor_median
-FROM market_events
-WHERE event_type = 'competitor_intel';
-```
+### `source`
+**Description:** Source URL or attribution string.
+**SQL Query:** `SELECT title, source FROM market_events WHERE source IS NOT NULL;`
 
-### `metadata`
-**Description:** A small JSONB catch-all for variable AI data like competitor examples array or positioning details. Only used for fields that genuinely have no fixed schema.
+### `description`
+**Description:** Human-readable detail. For `demand_outlook`, concatenates reason + weather + supply notes with ` | ` separator.
+**SQL Query:** `SELECT title, description FROM market_events WHERE event_type = 'demand_outlook';`
+
+### `comp_sample_size`
+**Description:** Number of competitor properties sampled. Populated for `competitor_intel` rows.
+**SQL Query:** `SELECT comp_sample_size FROM market_events WHERE event_type = 'competitor_intel' AND listing_id = 1;`
+
+### `comp_min_rate`
+**Description:** Lowest competitor nightly rate (AED) found in market scan. `competitor_intel` rows only.
+**SQL Query:** `SELECT comp_min_rate, comp_max_rate, comp_median_rate FROM market_events WHERE event_type = 'competitor_intel' AND listing_id = 1;`
+
+### `comp_max_rate`
+**Description:** Highest competitor nightly rate (AED). `competitor_intel` rows only.
+**SQL Query:** `SELECT comp_max_rate FROM market_events WHERE event_type = 'competitor_intel' AND listing_id = 1;`
+
+### `comp_median_rate`
+**Description:** Median competitor rate (AED). Use this to quickly gauge market mid-point when `benchmark_data` is unavailable. `competitor_intel` rows only.
+**SQL Query:** `SELECT comp_median_rate FROM market_events WHERE event_type = 'competitor_intel' AND listing_id = 1;`
+
+### `positioning_verdict`
+**Description:** AI pricing verdict: `'UNDERPRICED'`, `'FAIR'`, `'SLIGHTLY_ABOVE'`, `'OVERPRICED'`. `positioning` rows only.
+**SQL Query:** `SELECT positioning_verdict, positioning_percentile FROM market_events WHERE event_type = 'positioning' AND listing_id = 1;`
+
+### `positioning_percentile`
+**Description:** Integer 0-100. Where the property price sits vs comparable listings. `positioning` rows only.
+**SQL Query:** `SELECT positioning_percentile FROM market_events WHERE event_type = 'positioning' AND listing_id = 1;`
+
+### `demand_trend`
+**Description:** Demand direction: `'strong'`, `'moderate'`, `'weak'`. `demand_outlook` rows only.
+**SQL Query:** `SELECT demand_trend, description FROM market_events WHERE event_type = 'demand_outlook' AND listing_id = 1;`
+
+### `created_at`
+**Description:** Timestamp when this signal was saved.
+**SQL Query:** `SELECT created_at FROM market_events ORDER BY created_at DESC LIMIT 1;`
+
+# Table: `benchmark_data`
+
+**Table Description:** The competitor pricing intelligence store. Populated during the **Setup phase** when the Benchmark Agent (Agent 7) searches Airbnb, Booking.com, and Vrbo in real-time for comparable properties (same area + bedroom count). **One row per listing + date range** — the full benchmark in a single, clean record. Individual competitor listings are stored in the `comps` JSONB array within that row. All agents use `p50_rate` as the primary pricing anchor and `recommended_weekday`/`recommended_weekend`/`recommended_event` as the AI rate targets. Re-running "Market Analysis" **replaces** the row for that listing+date range.
+
+### `id`
+**Description:** Primary key.
+**SQL Query:** `SELECT id FROM benchmark_data LIMIT 5;`
+
+### `listing_id`
+**Description:** FK to `listings`. Always required — benchmark is always property-scoped.
+**SQL Query:** `SELECT * FROM benchmark_data WHERE listing_id = 1;`
+
+### `date_from` / `date_to`
+**Description:** The Setup date range the benchmark covers.
+**SQL Query:** `SELECT date_from, date_to FROM benchmark_data WHERE listing_id = 1;`
+
+### `sample_size`
+**Description:** Number of comps the benchmark is based on. Higher = more reliable.
+**SQL Query:** `SELECT sample_size FROM benchmark_data WHERE listing_id = 1;`
+
+### `p25_rate`
+**Description:** 25th percentile competitor rate (AED). Budget tier. PriceGuard flags proposals below this as revenue risk.
+**SQL Query:** `SELECT p25_rate, p50_rate, p75_rate, p90_rate FROM benchmark_data WHERE listing_id = 1;`
+
+### `p50_rate`
+**Description:** **Market median rate (AED). The primary pricing anchor for ALL agents.** Build all price proposals relative to this value.
+**SQL Query:** `SELECT p50_rate FROM benchmark_data WHERE listing_id = 1;`
+
+### `p75_rate`
+**Description:** 75th percentile (AED). Premium tier target for high-rated, well-reviewed properties.
+**SQL Query:** `SELECT p75_rate FROM benchmark_data WHERE listing_id = 1;`
+
+### `p90_rate`
+**Description:** 90th percentile (AED). Luxury/event-peak ceiling. PriceGuard flags proposals above this as occupancy risk.
+**SQL Query:** `SELECT p90_rate FROM benchmark_data WHERE listing_id = 1;`
+
+### `avg_weekday`
+**Description:** Average weekday rate (AED) across all comps. Weekday baseline.
+**SQL Query:** `SELECT avg_weekday, avg_weekend FROM benchmark_data WHERE listing_id = 1;`
+
+### `avg_weekend`
+**Description:** Average weekend rate (AED) across all comps. Weekend baseline.
+**SQL Query:** `SELECT avg_weekend FROM benchmark_data WHERE listing_id = 1;`
+
+### `your_price`
+**Description:** The listing's `listings.price` captured at benchmark time. Use alongside `p50_rate` to understand relative positioning — compute gap in application code as `your_price - p50_rate`.
+**SQL Query:** `SELECT your_price, p50_rate FROM benchmark_data WHERE listing_id = 1;`
+
+### `percentile`
+**Description:** 0-100. Where the property price sits vs all comps. E.g., 42 = priced below 58% of market.
+**SQL Query:** `SELECT percentile, verdict FROM benchmark_data WHERE listing_id = 1;`
+
+### `verdict`
+**Description:** Pricing position: `'UNDERPRICED'` (below P25), `'FAIR'` (P25–P65), `'SLIGHTLY_ABOVE'` (P65–P85), `'OVERPRICED'` (above P85).
+**SQL Query:** `SELECT verdict FROM benchmark_data WHERE listing_id = 1;`
+
+> **Note:** `aed_gap` (difference between `your_price` and `p50_rate`) is **not stored** — compute it as `your_price::numeric - p50_rate::numeric` in SQL or `Number(yourPrice) - Number(p50Rate)` in application code.
+
+### `rate_trend`
+**Description:** Market direction: `'rising'`, `'stable'`, or `'falling'`.
+**SQL Query:** `SELECT rate_trend, trend_pct FROM benchmark_data WHERE listing_id = 1;`
+
+### `trend_pct`
+**Description:** % change in competitor rates vs prior typical period (positive = market heating).
+**SQL Query:** `SELECT rate_trend, trend_pct FROM benchmark_data WHERE listing_id = 1;`
+
+### `recommended_weekday`
+**Description:** Benchmark Agent's weekday rate recommendation (AED), anchored at P50–P60 across comps.
+**SQL Query:** `SELECT recommended_weekday, recommended_weekend, recommended_event FROM benchmark_data WHERE listing_id = 1;`
+
+### `recommended_weekend`
+**Description:** Weekend rate recommendation (AED), anchored at P60–P75 across comps.
+**SQL Query:** `SELECT recommended_weekend FROM benchmark_data WHERE listing_id = 1;`
+
+### `recommended_event`
+**Description:** Rate recommendation during high-impact events (AED), anchored at P75–P90 across comps.
+**SQL Query:** `SELECT recommended_event FROM benchmark_data WHERE listing_id = 1;`
+
+### `reasoning`
+**Description:** Text explanation from the Benchmark Agent on how the recommended rates were derived.
+**SQL Query:** `SELECT reasoning FROM benchmark_data WHERE listing_id = 1;`
+
+### `comps`
+**Description:** JSONB array of individual competitor listings. Each element has: `name`, `source`, `sourceUrl`, `rating`, `reviews`, `avgRate`, `weekdayRate`, `weekendRate`, `minRate`, `maxRate`. **Never query this with SQL predicates** — always fetch the full array and process in application code.
 **SQL Query:**
 ```sql
-SELECT metadata->>'verdict' AS verdict
-FROM market_events
-WHERE event_type = 'positioning';
+-- Read all comps for a listing (process in code, not SQL)
+SELECT comps FROM benchmark_data WHERE listing_id = 1;
+
+-- Count comps without fetching
+SELECT jsonb_array_length(comps) AS comp_count FROM benchmark_data WHERE listing_id = 1;
 ```
 
 ### `created_at`
-**Description:** The timestamp when this record was saved during Setup.
-**SQL Query:** `SELECT created_at FROM market_events ORDER BY created_at DESC LIMIT 1;`
+**Description:** Timestamp when this benchmark row was saved.
+**SQL Query:** `SELECT created_at FROM benchmark_data WHERE listing_id = 1;`
 
 ---
 
 ## Cross-Table Example Queries
 
-### Total revenue by channel for a property
+### Events overlapping a date range with premium suggestions
 ```sql
-SELECT channel_name, SUM(total_price) AS revenue, COUNT(*) AS bookings
-FROM reservations
-WHERE listing_id = 1 AND reservation_status = 'confirmed'
-GROUP BY channel_name;
+SELECT title, start_date, end_date, expected_impact, suggested_premium
+FROM market_events
+WHERE listing_id = 1
+  AND event_type IN ('event', 'holiday')
+  AND start_date <= '2026-03-31' AND end_date >= '2026-03-01'
+ORDER BY start_date;
 ```
 
-### Available gap nights with no reservation
+### Demand outlook + competitor snapshot for a listing
 ```sql
-SELECT im.date, im.current_price, im.min_stay
+SELECT event_type, title, demand_trend, comp_median_rate, description
+FROM market_events
+WHERE listing_id = 1
+  AND event_type IN ('demand_outlook', 'competitor_intel');
+```
+
+### Benchmark vs current price
+```sql
+SELECT
+  l.name,
+  l.price AS current_price,
+  b.p50_rate AS market_median,
+  (b.your_price::numeric - b.p50_rate::numeric) AS aed_gap,  -- computed, not stored
+  b.verdict,
+  b.recommended_weekday,
+  b.recommended_weekend,
+  b.recommended_event,
+  jsonb_array_length(b.comps) AS comp_count                  -- computed, not stored
+FROM listings l
+JOIN benchmark_data b ON b.listing_id = l.id
+WHERE l.id = 1;
+```
+
+### Gap night pricing anchored to benchmark rates
+```sql
+SELECT
+  im.date,
+  im.current_price,
+  CASE
+    WHEN EXTRACT(DOW FROM im.date::date) IN (5, 6, 0) THEN b.recommended_weekend
+    ELSE b.recommended_weekday
+  END AS benchmark_target,
+  b.p50_rate,
+  b.verdict
 FROM inventory_master im
+JOIN benchmark_data b ON b.listing_id = im.listing_id
 WHERE im.listing_id = 1
   AND im.status = 'available'
   AND im.date BETWEEN '2026-03-01' AND '2026-03-31'
 ORDER BY im.date;
 ```
 
-### Events overlapping a date range with premium suggestions
+### Full pricing picture: events + benchmark in one query
 ```sql
-SELECT title, start_date, end_date, expected_impact, suggested_premium
+SELECT 'event' AS source_type, title AS label, start_date, end_date,
+       expected_impact, CAST(suggested_premium AS text) AS rate_note
 FROM market_events
-WHERE event_type IN ('event', 'holiday')
+WHERE listing_id = 1
+  AND event_type IN ('event', 'holiday')
   AND start_date <= '2026-03-31' AND end_date >= '2026-03-01'
-ORDER BY start_date;
-```
-
-### Property occupancy rate (30-day window)
-```sql
-SELECT
-  listing_id,
-  ROUND(100.0 * COUNT(*) FILTER (WHERE status IN ('reserved', 'booked'))
-    / NULLIF(COUNT(*) - COUNT(*) FILTER (WHERE status = 'blocked'), 0), 0) AS occupancy_pct
-FROM inventory_master
-WHERE date BETWEEN CURRENT_DATE AND CURRENT_DATE + 30
-GROUP BY listing_id;
+UNION ALL
+SELECT 'benchmark' AS source_type,
+       CONCAT('P50=AED ', p50_rate, ' | ', verdict) AS label,
+       date_from, date_to,
+       rate_trend,
+       CONCAT('W/D AED ', recommended_weekday, ' | W/E AED ', recommended_weekend, ' | Event AED ', recommended_event)
+FROM benchmark_data
+WHERE listing_id = 1;
 ```

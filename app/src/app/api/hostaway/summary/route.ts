@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { guestSummaries, hostawayConversations, mockHostawayReplies, listings } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, lte, gte } from "drizzle-orm";
 
 /**
  * GET /api/hostaway/summary?listingId=X&from=YYYY-MM-DD&to=YYYY-MM-DD
@@ -62,12 +62,21 @@ export async function POST(request: Request) {
         const conversations = await db.select().from(hostawayConversations).where(
             and(
                 eq(hostawayConversations.listingId, listingId),
-                eq(hostawayConversations.dateFrom, dateFrom),
-                eq(hostawayConversations.dateTo, dateTo)
+                lte(hostawayConversations.dateFrom, dateTo),
+                gte(hostawayConversations.dateTo, dateFrom)
             )
         );
 
-        if (conversations.length === 0) {
+        // Deduplicate rows by hostawayConversationId
+        const uniqueConversationsMap = new Map();
+        for (const conv of conversations) {
+            if (!uniqueConversationsMap.has(conv.hostawayConversationId)) {
+                uniqueConversationsMap.set(conv.hostawayConversationId, conv);
+            }
+        }
+        const uniqueConversations = Array.from(uniqueConversationsMap.values());
+
+        if (uniqueConversations.length === 0) {
             return NextResponse.json(
                 { error: "No conversations found. Please sync conversations first." },
                 { status: 404 }
@@ -76,7 +85,7 @@ export async function POST(request: Request) {
 
         // Step 2: Merge with our shadow admin replies
         const enrichedConversations = await Promise.all(
-            conversations.map(async (conv) => {
+            uniqueConversations.map(async (conv) => {
                 const shadowReplies = await db.select().from(mockHostawayReplies).where(
                     eq(mockHostawayReplies.conversationId, conv.hostawayConversationId)
                 );

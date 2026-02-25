@@ -9,8 +9,6 @@ import {
   User,
   LogOut,
   Sparkles,
-  Settings,
-  Database,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -23,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useContextStore } from "@/stores/context-store";
 import { useChatStore } from "@/stores/chat-store";
+import { authClient } from "@/lib/auth/client";
 
 export function HeaderNav() {
   const { theme, setTheme } = useTheme();
@@ -30,25 +29,35 @@ export function HeaderNav() {
   const { setPortfolioContext } = useContextStore();
   const { switchContext } = useChatStore();
 
-  // Custom session logic
   const [userName, setUserName] = useState("User Account");
   const [userInitial, setUserInitial] = useState("U");
+  const [userEmail, setUserEmail] = useState("");
 
+  // Fetch user info from Neon Auth session
   useEffect(() => {
-    const cookies = document.cookie.split(';');
-    const sessionCookie = cookies.find(c => c.trim().startsWith('priceos-session='));
-    if (sessionCookie) {
+    async function loadSession() {
       try {
-        const session = JSON.parse(decodeURIComponent(sessionCookie.split('=')[1]));
-        setUserName(session.username || "User Account");
-        setUserInitial(session.username?.[0]?.toUpperCase() || "U");
+        const res = await authClient.getSession();
+        if (res?.data?.user) {
+          const u = res.data.user;
+          setUserName(u.name || u.email || "User Account");
+          setUserInitial((u.name?.[0] || u.email?.[0] || "U").toUpperCase());
+          setUserEmail(u.email || "");
+        }
       } catch (e) {
-        console.error("Failed to parse session", e);
+        console.error("Failed to load session", e);
       }
     }
+    loadSession();
   }, []);
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    try {
+      await authClient.signOut();
+    } catch (e) {
+      console.error("Sign out error", e);
+    }
+    // Clear any legacy cookies too
     document.cookie = 'priceos-session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     router.push('/login');
     router.refresh();
@@ -111,7 +120,7 @@ export function HeaderNav() {
               <div className="flex flex-col overflow-hidden">
                 <p className="text-sm font-medium truncate">{userName}</p>
                 <p className="text-[10px] text-muted-foreground truncate">
-                  Property Manager
+                  {userEmail || "Property Manager"}
                 </p>
               </div>
             </div>

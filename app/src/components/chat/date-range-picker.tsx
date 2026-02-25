@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { format } from "date-fns";
+import { format, addDays, startOfDay } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { DateRange } from "react-day-picker";
 
@@ -25,6 +25,11 @@ export function DateRangePicker({
     date,
     setDate,
 }: DateRangePickerProps) {
+    // Today (start of day) is the minimum selectable date.
+    // Max selectable date is 2 weeks (14 days) from today.
+    const today = startOfDay(new Date());
+    const maxDate = addDays(today, 14);
+
     return (
         <div className={cn("grid gap-2", className)}>
             <Popover>
@@ -56,11 +61,22 @@ export function DateRangePicker({
                     <Calendar
                         initialFocus
                         mode="range"
-                        defaultMonth={date?.from}
+                        defaultMonth={date?.from ?? today}
                         selected={date}
                         onSelect={setDate}
-                        numberOfMonths={2}
+                        numberOfMonths={1}
+                        fromDate={today}
+                        toDate={maxDate}
                     />
+                    <div className="px-3 pb-3 pt-0 text-center">
+                        <p className="text-[10px] text-muted-foreground font-medium">
+                            Selectable range: today to{" "}
+                            <span className="text-amber-500 font-bold">
+                                {format(maxDate, "LLL dd, y")}
+                            </span>{" "}
+                            (2 weeks max)
+                        </p>
+                    </div>
                 </PopoverContent>
             </Popover>
         </div>

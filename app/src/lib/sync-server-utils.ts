@@ -183,3 +183,114 @@ export async function syncCalendarToDb(
     }
   }
 }
+
+/**
+ * Fetch and sync all conversations from Hostaway into DB
+ */
+export async function syncConversationsToDb(
+  hostawayToInternalIdMap: Map<number, number>
+) {
+  const token = process.env.Hostaway_Authorization_token;
+  if (!token) {
+    console.error("No Hostaway token for syncing conversations.");
+    return { synced: 0, errors: 1 };
+  }
+
+  try {
+    console.log(`📥 Fetching ALL conversations...`);
+    const convRes = await fetch(
+      `https://api.hostaway.com/v1/conversations?limit=250&offset=0&includeResources=1`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!convRes.ok) throw new Error(`Hostaway API returned ${convRes.status}`);
+
+    const convJson = await convRes.json();
+    const rawConversations = convJson.result || [];
+
+    // Filter out conversations not matching our known properties
+    const mappedConversations = rawConversations.filter((conv: any) => {
+      const lid = conv.Reservation?.listingMapId || conv.listingMapId;
+      return lid && hostawayToInternalIdMap.has(Number(lid));
+    });
+
+    console.log(`🔍 Syncing ${mappedConversations.length} conversations...`);
+
+    let syncedCount = 0;
+    let errCount = 0;
+
+    // We process sequentially, fetching messages for each
+    for (const conv of mappedConversations) {
+      const hwListingId = conv.Reservation?.listingMapId || conv.listingMapId;
+      const internalListingId = hostawayToInternalIdMap.get(Number(hwListingId));
+      if (!internalListingId) continue;
+
+      const convId = conv.id.toString();
+      const guestName = conv.recipientName || conv.Reservation?.guestName || conv.Reservation?.guestFirstName || "Guest";
+
+      // Determine dates. If no reservation, use a wide range so it matches any date filter.
+      const dateFrom = conv.Reservation?.arrivalDate || "2000-01-01";
+      const dateTo = conv.Reservation?.departureDate || "2099-12-31";
+
+      let messages: { sender: string; text: string; timestamp: string }[] = [];
+
+      try {
+        const msgRes = await fetch(
+          `https://api.hostaway.com/v1/conversations/${convId}/messages?limit=50`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (msgRes.ok) {
+          const msgJson = await msgRes.json();
+          messages = (msgJson.result || [])
+            .filter((m: any) => m.body && m.body.trim())
+            .map((m: any) => ({
+              sender: m.isIncoming ? "guest" : "admin",
+              text: m.body || "",
+              timestamp: m.insertedOn || m.updatedOn || "",
+            }));
+        }
+
+        // Using Drizzle to delete existing record for this hostawayConversationId and insert the new one
+        // (Since hostaway_conversation_id is indexed, we easily replace it)
+        const { hostawayConversations } = await import("./db/schema");
+        const { eq } = await import("drizzle-orm");
+
+        await db.delete(hostawayConversations).where(eq(hostawayConversations.hostawayConversationId, convId));
+
+        await db.insert(hostawayConversations).values({
+          listingId: internalListingId,
+          hostawayConversationId: convId,
+          guestName,
+          guestEmail: conv.guestEmail || conv.recipientEmail || null,
+          reservationId: conv.reservationId?.toString() || null,
+          messages,
+          dateFrom,
+          dateTo,
+        });
+
+        syncedCount++;
+      } catch (e) {
+        console.warn(`   ⚠️  Failed to fetch/save messages for conv ${convId}`);
+        errCount++;
+      }
+    }
+
+    return { synced: syncedCount, errors: errCount };
+  } catch (error) {
+    console.error("Sync Conversations Error:", error);
+    return { synced: 0, errors: 1 };
+  }
+}

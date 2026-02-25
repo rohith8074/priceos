@@ -2,11 +2,15 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export default function middleware(request: NextRequest) {
-  const session = request.cookies.get('priceos-session');
+  // Check for Neon (better-auth) session cookie
+  const devSession = request.cookies.get('better-auth.session_token');
+  const prodSession = request.cookies.get('__Secure-better-auth.session_token');
+  const session = devSession || prodSession;
+
   const { pathname } = request.nextUrl;
 
-  // Paths that don't require authentication
-  const publicPaths = ['/login', '/api/auth'];
+  // Paths that are fully public (no auth required)
+  const publicPaths = ['/login', '/waitlist', '/api/auth'];
   const isPublicPath = publicPaths.some(path => pathname.startsWith(path));
 
   // 1. If no session and trying to access private route, redirect to login
@@ -14,7 +18,7 @@ export default function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // 2. If session exists and trying to access login, redirect to dashboard
+  // 2. If session exists and trying to access /login, redirect to dashboard
   if (session && pathname === '/login') {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }

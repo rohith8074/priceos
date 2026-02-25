@@ -10,6 +10,7 @@ import {
   varchar,
   index,
   unique,
+  boolean,
 } from "drizzle-orm/pg-core";
 
 // ─────────────────────────────────────────────────────────
@@ -95,23 +96,37 @@ export const reservations = pgTable("reservations", {
 // ─────────────────────────────────────────────────────────
 export const marketEvents = pgTable("market_events", {
   id: serial("id").primaryKey(),
+  listingId: integer("listing_id").references(() => listings.id),  // null = portfolio level
   title: text("title").notNull(),
   startDate: date("start_date").notNull(),
   endDate: date("end_date").notNull(),
-  eventType: text("event_type").notNull(),         // event, holiday, competitor_intel, positioning, market_summary
-  location: text("location"),
-  expectedImpact: text("expected_impact"),          // high, medium, low
-  confidence: integer("confidence"),                // 0-100
-  description: text("description"),
-  source: text("source"),                           // URL or "Lyzr Marketing Agent"
+  eventType: text("event_type").notNull(), // 'event' | 'holiday' | 'competitor_intel' | 'positioning' | 'demand_outlook' | 'market_summary'
+
+  // ── event + holiday fields ──
+  expectedImpact: text("expected_impact"),      // 'high' | 'medium' | 'low'
+  confidence: integer("confidence"),            // 0-100
   suggestedPremium: numeric("suggested_premium", { precision: 5, scale: 2 }),
-  competitorMedian: numeric("competitor_median", { precision: 10, scale: 2 }),
-  // Minimal JSONB catch-all for rare/variable AI data (competitor examples, positioning details)
-  metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+  source: text("source"),
+  description: text("description"),
+
+  // ── competitor_intel fields ──
+  compSampleSize: integer("comp_sample_size"),
+  compMinRate: numeric("comp_min_rate", { precision: 10, scale: 2 }),
+  compMaxRate: numeric("comp_max_rate", { precision: 10, scale: 2 }),
+  compMedianRate: numeric("comp_median_rate", { precision: 10, scale: 2 }),
+
+  // ── positioning fields ──
+  positioningVerdict: text("positioning_verdict"), // 'UNDERPRICED' | 'FAIR' | 'SLIGHTLY_ABOVE' | 'OVERPRICED'
+  positioningPercentile: integer("positioning_percentile"),
+
+  // ── demand_outlook fields ──
+  demandTrend: text("demand_trend"),              // 'strong' | 'moderate' | 'weak'
+
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
   datesIdx: index("market_events_dates_idx").on(table.startDate, table.endDate),
   typeIdx: index("market_events_type_idx").on(table.eventType),
+  listingIdx: index("market_events_listing_idx").on(table.listingId),
 }));
 
 // ─────────────────────────────────────────────────────────
@@ -136,6 +151,7 @@ export const userSettings = pgTable("user_settings", {
   userId: text("user_id").notNull().unique(),
   fullName: text("full_name"),
   email: text("email"),
+  isApproved: boolean("is_approved").default(false).notNull(),
   lyzrApiKey: text("lyzr_api_key"),
   hostawayApiKey: text("hostaway_api_key"),
   preferences: jsonb("preferences").$type<Record<string, unknown>>().default({}),
@@ -202,6 +218,61 @@ export const mockHostawayReplies = pgTable("mock_hostaway_replies", {
 }));
 
 // ─────────────────────────────────────────────────────────
+// Table 10: BENCHMARK_DATA — Competitor Pricing Intelligence
+// One row per listing + date range. Comps stored as JSONB array.
+// ─────────────────────────────────────────────────────────
+export const benchmarkData = pgTable("benchmark_data", {
+  id: serial("id").primaryKey(),
+  listingId: integer("listing_id")
+    .references(() => listings.id)
+    .notNull(),
+  dateFrom: date("date_from").notNull(),
+  dateTo: date("date_to").notNull(),
+
+  // ── Rate distribution (across all comps) ──
+  p25Rate: numeric("p25_rate", { precision: 10, scale: 2 }),
+  p50Rate: numeric("p50_rate", { precision: 10, scale: 2 }),   // market median — primary anchor
+  p75Rate: numeric("p75_rate", { precision: 10, scale: 2 }),
+  p90Rate: numeric("p90_rate", { precision: 10, scale: 2 }),
+  avgWeekday: numeric("avg_weekday", { precision: 10, scale: 2 }),
+  avgWeekend: numeric("avg_weekend", { precision: 10, scale: 2 }),
+
+  // ── Pricing verdict ──
+  yourPrice: numeric("your_price", { precision: 10, scale: 2 }),
+  percentile: integer("percentile"),
+  verdict: text("verdict"),   // 'UNDERPRICED' | 'FAIR' | 'SLIGHTLY_ABOVE' | 'OVERPRICED'
+
+  // ── Rate trend ──
+  rateTrend: text("rate_trend"),              // 'rising' | 'stable' | 'falling'
+  trendPct: numeric("trend_pct", { precision: 5, scale: 2 }),
+
+  // ── AI recommended rates ──
+  recommendedWeekday: numeric("recommended_weekday", { precision: 10, scale: 2 }),
+  recommendedWeekend: numeric("recommended_weekend", { precision: 10, scale: 2 }),
+  recommendedEvent: numeric("recommended_event", { precision: 10, scale: 2 }),
+  reasoning: text("reasoning"),
+
+  // ── Individual comp listings (JSONB array — always read together, never queried individually) ──
+  comps: jsonb("comps").$type<{
+    name: string;
+    source: string;
+    sourceUrl?: string | null;
+    rating?: number | null;
+    reviews?: number | null;
+    avgRate: number;
+    weekdayRate?: number | null;
+    weekendRate?: number | null;
+    minRate?: number | null;
+    maxRate?: number | null;
+  }[]>().default([]).notNull(),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  listingDateIdx: index("benchmark_listing_date_idx").on(table.listingId, table.dateFrom, table.dateTo),
+  listingDateUnique: unique("benchmark_listing_date_unique").on(table.listingId, table.dateFrom, table.dateTo),
+}));
+
+// ─────────────────────────────────────────────────────────
 // Type Exports
 // ─────────────────────────────────────────────────────────
 export type ListingRow = typeof listings.$inferSelect;
@@ -220,6 +291,8 @@ export type HostawayConversationRow = typeof hostawayConversations.$inferSelect;
 export type NewHostawayConversation = typeof hostawayConversations.$inferInsert;
 export type GuestSummaryRow = typeof guestSummaries.$inferSelect;
 export type NewGuestSummary = typeof guestSummaries.$inferInsert;
+export type BenchmarkDataRow = typeof benchmarkData.$inferSelect;
+export type NewBenchmarkData = typeof benchmarkData.$inferInsert;
 
 // ─────────────────────────────────────────────────────────
 // Legacy Aliases (for migration period — remove after full refactor)

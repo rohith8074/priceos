@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { User, Mail, Shield, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { authClient } from "@/lib/auth/client";
 
 export default function ProfilePage() {
     const router = useRouter();
@@ -21,23 +22,23 @@ export default function ProfilePage() {
     const [email, setEmail] = useState("");
 
     useEffect(() => {
-        // Load session from cookie
-        const cookies = document.cookie.split(';');
-        const sessionCookie = cookies.find(c => c.trim().startsWith('priceos-session='));
-
-        if (sessionCookie) {
+        async function loadSession() {
             try {
-                const sessionData = JSON.parse(decodeURIComponent(sessionCookie.split('=')[1]));
-                setUser({
-                    id: sessionData.username,
-                    name: sessionData.username,
-                    email: `${sessionData.username}@example.com`
-                });
+                const res = await authClient.getSession();
+                if (res?.data?.user) {
+                    const u = res.data.user;
+                    setUser({
+                        id: u.id,
+                        name: u.name || u.email,
+                        email: u.email,
+                    });
+                }
             } catch (e) {
-                console.error("Failed to parse session", e);
+                console.error("Failed to load session", e);
             }
+            setIsSessionPending(false);
         }
-        setIsSessionPending(false);
+        loadSession();
     }, []);
 
     useEffect(() => {
@@ -153,7 +154,7 @@ export default function ProfilePage() {
                             </AvatarFallback>
                         </Avatar>
                         <div className="space-y-1 pb-2">
-                            <CardTitle className="text-3xl font-black tracking-tighter">{fullName || 'User Account'}</CardTitle>
+                            <CardTitle className="text-3xl font-black tracking-tighter">{fullName || user.name || 'User Account'}</CardTitle>
                             <CardDescription className="text-base flex items-center gap-2 font-medium">
                                 <Shield className="h-4 w-4 text-amber-500 fill-amber-500/20" />
                                 Property Manager

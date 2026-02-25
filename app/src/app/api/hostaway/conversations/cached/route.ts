@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { hostawayConversations, mockHostawayReplies } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, lte, gte } from "drizzle-orm";
 
 /**
  * GET /api/hostaway/conversations/cached
@@ -25,8 +25,8 @@ export async function GET(request: Request) {
         const rows = await db.select().from(hostawayConversations).where(
             and(
                 eq(hostawayConversations.listingId, parseInt(listingId)),
-                eq(hostawayConversations.dateFrom, dateFrom),
-                eq(hostawayConversations.dateTo, dateTo)
+                lte(hostawayConversations.dateFrom, dateTo),
+                gte(hostawayConversations.dateTo, dateFrom)
             )
         );
 
@@ -34,8 +34,17 @@ export async function GET(request: Request) {
             return NextResponse.json({ success: true, conversations: [] });
         }
 
+        // Deduplicate rows by hostawayConversationId
+        const uniqueRowsMap = new Map();
+        for (const row of rows) {
+            if (!uniqueRowsMap.has(row.hostawayConversationId)) {
+                uniqueRowsMap.set(row.hostawayConversationId, row);
+            }
+        }
+        const uniqueRows = Array.from(uniqueRowsMap.values());
+
         // Merge with shadow replies from our DB
-        const uiConversations = await Promise.all(rows.map(async (conv) => {
+        const uiConversations = await Promise.all(uniqueRows.map(async (conv) => {
             const dbMessages = conv.messages as { sender: string; text: string; timestamp: string }[];
 
             // Get shadow admin replies for this conversation

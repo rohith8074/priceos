@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MarketEventsTable } from "@/components/events/market-events-table";
+import { BenchmarkWidget } from "@/components/signals/benchmark-widget";
 import { CalendarVisualizer } from "@/components/chat/calendar-visualizer";
 import { useContextStore } from "@/stores/context-store";
 import {
@@ -56,6 +57,7 @@ export function SidebarTabbedView() {
         propertyId,
         conversationSummary,
         setConversationSummary,
+        marketRefreshTrigger,
     } = useContextStore();
 
     const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -330,7 +332,17 @@ export function SidebarTabbedView() {
                     </TabsContent>
 
                     <TabsContent value="signals" className="h-full m-0 p-0 overflow-auto focus-visible:ring-0">
-                        <MarketEventsTable />
+                        <div className="flex flex-col gap-0">
+                            <MarketEventsTable />
+                            <div className="px-3 pb-3">
+                                <BenchmarkWidget
+                                    listingId={propertyId ? Number(propertyId) : null}
+                                    dateFrom={dateRange?.from ? format(dateRange.from, "yyyy-MM-dd") : null}
+                                    dateTo={dateRange?.to ? format(dateRange.to, "yyyy-MM-dd") : null}
+                                    refreshKey={marketRefreshTrigger}
+                                />
+                            </div>
+                        </div>
                     </TabsContent>
 
                     <TabsContent value="calendar" className="h-full m-0 p-0 overflow-auto focus-visible:ring-0">

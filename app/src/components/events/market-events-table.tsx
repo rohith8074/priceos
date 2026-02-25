@@ -26,17 +26,19 @@ export function MarketEventsTable() {
 
     // We use the same context that the chat uses so the table updates dynamically 
     // if you switch from Portfolio to Property view.
-    const { contextType, propertyId, marketRefreshTrigger } = useContextStore();
+    const { contextType, propertyId, dateRange, marketRefreshTrigger } = useContextStore();
 
     useEffect(() => {
         const fetchEvents = async () => {
             setLoading(true);
             setError(null);
             try {
-                // Fetch from a new dedicated API endpoint for the UI table
-                const url = `/api/events?context=${contextType}${propertyId ? `&propertyId=${propertyId}` : ''}`;
-                const res = await fetch(url);
+                const params = new URLSearchParams();
+                if (propertyId) params.set("listingId", String(propertyId));
+                if (dateRange?.from) params.set("dateFrom", format(dateRange.from, "yyyy-MM-dd"));
+                if (dateRange?.to) params.set("dateTo", format(dateRange.to, "yyyy-MM-dd"));
 
+                const res = await fetch(`/api/events?${params}`);
                 if (!res.ok) throw new Error("Failed to load events");
 
                 const data = await res.json();
@@ -49,7 +51,7 @@ export function MarketEventsTable() {
         };
 
         fetchEvents();
-    }, [contextType, propertyId, marketRefreshTrigger]);
+    }, [contextType, propertyId, dateRange, marketRefreshTrigger]);
 
     if (loading) {
         return (
@@ -135,7 +137,6 @@ export function MarketEventsTable() {
                                 const start = new Date(ev.startDate);
                                 const end = new Date(ev.endDate);
                                 const isSingleDay = ev.startDate === ev.endDate;
-                                const meta: any = ev.metadata || {};
 
                                 const isEvent = ev.eventType === 'event';
                                 const isHoliday = ev.eventType === 'holiday';
@@ -161,8 +162,8 @@ export function MarketEventsTable() {
                                                     <span className="text-sm font-bold text-foreground">
                                                         {ev.title}
                                                     </span>
-                                                    {meta.source && meta.source.startsWith('http') && (
-                                                        <a href={meta.source} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+                                                    {ev.source && ev.source.startsWith('http') && (
+                                                        <a href={ev.source} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
                                                             <ExternalLink className="h-3 w-3" />
                                                         </a>
                                                     )}
@@ -174,11 +175,6 @@ export function MarketEventsTable() {
                                                 <div className="flex flex-wrap gap-2 mt-1">
                                                     {isEvent && <Badge variant="outline" className="text-[9px] bg-blue-500/5 text-blue-500 border-blue-500/20">Event</Badge>}
                                                     {isHoliday && <Badge variant="outline" className="text-[9px] bg-purple-500/5 text-purple-500 border-purple-500/20">Holiday</Badge>}
-                                                    {meta.location || ev.location ? (
-                                                        <span className="text-[10px] text-muted-foreground flex items-center before:content-['•'] before:mr-1 before:opacity-30">
-                                                            {ev.location || meta.location}
-                                                        </span>
-                                                    ) : null}
                                                 </div>
                                             </div>
                                         </TableCell>

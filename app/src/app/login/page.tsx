@@ -5,12 +5,31 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sparkles, TrendingUp, Building2, ShieldCheck, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { SignInForm, SignUpForm, NeonAuthUIProvider, authLocalization } from "@neondatabase/auth/react/ui";
+import { authClient } from "@/lib/auth/client";
 
 function LoginContent() {
     const searchParams = useSearchParams();
+    const router = useRouter();
     const defaultTab = searchParams.get('tab') === 'signup' ? 'signup' : 'signin';
+    const [activeTab, setActiveTab] = useState<'signin' | 'signup'>(defaultTab);
+
+    // Poll for authenticated session — redirects once sign-in completes
+    useEffect(() => {
+        const interval = setInterval(async () => {
+            try {
+                const res = await authClient.getSession();
+                if (res?.data?.session) {
+                    clearInterval(interval);
+                    router.push('/dashboard');
+                    router.refresh();
+                }
+            } catch { }
+        }, 1500);
+        return () => clearInterval(interval);
+    }, [router]);
 
     return (
         <div className="min-h-screen grid lg:grid-cols-2 overflow-hidden bg-[#0a0a0b]">
@@ -89,68 +108,43 @@ function LoginContent() {
                         <p className="text-sm text-white/40">Secure administrative access for property operators.</p>
                     </div>
 
-                    <Card className="bg-white/[0.03] backdrop-blur-3xl border-white/5 shadow-2xl relative overflow-hidden group">
-                        {/* Top accent line */}
-                        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+                    <NeonAuthUIProvider authClient={authClient}>
+                        <Card className="bg-white/[0.03] backdrop-blur-3xl border-white/5 shadow-2xl relative overflow-hidden group neon-auth-ui p-0">
+                            {/* Top accent line */}
+                            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
 
-                        <CardHeader className="pb-4">
-                            <CardTitle className="text-xl font-bold text-white">Sign In</CardTitle>
-                            <CardDescription className="text-white/40">Enter your credentials to access the system.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <form className="space-y-4" onSubmit={async (e) => {
-                                e.preventDefault();
-                                const formData = new FormData(e.currentTarget);
-                                const username = formData.get('username') as string;
-                                const password = formData.get('password') as string;
+                            <Tabs
+                                value={activeTab}
+                                onValueChange={(value) => setActiveTab(value as 'signin' | 'signup')}
+                                className="w-full"
+                            >
+                                <TabsList className="grid w-full grid-cols-2 bg-transparent border-b border-white/10 rounded-none h-14">
+                                    <TabsTrigger
+                                        value="signin"
+                                        className="rounded-none data-[state=active]:bg-white/5 data-[state=active]:text-amber-500 border-b-2 border-transparent data-[state=active]:border-amber-500 text-white/50"
+                                    >
+                                        Sign In
+                                    </TabsTrigger>
+                                    <TabsTrigger
+                                        value="signup"
+                                        className="rounded-none data-[state=active]:bg-white/5 data-[state=active]:text-amber-500 border-b-2 border-transparent data-[state=active]:border-amber-500 text-white/50"
+                                    >
+                                        Sign Up
+                                    </TabsTrigger>
+                                </TabsList>
 
-                                try {
-                                    const res = await fetch('/api/auth/login', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ username, password })
-                                    });
+                                <div className="p-6">
+                                    <TabsContent value="signin" className="mt-0">
+                                        <SignInForm localization={authLocalization} />
+                                    </TabsContent>
 
-                                    const data = await res.json();
-                                    if (data.success) {
-                                        // Set simple session
-                                        const expiry = new Date();
-                                        expiry.setDate(expiry.getDate() + 7);
-                                        document.cookie = `priceos-session=${encodeURIComponent(JSON.stringify({ username: data.user.username, role: data.user.role }))}; path=/; expires=${expiry.toUTCString()}`;
-                                        window.location.href = '/dashboard';
-                                    } else {
-                                        alert(data.error || 'Invalid credentials');
-                                    }
-                                } catch (err) {
-                                    alert('An error occurred during sign in');
-                                }
-                            }}>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-white/60 uppercase tracking-widest">Username</label>
-                                    <input
-                                        name="username"
-                                        type="text"
-                                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-amber-500 transition-colors outline-none"
-                                        placeholder="Enter username"
-                                        required
-                                    />
+                                    <TabsContent value="signup" className="mt-0">
+                                        <SignUpForm localization={authLocalization} />
+                                    </TabsContent>
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-white/60 uppercase tracking-widest">Password</label>
-                                    <input
-                                        name="password"
-                                        type="password"
-                                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-amber-500 transition-colors outline-none"
-                                        placeholder="••••••••"
-                                        required
-                                    />
-                                </div>
-                                <Button type="submit" className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold py-6">
-                                    SIGN IN
-                                </Button>
-                            </form>
-                        </CardContent>
-                    </Card>
+                            </Tabs>
+                        </Card>
+                    </NeonAuthUIProvider>
 
                     <p className="text-center text-[10px] text-white/20 px-8 uppercase tracking-widest leading-relaxed">
                         By accessing this system you agree to our
@@ -199,6 +193,31 @@ function LoginContent() {
           box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.1) !important;
         }
 
+        form input::placeholder {
+          color: rgba(255, 255, 255, 0.3) !important;
+        }
+
+        /* Labels: Email, Password etc */
+        form label {
+          color: rgba(255, 255, 255, 0.75) !important;
+          font-weight: 600 !important;
+          font-size: 0.8rem !important;
+        }
+
+        /* Forgot password / helper links */
+        form a {
+          color: rgba(255, 255, 255, 0.55) !important;
+        }
+
+        form a:hover {
+          color: #f59e0b !important;
+        }
+
+        /* Descriptive text inside the form */
+        form p, form span {
+          color: rgba(255, 255, 255, 0.5) !important;
+        }
+
         form button[type="submit"] {
           background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%) !important;
           font-weight: 800 !important;
@@ -208,6 +227,7 @@ function LoginContent() {
           border-radius: 8px !important;
           box-shadow: 0 10px 20px -10px rgba(245, 158, 11, 0.5) !important;
           transition: all 0.3s ease !important;
+          color: #000 !important;
         }
 
         form button[type="submit"]:hover {

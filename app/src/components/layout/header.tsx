@@ -12,19 +12,40 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { authClient } from "@/lib/auth/client";
+import { useState, useEffect } from "react";
 
 export function Header() {
   const { theme, setTheme } = useTheme();
   const router = useRouter();
+  const [userInitial, setUserInitial] = useState("U");
 
-  const handleSignOut = () => {
+  useEffect(() => {
+    async function loadSession() {
+      try {
+        const res = await authClient.getSession();
+        if (res?.data?.user) {
+          const u = res.data.user;
+          setUserInitial((u.name?.[0] || u.email?.[0] || "U").toUpperCase());
+        }
+      } catch { }
+    }
+    loadSession();
+  }, []);
+
+  const handleSignOut = async () => {
+    try {
+      await authClient.signOut();
+    } catch (e) {
+      console.error("Sign out error", e);
+    }
     document.cookie = 'priceos-session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     router.push('/login');
     router.refresh();
   };
 
   const handleProfile = () => {
-    router.push('/settings');
+    router.push('/profile');
   };
 
   return (
@@ -70,7 +91,7 @@ export function Header() {
             >
               <Avatar className="h-8 w-8 ring-2 ring-amber-500/20">
                 <AvatarFallback className="text-xs bg-gradient-to-br from-amber-500 to-orange-600 text-white font-semibold">
-                  U
+                  {userInitial}
                 </AvatarFallback>
               </Avatar>
             </Button>
