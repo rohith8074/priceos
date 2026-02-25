@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export default function middleware(request: NextRequest) {
-  // Check for Neon (better-auth) session cookie
-  const devSession = request.cookies.get('better-auth.session_token');
-  const prodSession = request.cookies.get('__Secure-better-auth.session_token');
+  // Check for Neon auth session cookies
+  const devSession = request.cookies.get('__Secure-neon-auth.session_token');
+  const prodSession = request.cookies.get('__Secure-neon-auth.local.session_data');
   const session = devSession || prodSession;
 
   const { pathname } = request.nextUrl;
