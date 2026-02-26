@@ -16,18 +16,24 @@ export function ApprovalGuard() {
             try {
                 const res = await fetch("/api/auth/check-approval");
                 if (res.status === 401) {
-                    // Not authenticated at all — middleware handles this, but just in case
+                    // Not authenticated at all
                     router.push("/login");
                     return;
                 }
-                if (res.ok) {
-                    const { approved } = await res.json();
-                    if (!approved) {
-                        router.push("/waitlist");
-                    }
+                if (!res.ok) {
+                    // Any server error (500, etc.) → fail closed, send to waitlist
+                    console.error("[ApprovalGuard] Server error, redirecting to waitlist");
+                    router.push("/waitlist");
+                    return;
+                }
+                const { approved } = await res.json();
+                if (!approved) {
+                    router.push("/waitlist");
                 }
             } catch (err) {
+                // Network error → fail closed, send to waitlist
                 console.error("[ApprovalGuard] Failed to check approval", err);
+                router.push("/waitlist");
             }
         }
         checkApproval();
