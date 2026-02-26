@@ -6,10 +6,16 @@ export async function POST(request: Request) {
     console.log("🚀 [Shadow DB] Intercepting Hostaway Reply Request...");
     try {
         const body = await request.json();
-        const { conversationId, text } = body;
+        const conversationId = String(body.conversationId || "");
+        const text = String(body.text || "");
+
+        if (!conversationId || !text) {
+            console.error("❌ [Shadow DB] Missing conversationId or text");
+            return NextResponse.json({ error: "conversationId and text are required" }, { status: 400 });
+        }
 
         console.log(`📥 [Shadow DB] Saving simulated admin reply for conversation: ${conversationId}`);
-        console.log(`💬 [Shadow DB] Message: "${text}"`);
+        console.log(`💬 [Shadow DB] Message: "${text.substring(0, 100)}..."`);
 
         await db.insert(mockHostawayReplies).values({
             conversationId,

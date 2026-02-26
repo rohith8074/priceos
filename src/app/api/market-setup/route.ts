@@ -226,28 +226,43 @@ Search for 10-15 comparable properties on Airbnb, Booking.com, and Vrbo in the e
         await db.delete(marketEvents).where(deleteConditions);
         console.log(`  🗑️ Cleared previous market events for this scope.`);
 
-        if (recordsToInsert.length > 0) {
-            const finalRecords = recordsToInsert.map(r => ({
+        const isValidDate = (d: any): boolean => {
+            if (!d) return false;
+            const str = String(d);
+            return /^\d{4}-\d{2}-\d{2}$/.test(str) && !isNaN(Date.parse(str));
+        };
+
+        const finalRecords = recordsToInsert
+            .filter(r => {
+                // Skip records with malformed dates (LLM sometimes returns truncated dates)
+                if (!isValidDate(r.startDate) || !isValidDate(r.endDate)) {
+                    console.warn(`  ⚠️ Skipping record with invalid date: ${r.name} (${r.startDate} to ${r.endDate})`);
+                    return false;
+                }
+                return true;
+            })
+            .map(r => ({
                 listingId: r.listingId ?? null,
                 title: r.name,
                 startDate: r.startDate,
                 endDate: r.endDate,
                 eventType: r.eventType,
                 expectedImpact: r.expectedImpact ?? null,
-                confidence: r.confidence ?? null,
+                confidence: r.confidence != null ? Number(r.confidence) || null : null,
                 description: r.description ?? null,
                 source: r.source ?? null,
-                suggestedPremium: r.suggestedPremium ?? null,
-                compSampleSize: r.compSampleSize ?? null,
-                compMinRate: r.compMinRate ?? null,
-                compMaxRate: r.compMaxRate ?? null,
-                compMedianRate: r.compMedianRate ?? null,
+                suggestedPremium: r.suggestedPremium != null && !isNaN(Number(r.suggestedPremium)) ? String(r.suggestedPremium) : null,
+                compSampleSize: r.compSampleSize != null ? Number(r.compSampleSize) || null : null,
+                compMinRate: r.compMinRate != null && !isNaN(Number(r.compMinRate)) ? String(r.compMinRate) : null,
+                compMaxRate: r.compMaxRate != null && !isNaN(Number(r.compMaxRate)) ? String(r.compMaxRate) : null,
+                compMedianRate: r.compMedianRate != null && !isNaN(Number(r.compMedianRate)) ? String(r.compMedianRate) : null,
                 positioningVerdict: r.positioningVerdict ?? null,
-                positioningPercentile: r.positioningPercentile ?? null,
+                positioningPercentile: r.positioningPercentile != null ? Number(r.positioningPercentile) || null : null,
                 demandTrend: r.demandTrend ?? null,
                 location: r.location ?? null,
                 metadata: r.metadata ?? {},
             }));
+        if (finalRecords.length > 0) {
             await db.insert(marketEvents).values(finalRecords);
         }
 
