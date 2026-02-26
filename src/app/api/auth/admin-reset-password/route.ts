@@ -22,14 +22,7 @@ export async function POST(req: NextRequest) {
         }
 
         const baseUrl = NEON_AUTH_BASE_URL.endsWith('/') ? NEON_AUTH_BASE_URL : `${NEON_AUTH_BASE_URL}/`;
-
-        // Get the latest token ID before we request a new one
-        const preRows = await sql`
-            SELECT id FROM neon_auth.verification 
-            WHERE identifier LIKE 'reset-password:%'
-            ORDER BY "createdAt" DESC LIMIT 1
-        `;
-        const lastId = preRows.length > 0 ? preRows[0].id : null;
+        const startTime = new Date();
 
         // Step 1: Request password reset
         console.log(`[admin-reset-password] Requesting reset for ${email}...`);
@@ -45,28 +38,31 @@ export async function POST(req: NextRequest) {
         if (!resetReqRes.ok) {
             const errText = await resetReqRes.text();
             console.error('[admin-reset-password] Request failed:', resetReqRes.status, errText);
-            return NextResponse.json({ error: "No account found or reset inhibited" }, { status: 404 });
+            return NextResponse.json({ error: `Auth request failed: ${errText}` }, { status: resetReqRes.status });
         }
 
-        // Step 2: Poll for the new token (it might take a split second)
+        // Step 2: Poll for the SPECIFIC new token created after startTime
         let token = null;
-        for (let i = 0; i < 5; i++) {
-            await new Promise(r => setTimeout(r, 500)); // wait 500ms
+        console.log(`[admin-reset-password] Polling for token created after ${startTime.toISOString()}...`);
+
+        for (let i = 0; i < 6; i++) {
+            await new Promise(r => setTimeout(r, 600));
             const rows = await sql`
-                SELECT "value", id FROM neon_auth.verification 
+                SELECT "value", "identifier" FROM neon_auth.verification 
                 WHERE identifier LIKE 'reset-password:%'
-                AND id != ${lastId || '00000000-0000-0000-0000-000000000000'}
+                AND "createdAt" >= ${startTime}
                 ORDER BY "createdAt" DESC LIMIT 1
             `;
             if (rows.length > 0) {
+                // Some versions use the value, others use the identifier suffix
                 token = rows[0].value;
+                console.log(`[admin-reset-password] Found token in DB.`);
                 break;
             }
         }
 
         if (!token) {
-            console.error('[admin-reset-password] Token never appeared in DB');
-            return NextResponse.json({ error: "Failed to generate reset token" }, { status: 500 });
+            return NextResponse.json({ error: "Reset token not found in database. Please try again." }, { status: 500 });
         }
 
         // Step 3: Reset password
@@ -84,12 +80,17 @@ export async function POST(req: NextRequest) {
         }
 
         const resetErr = await resetRes.text();
-        console.error('[admin-reset-password] Reset failed:', resetRes.status, resetErr);
-        return NextResponse.json({ error: "Failed to set new password" }, { status: 500 });
+        console.error('[admin-reset-password] Reset API failed:', resetRes.status, resetErr);
+
+        // Return the actual error from Neon Auth so we can see it in the UI
+        return NextResponse.json({
+            error: `Auth Backend Error: ${resetErr}`,
+            tokenPreview: token.substring(0, 5) + '...'
+        }, { status: 500 });
 
     } catch (error: any) {
-        console.error("[admin-reset-password] Error:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        console.error("[admin-reset-password] Catch Error:", error);
+        return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
     }
 }
 
