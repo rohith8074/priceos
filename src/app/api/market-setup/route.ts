@@ -1,33 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { marketEvents, benchmarkData } from "@/lib/db/schema";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { neon } from "@neondatabase/serverless";
+
+export const dynamic = 'force-dynamic';
 
 const LYZR_API_URL = "https://agent-prod.studio.lyzr.ai/v3/inference/chat/";
 const LYZR_API_KEY = process.env.LYZR_API_KEY!;
 const MARKETING_AGENT_ID = process.env.Marketing_Agent_ID!;
 const BENCHMARK_AGENT_ID = process.env.LYZR_Competitor_Benchmark_Agent_ID!;
 
+const sql = neon(process.env.DATABASE_URL!);
+
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
         const { dateRange, context } = body;
-        const listingId: number | null = context?.listingId
-            ? Number(context.listingId)
-            : context?.propertyId
-                ? Number(context.propertyId)
-                : null;
+        const listingId = context?.listingId ? Number(context.listingId) : null;
 
         if (!dateRange?.from || !dateRange?.to) {
             return NextResponse.json({ error: "Date range is required" }, { status: 400 });
         }
 
-        if (!MARKETING_AGENT_ID || !LYZR_API_KEY) {
-            return NextResponse.json({ error: "Marketing Agent not configured" }, { status: 500 });
-        }
-
-        // 1. Build messages for both agents
-        // Helper: call Lyzr and parse JSON response (non-throwing — returns null on any failure)
         const callLyzrAgent = async (agentId: string, message: string, label: string): Promise<any> => {
             try {
                 const res = await fetch(LYZR_API_URL, {
@@ -40,10 +32,7 @@ export async function POST(req: NextRequest) {
                         message,
                     }),
                 });
-                if (!res.ok) {
-                    console.error(`  ❌ ${label} HTTP ${res.status}`);
-                    return null;
-                }
+                if (!res.ok) return null;
                 const raw = await res.json();
                 const reply = raw.response?.message || raw.response || raw.message;
                 if (typeof reply === "string") {
@@ -52,313 +41,210 @@ export async function POST(req: NextRequest) {
                 }
                 return reply ?? null;
             } catch (err) {
-                console.error(`  ❌ ${label} failed:`, err);
+                console.error(`❌ ${label} agent failed:`, err);
                 return null;
             }
         };
 
-        // ─── STEP 1: Marketing Agent ─────────────────────────────────────────
-        const marketingMessage = `${context?.propertyName
-            ? `Property: ${context.propertyName} (Area: ${context.area || "Dubai"}, Bedrooms: ${context.bedrooms || "unknown"}, Base Price: AED ${context.basePrice || "unknown"})`
-            : "Portfolio level analysis (all Dubai properties)"}
+        // --- Execute Agents ---
+        console.log(`📡 Calling Marketing Agent...`);
+        const marketingMessage = `Property: ${context?.propertyName || "Dubai Property"} (Area: ${context?.area || "Dubai"}, Bedrooms: ${context?.bedrooms || "unknown"})
 Date Range: ${dateRange.from} to ${dateRange.to}
+Execute market research and return JSON with events, holidays, competitors, positioning, demand_outlook, and summary.`;
 
-Please execute market research for this property matching the exact date range above. Return your analysis formatted exactly as specified in your system instructions.`;
-
-        console.log(`\n📡 STEP 1 — Marketing Agent (${MARKETING_AGENT_ID})`);
         const structuredData = await callLyzrAgent(MARKETING_AGENT_ID, marketingMessage, "marketing");
-        console.log(`  ✅ Marketing: ${structuredData?.events?.length ?? 0} events, ${structuredData?.holidays?.length ?? 0} holidays`);
+        if (!structuredData) return NextResponse.json({ error: "Agent analysis failed" }, { status: 502 });
 
-        // ─── STEP 2: Benchmark Agent ─────────────────────────────────────────
-        const benchmarkMessage = `${context?.propertyName
-            ? `Property: ${context.propertyName} (Area: ${context.area || "Dubai"}, Bedrooms: ${context.bedrooms || "unknown"}, Base Price: AED ${context.basePrice || "unknown"})`
-            : "Dubai property"}
-Date Range: ${dateRange.from} to ${dateRange.to}
+        console.log(`🔍 Calling Benchmark Agent...`);
+        const benchmarkMessage = `Property: ${context?.propertyName || "Property"} in ${context?.area || "Dubai"}. Get real-time rates for ${dateRange.from} to ${dateRange.to}.`;
+        const benchmarkData = await callLyzrAgent(BENCHMARK_AGENT_ID, benchmarkMessage, "benchmark");
 
-Search for 10-15 comparable properties on Airbnb, Booking.com, and Vrbo in the exact same area with the same bedroom count. Extract real rates and return ONLY valid JSON as specified in your system instructions.`;
+        // --- Data Preparation Helpers ---
+        const toNumeric = (v: any) => {
+            if (v == null || v === '') return null;
+            const n = parseFloat(v);
+            return isNaN(n) ? null : n;
+        };
+        const toInt = (v: any) => {
+            if (v == null || v === '') return null;
+            const n = parseInt(v);
+            return isNaN(n) ? null : n;
+        };
+        const isValidDate = (d: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(d || ""));
 
-        console.log(`\n🔍 STEP 2 — Benchmark Agent (${BENCHMARK_AGENT_ID})`);
-        const benchmarkData_raw = BENCHMARK_AGENT_ID
-            ? await callLyzrAgent(BENCHMARK_AGENT_ID, benchmarkMessage, "benchmark")
-            : null;
-        console.log(`  ✅ Benchmark: ${benchmarkData_raw?.comps?.length ?? 0} comps found`);
+        const eventsToInsert: any[] = [];
 
-        // 3. Validate Marketing Agent response (Benchmark failure is non-fatal)
-
-        if (!structuredData || typeof structuredData !== 'object') {
-            return NextResponse.json({
-                error: "Invalid marketing agent response",
-                rawBenchmark: benchmarkData_raw,
-            }, { status: 502 });
-        }
-
-        // 4. Save ALL data to event_signals table
-        const recordsToInsert: any[] = [];
-
-        // 4a. Process Events (may be empty — that's OK)
-        if (Array.isArray(structuredData.events)) {
-            structuredData.events.forEach((ev: any) => {
-                // Safety Filter: Skip events that are entirely outside the requested range
-                if (ev.date_end < dateRange.from || ev.date_start > dateRange.to) {
-                    console.log(`  ⚠️ Skipping out-of-range event: ${ev.title} (${ev.date_start} to ${ev.date_end})`);
-                    return;
-                }
-
-                recordsToInsert.push({
-                    name: ev.title || "Unnamed Event",
-                    startDate: ev.date_start,
-                    endDate: ev.date_end,
-                    eventType: 'event',
-                    expectedImpact: ev.impact || "medium",
-                    confidence: typeof ev.confidence === 'number'
-                        ? (ev.confidence <= 1 ? Math.round(ev.confidence * 100) : ev.confidence)
-                        : 50,
-                    description: ev.description || "",
-                    source: ev.source || null,
-                    suggestedPremium: ev.suggested_premium_pct ? String(ev.suggested_premium_pct) : null,
-                    location: ev.location || null,
-                    metadata: ev.metadata || {},
-                    listingId,
+        // Events
+        (structuredData.events || []).forEach((ev: any) => {
+            if (isValidDate(ev.date_start) && isValidDate(ev.date_end)) {
+                eventsToInsert.push({
+                    listing_id: listingId,
+                    title: ev.title || "Event",
+                    start_date: ev.date_start,
+                    end_date: ev.date_end,
+                    event_type: 'event',
+                    expected_impact: ev.impact || 'medium',
+                    confidence: toInt(ev.confidence) || 50,
+                    description: ev.description || '',
+                    suggested_premium: toNumeric(ev.suggested_premium_pct),
+                    metadata: ev.metadata || {}
                 });
-            });
-        }
+            }
+        });
 
-        // 4b. Process Holidays (may be empty — that's OK)
-        if (Array.isArray(structuredData.holidays)) {
-            structuredData.holidays.forEach((hol: any) => {
-                // Safety Filter: Skip holidays that are entirely outside the requested range
-                if (hol.date_end < dateRange.from || hol.date_start > dateRange.to) {
-                    console.log(`  ⚠️ Skipping out-of-range holiday: ${hol.name} (${hol.date_start} to ${hol.date_end})`);
-                    return;
-                }
-
-                recordsToInsert.push({
-                    name: hol.name || "Holiday",
-                    startDate: hol.date_start,
-                    endDate: hol.date_end,
-                    eventType: 'holiday',
-                    expectedImpact: hol.impact?.toLowerCase().includes('high') ? 'high' :
-                        hol.impact?.toLowerCase().includes('med') ? 'medium' : 'low',
+        // Holidays
+        (structuredData.holidays || []).forEach((hol: any) => {
+            if (isValidDate(hol.date_start) && isValidDate(hol.date_end)) {
+                eventsToInsert.push({
+                    listing_id: listingId,
+                    title: hol.name || "Holiday",
+                    start_date: hol.date_start,
+                    end_date: hol.date_end,
+                    event_type: 'holiday',
+                    expected_impact: hol.impact?.toLowerCase().includes('high') ? 'high' : 'medium',
                     confidence: 95,
-                    description: hol.impact || "",
-                    source: hol.source || null,
-                    suggestedPremium: hol.premium_pct ? String(hol.premium_pct) : null,
-                    location: hol.location || "Dubai",
-                    metadata: hol.metadata || {},
-                    listingId,
+                    description: hol.impact || '',
+                    suggested_premium: toNumeric(hol.premium_pct),
+                    metadata: hol.metadata || {}
                 });
-            });
-        }
+            }
+        });
 
-        // 4c. Save Competitor Intelligence as a special record
+        // Comps Intel
         if (structuredData.competitors) {
-            recordsToInsert.push({
-                name: `Competitor Intelligence: ${structuredData.area || "Dubai"}`,
-                startDate: dateRange.from,
-                endDate: dateRange.to,
-                eventType: 'competitor_intel',
-                expectedImpact: "medium",
+            eventsToInsert.push({
+                listing_id: listingId,
+                title: `Competitor Intelligence: ${structuredData.area || "Area"}`,
+                start_date: dateRange.from,
+                end_date: dateRange.to,
+                event_type: 'competitor_intel',
+                expected_impact: 'medium',
                 confidence: 70,
-                description: `Sample: ${structuredData.competitors.sample_size} properties. Rates: AED ${structuredData.competitors.min_rate}–${structuredData.competitors.max_rate} (median ${structuredData.competitors.median_rate}).`,
-                compSampleSize: structuredData.competitors.sample_size ?? null,
-                compMinRate: structuredData.competitors.min_rate != null ? String(structuredData.competitors.min_rate) : null,
-                compMaxRate: structuredData.competitors.max_rate != null ? String(structuredData.competitors.max_rate) : null,
-                compMedianRate: structuredData.competitors.median_rate != null ? String(structuredData.competitors.median_rate) : null,
-                listingId,
+                description: `Sample: ${structuredData.competitors.sample_size} properties. Rates: AED ${structuredData.competitors.min_rate}–${structuredData.competitors.max_rate}.`,
+                comp_sample_size: toInt(structuredData.competitors.sample_size),
+                comp_min_rate: toNumeric(structuredData.competitors.min_rate),
+                comp_max_rate: toNumeric(structuredData.competitors.max_rate),
+                comp_median_rate: toNumeric(structuredData.competitors.median_rate),
+                metadata: {}
             });
         }
 
-        // 4d. Save Positioning Analysis as a special record
+        // Positioning
         if (structuredData.positioning) {
-            recordsToInsert.push({
-                name: `Market Positioning: ${structuredData.area || "Dubai"}`,
-                startDate: dateRange.from,
-                endDate: dateRange.to,
-                eventType: 'positioning',
-                expectedImpact: structuredData.positioning.verdict === "UNDERPRICED" ? "high" :
-                    structuredData.positioning.verdict === "OVERPRICED" ? "high" : "medium",
+            eventsToInsert.push({
+                listing_id: listingId,
+                title: `Market Positioning: ${structuredData.area || "Area"}`,
+                start_date: dateRange.from,
+                end_date: dateRange.to,
+                event_type: 'positioning',
+                expected_impact: 'medium',
                 confidence: 75,
-                description: structuredData.positioning.insight || "",
-                positioningVerdict: structuredData.positioning.verdict ?? null,
-                positioningPercentile: structuredData.positioning.percentile ?? null,
-                listingId,
+                description: structuredData.positioning.insight || '',
+                positioning_verdict: structuredData.positioning.verdict || 'FAIR',
+                positioning_percentile: toInt(structuredData.positioning.percentile),
+                metadata: {}
             });
         }
 
-        // 4e. Save Demand Outlook as a special record (tourism trends, weather, supply)
+        // Demand Outlook
         if (structuredData.demand_outlook) {
-            recordsToInsert.push({
-                name: `Demand Outlook: ${dateRange.from} to ${dateRange.to}`,
-                startDate: dateRange.from,
-                endDate: dateRange.to,
-                eventType: 'demand_outlook',
-                expectedImpact: structuredData.demand_outlook.trend === 'strong' ? 'high' :
-                    structuredData.demand_outlook.trend === 'weak' ? 'low' : 'medium',
+            eventsToInsert.push({
+                listing_id: listingId,
+                title: `Demand Outlook: ${dateRange.from} to ${dateRange.to}`,
+                start_date: dateRange.from,
+                end_date: dateRange.to,
+                event_type: 'demand_outlook',
+                expected_impact: structuredData.demand_outlook.trend === 'strong' ? 'high' : 'medium',
                 confidence: 70,
-                description: [
-                    structuredData.demand_outlook.reason,
-                    structuredData.demand_outlook.weather,
-                    structuredData.demand_outlook.supply_notes,
-                ].filter(Boolean).join(' | ') || "",
-                demandTrend: structuredData.demand_outlook.trend ?? null,
-                listingId,
+                description: [structuredData.demand_outlook.reason, structuredData.demand_outlook.weather].filter(Boolean).join(' | '),
+                demand_trend: structuredData.demand_outlook.trend || 'stable',
+                metadata: {}
             });
         }
 
-        // 4f. Save Market Summary as a special record
+        // Summary
         if (structuredData.summary) {
-            recordsToInsert.push({
-                name: `Market Summary: ${dateRange.from} to ${dateRange.to}`,
-                startDate: dateRange.from,
-                endDate: dateRange.to,
-                eventType: 'market_summary',
-                expectedImpact: "medium",
+            eventsToInsert.push({
+                listing_id: listingId,
+                title: `Market Summary: ${dateRange.from} to ${dateRange.to}`,
+                start_date: dateRange.from,
+                end_date: dateRange.to,
+                event_type: 'market_summary',
+                expected_impact: 'medium',
                 confidence: 80,
                 description: structuredData.summary,
-                listingId,
+                metadata: {}
             });
         }
 
-        // Scoped delete: only remove records for this listing + date range (preserves other data)
-        const deleteConditions = listingId
-            ? and(eq(marketEvents.listingId, listingId), gte(marketEvents.startDate, dateRange.from), lte(marketEvents.endDate, dateRange.to))
-            : and(gte(marketEvents.startDate, dateRange.from), lte(marketEvents.endDate, dateRange.to));
-        await db.delete(marketEvents).where(deleteConditions);
-        console.log(`  🗑️ Cleared previous market events for this scope.`);
+        // --- Database Operations ---
+        console.log(`💾 Executing database updates...`);
 
-        const isValidDate = (d: any): boolean => {
-            if (!d) return false;
-            const str = String(d);
-            return /^\d{4}-\d{2}-\d{2}$/.test(str) && !isNaN(Date.parse(str));
-        };
-
-        const finalRecords = recordsToInsert
-            .filter(r => {
-                // Skip records with malformed dates (LLM sometimes returns truncated dates)
-                if (!isValidDate(r.startDate) || !isValidDate(r.endDate)) {
-                    console.warn(`  ⚠️ Skipping record with invalid date: ${r.name} (${r.startDate} to ${r.endDate})`);
-                    return false;
-                }
-                return true;
-            })
-            .map(r => ({
-                listingId: r.listingId ?? null,
-                title: r.name,
-                startDate: r.startDate,
-                endDate: r.endDate,
-                eventType: r.eventType,
-                expectedImpact: r.expectedImpact ?? null,
-                confidence: r.confidence != null ? Number(r.confidence) || null : null,
-                description: r.description ?? null,
-                source: r.source ?? null,
-                suggestedPremium: r.suggestedPremium != null && !isNaN(Number(r.suggestedPremium)) ? String(r.suggestedPremium) : null,
-                compSampleSize: r.compSampleSize != null ? Number(r.compSampleSize) || null : null,
-                compMinRate: r.compMinRate != null && !isNaN(Number(r.compMinRate)) ? String(r.compMinRate) : null,
-                compMaxRate: r.compMaxRate != null && !isNaN(Number(r.compMaxRate)) ? String(r.compMaxRate) : null,
-                compMedianRate: r.compMedianRate != null && !isNaN(Number(r.compMedianRate)) ? String(r.compMedianRate) : null,
-                positioningVerdict: r.positioningVerdict ?? null,
-                positioningPercentile: r.positioningPercentile != null ? Number(r.positioningPercentile) || null : null,
-                demandTrend: r.demandTrend ?? null,
-                location: r.location ?? null,
-                metadata: r.metadata ?? {},
-            }));
-        if (finalRecords.length > 0) {
-            await db.insert(marketEvents).values(finalRecords);
+        // Delete old records for overlap
+        if (listingId) {
+            await sql`DELETE FROM market_events WHERE listing_id = ${listingId} AND start_date >= ${dateRange.from} AND end_date <= ${dateRange.to}`;
+        } else {
+            await sql`DELETE FROM market_events WHERE listing_id IS NULL AND start_date >= ${dateRange.from} AND end_date <= ${dateRange.to}`;
         }
 
-        console.log(`  💾 Saved ${recordsToInsert.length} records to market_events`);
-
-        // ─── 5. Save Benchmark Data ───────────────────────────────────────────
-        let benchmarkCompsCount = 0;
-        let benchmarkSaved = false;
-
-        if (benchmarkData_raw && listingId) {
+        // Insert new records one by one to prevent batch param alignment issues
+        let savedCount = 0;
+        for (const item of eventsToInsert) {
             try {
-                const bd = benchmarkData_raw;
-                const rawComps = Array.isArray(bd.comps) ? bd.comps : [];
-                const dist = bd.rate_distribution ?? {};
-                const verdict = bd.pricing_verdict ?? {};
-                const trend = bd.rate_trend ?? {};
-                const rates = bd.recommended_rates ?? {};
-
-                // Map comps to the JSONB shape
-                const compsJson = rawComps.map((c: any) => ({
-                    name: c.name ?? "Unknown",
-                    source: c.source ?? "OTA",
-                    sourceUrl: c.source_url ?? null,
-                    rating: c.rating ?? null,
-                    reviews: c.reviews ?? null,
-                    avgRate: c.avg_nightly_rate ?? 0,
-                    weekdayRate: c.weekday_rate ?? null,
-                    weekendRate: c.weekend_rate ?? null,
-                    minRate: c.min_rate ?? null,
-                    maxRate: c.max_rate ?? null,
-                }));
-
-                // Upsert: delete existing row for this listing+range, then insert fresh
-                await db.delete(benchmarkData).where(
-                    and(
-                        eq(benchmarkData.listingId, listingId),
-                        eq(benchmarkData.dateFrom, dateRange.from),
-                        eq(benchmarkData.dateTo, dateRange.to)
+                await sql`
+                    INSERT INTO market_events (
+                        listing_id, title, start_date, end_date, event_type, 
+                        expected_impact, confidence, suggested_premium, source, 
+                        description, location, metadata, comp_sample_size, 
+                        comp_min_rate, comp_max_rate, comp_median_rate, 
+                        positioning_verdict, positioning_percentile, demand_trend
+                    ) VALUES (
+                        ${item.listing_id}, ${item.title}, ${item.start_date}, ${item.end_date}, ${item.event_type},
+                        ${item.expected_impact || null}, ${item.confidence || null}, ${item.suggested_premium || null}, ${item.source || null},
+                        ${item.description || null}, ${item.location || null}, ${JSON.stringify(item.metadata || {})}, ${item.comp_sample_size || null},
+                        ${item.comp_min_rate || null}, ${item.comp_max_rate || null}, ${item.comp_median_rate || null},
+                        ${item.positioning_verdict || null}, ${item.positioning_percentile || null}, ${item.demand_trend || null}
                     )
-                );
-
-                await db.insert(benchmarkData).values({
-                    listingId,
-                    dateFrom: dateRange.from,
-                    dateTo: dateRange.to,
-                    p25Rate: dist.p25 != null ? String(dist.p25) : null,
-                    p50Rate: dist.p50 != null ? String(dist.p50) : null,
-                    p75Rate: dist.p75 != null ? String(dist.p75) : null,
-                    p90Rate: dist.p90 != null ? String(dist.p90) : null,
-                    avgWeekday: dist.avg_weekday != null ? String(dist.avg_weekday) : null,
-                    avgWeekend: dist.avg_weekend != null ? String(dist.avg_weekend) : null,
-                    yourPrice: verdict.your_price != null ? String(verdict.your_price) : null,
-                    percentile: verdict.percentile ?? null,
-                    verdict: verdict.verdict ?? null,
-                    rateTrend: trend.direction ?? null,
-                    trendPct: trend.pct_change != null ? String(trend.pct_change) : null,
-                    recommendedWeekday: rates.weekday != null ? String(rates.weekday) : null,
-                    recommendedWeekend: rates.weekend != null ? String(rates.weekend) : null,
-                    recommendedEvent: rates.event_peak != null ? String(rates.event_peak) : null,
-                    reasoning: rates.reasoning ?? null,
-                    comps: compsJson,
-                });
-
-                benchmarkSaved = true;
-                console.log(`  💾 Saved 1 benchmark row (${compsJson.length} comps in JSONB) to benchmark_data`);
-
-            } catch (benchmarkErr) {
-                // Benchmark save failure is non-fatal — log and continue
-                console.error(`  ⚠️ Benchmark save failed (non-fatal):`, benchmarkErr);
+                `;
+                savedCount++;
+            } catch (err) {
+                console.error(`❌ Failed to insert market event: ${item.title}`, err);
             }
-        } else if (benchmarkData_raw && !listingId) {
-            console.warn(`  ⚠️ Benchmark data received but no listingId — skipped saving`);
+        }
+
+        // Handle benchmark data separately
+        if (benchmarkData && listingId) {
+            try {
+                const bd = benchmarkData;
+                const compsJson = JSON.stringify(Array.isArray(bd.comps) ? bd.comps : []);
+                const dist = bd.rate_distribution || {};
+                const verdict = bd.pricing_verdict || {};
+
+                await sql`DELETE FROM benchmark_data WHERE listing_id = ${listingId} AND date_from = ${dateRange.from} AND date_to = ${dateRange.to}`;
+                await sql`
+                    INSERT INTO benchmark_data (
+                        listing_id, date_from, date_to, p25_rate, p50_rate, p75_rate, p90_rate,
+                        your_price, percentile, verdict, comps
+                    ) VALUES (
+                        ${listingId}, ${dateRange.from}, ${dateRange.to}, 
+                        ${toNumeric(dist.p25)}, ${toNumeric(dist.p50)}, ${toNumeric(dist.p75)}, ${toNumeric(dist.p90)},
+                        ${toNumeric(verdict.your_price)}, ${toInt(verdict.percentile)}, ${verdict.verdict || null}, ${compsJson}
+                    )
+                `;
+            } catch (err) {
+                console.error(`❌ Failed to save benchmark data`, err);
+            }
         }
 
         return NextResponse.json({
             success: true,
             summary: structuredData.summary,
-            eventsCount: structuredData.events?.length || 0,
-            holidaysCount: structuredData.holidays?.length || 0,
-            hasCompetitors: !!structuredData.competitors,
-            hasPositioning: !!structuredData.positioning,
-            totalRecords: recordsToInsert.length,
-            area: structuredData.area,
-            benchmark: {
-                saved: benchmarkSaved,
-                compsFound: benchmarkData_raw?.comps?.length ?? 0,
-                compsSaved: benchmarkCompsCount,
-                verdict: benchmarkData_raw?.pricing_verdict?.verdict ?? null,
-                p50: benchmarkData_raw?.rate_distribution?.p50 ?? null,
-            },
+            savedCount,
+            benchmarkFound: !!benchmarkData
         });
 
-    } catch (error) {
-        console.error("Market Setup Route Error:", error);
-        return NextResponse.json({
-            error: error instanceof Error ? error.message : "Internal Server Error"
-        }, { status: 500 });
+    } catch (error: any) {
+        console.error("Market Setup Error:", error);
+        return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
     }
 }
