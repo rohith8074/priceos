@@ -54,8 +54,13 @@ export function HeaderNav() {
   }, []);
 
   const handleSignOut = async () => {
-    // VERSION: 2.1 - Sign out Fix
-    // 1. Clear all auth cookies immediately and synchronously
+    // VERSION: 2.2 - Sign out Fix
+    // 1. Await the server-side session revocation so the session is truly invalidated
+    try {
+      await authClient.signOut();
+    } catch { /* ignore errors, proceed with redirect */ }
+
+    // 2. Clear all auth cookies
     const cookiesToClear = [
       'priceos-session',
       '__Secure-neon-auth.session_token',
@@ -69,11 +74,8 @@ export function HeaderNav() {
       document.cookie = `${name}=; path=/; domain=${window.location.hostname}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
     });
 
-    // 2. Fire and forget the API sign out
-    authClient.signOut().catch(() => { });
-
-    // 3. Instant hard redirect
-    window.location.href = '/login';
+    // 3. Hard redirect with signedout flag so login page doesn't auto-redirect back
+    window.location.href = '/login?signedout=true';
   };
 
   return (

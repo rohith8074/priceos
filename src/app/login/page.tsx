@@ -16,8 +16,14 @@ function LoginContent() {
     const defaultTab = searchParams.get('tab') === 'signup' ? 'signup' : 'signin';
     const [activeTab, setActiveTab] = useState<'signin' | 'signup'>(defaultTab);
 
+    // If the user was just signed out, don't auto-redirect back to dashboard
+    const justSignedOut = searchParams.get('signedout') === 'true';
+
     // Poll for authenticated session — redirects once sign-in completes
+    // Skip polling if user just signed out to prevent redirect loop
     useEffect(() => {
+        if (justSignedOut) return; // Don't poll after sign-out
+
         const interval = setInterval(async () => {
             try {
                 const res = await authClient.getSession();
@@ -29,7 +35,7 @@ function LoginContent() {
             } catch { }
         }, 1500);
         return () => clearInterval(interval);
-    }, [router]);
+    }, [router, justSignedOut]);
 
     return (
         <div className="min-h-screen grid lg:grid-cols-2 overflow-hidden bg-[#0a0a0b]">

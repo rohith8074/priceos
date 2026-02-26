@@ -32,8 +32,13 @@ export default function WaitlistPage() {
     }, [router]);
 
     const handleSignOut = async () => {
-        // VERSION: 2.1 - Sign out Fix
-        // 1. Clear all auth cookies immediately and synchronously
+        // VERSION: 2.2 - Sign out Fix
+        // 1. Await the server-side session revocation
+        try {
+            await authClient.signOut();
+        } catch { }
+
+        // 2. Clear auth cookies
         const cookiesToClear = [
             'priceos-session',
             '__Secure-neon-auth.session_token',
@@ -47,11 +52,8 @@ export default function WaitlistPage() {
             document.cookie = `${name}=; path=/; domain=${window.location.hostname}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
         });
 
-        // 2. Fire and forget the API sign out
-        authClient.signOut().catch(() => { });
-
-        // 3. Instant hard redirect
-        window.location.href = '/login';
+        // 3. Redirect with signedout flag
+        window.location.href = '/login?signedout=true';
     };
 
     return (
