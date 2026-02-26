@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Sparkles, ArrowLeft, Eye, EyeOff, CheckCircle, AlertCircle, Loader2, User, Lock, Mail } from "lucide-react";
+import { Sparkles, ArrowLeft, Eye, EyeOff, CheckCircle, AlertCircle, Loader2, User, Lock } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { toast } from "sonner";
@@ -21,7 +21,8 @@ function ForgotPasswordContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
+  // emailSent state removed — direct password reset, no email needed
+
   const [error, setError] = useState("");
 
   // Step 1: Verify email exists in database
@@ -73,13 +74,8 @@ function ForgotPasswordContent() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        if (data.emailSent) {
-          setEmailSent(true);
-          toast.success("Password reset link sent to your email!");
-        } else {
-          setSaveSuccess(true);
-          toast.success("Password updated successfully!");
-        }
+        setSaveSuccess(true);
+        toast.success("Password updated successfully!");
       } else {
         setError(data.error || "Failed to reset password");
         toast.error(data.error || "Failed to reset password");
@@ -138,28 +134,6 @@ function ForgotPasswordContent() {
                   Go to Sign In
                 </Button>
               </Link>
-            </div>
-          </Card>
-
-          /* ── EMAIL SENT STATE ── */
-        ) : emailSent ? (
-          <Card className="bg-white/[0.03] backdrop-blur-3xl border-amber-500/20 shadow-2xl p-8 space-y-6">
-            <div className="flex flex-col items-center text-center space-y-4">
-              <div className="rounded-full bg-amber-500/10 p-4">
-                <Mail className="h-10 w-10 text-amber-500" />
-              </div>
-              <h4 className="text-xl font-black text-white">Check Your Email</h4>
-              <p className="text-sm text-white/50">
-                A password reset link has been sent to <span className="text-amber-500 font-semibold">{verifiedEmail}</span>.
-                Click the link in the email to set a new password.
-              </p>
-              <div className="w-full space-y-3 pt-2">
-                <Link href="/login" className="block w-full">
-                  <Button className="w-full h-12 bg-gradient-to-r from-amber-500 to-orange-600 text-black font-black uppercase tracking-wider hover:opacity-90 transition-opacity">
-                    Back to Sign In
-                  </Button>
-                </Link>
-              </div>
             </div>
           </Card>
 
@@ -310,7 +284,7 @@ function ForgotPasswordContent() {
         )}
 
         {/* Back to Login (on step 1 only) */}
-        {!isVerified && !saveSuccess && !emailSent && (
+        {!isVerified && !saveSuccess && (
           <Link href="/login" className="flex items-center gap-2 text-sm text-white/40 hover:text-amber-500 transition-colors font-medium">
             <ArrowLeft className="h-4 w-4" />
             Back to Sign In
