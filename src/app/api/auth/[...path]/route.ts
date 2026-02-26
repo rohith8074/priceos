@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { auth } from '@/lib/auth/server';
 
 export const dynamic = 'force-dynamic';
@@ -14,69 +14,77 @@ export const dynamic = 'force-dynamic';
  * By rewriting the Origin to our canonical production URL, all deployments work.
  */
 function getProductionOrigin(): string | undefined {
-    // Priority: explicit config > Vercel production URL > Vercel deployment URL
     if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
     if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-    if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
     return undefined;
 }
 
-const PRODUCTION_ORIGIN = getProductionOrigin();
+/**
+ * Creates a new Request with the Origin header overridden to the production URL.
+ * Uses standard Request constructor (not NextRequest) for reliable body handling.
+ * Reads body as text first since streams can only be consumed once.
+ */
+async function withProductionOrigin(request: NextRequest): Promise<Request> {
+    const origin = getProductionOrigin();
+    if (!origin) return request;
 
-async function createProxiedRequest(request: NextRequest): Promise<NextRequest> {
-    if (!PRODUCTION_ORIGIN) return request;
+    // Read body as text for POST/PUT/PATCH (streams can only be read once)
+    let bodyText: string | null = null;
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+        try {
+            bodyText = await request.text();
+        } catch {
+            bodyText = null;
+        }
+    }
 
-    // Clone headers and override Origin to match what Neon Auth expects
+    // Clone all headers and override origin
     const headers = new Headers(request.headers);
-    headers.set('origin', PRODUCTION_ORIGIN);
+    headers.set('origin', origin);
 
-    // Also fix referer if present
+    // Also override referer to match
     const referer = headers.get('referer');
     if (referer) {
         try {
             const refUrl = new URL(referer);
-            const prodUrl = new URL(PRODUCTION_ORIGIN);
+            const prodUrl = new URL(origin);
             refUrl.host = prodUrl.host;
             refUrl.protocol = prodUrl.protocol;
             headers.set('referer', refUrl.toString());
-        } catch { /* keep original referer */ }
+        } catch { /* keep original */ }
     }
 
-    // Create a new request with the modified headers
-    return new NextRequest(request.url, {
+    // Log for debugging (remove in production later)
+    console.log(`[Auth Proxy] ${request.method} ${request.nextUrl.pathname} → Origin overridden to: ${origin}`);
+
+    // Use standard Request constructor for reliable body+header cloning
+    return new Request(request.url, {
         method: request.method,
         headers,
-        body: request.body,
-        // @ts-ignore - duplex is needed for streaming bodies
-        duplex: 'half',
+        body: bodyText,
     });
 }
 
 const handler = auth.handler();
 
 export async function GET(request: NextRequest, context: any) {
-    const proxiedRequest = await createProxiedRequest(request);
-    return handler.GET(proxiedRequest, context);
+    return handler.GET(await withProductionOrigin(request), context);
 }
 
 export async function POST(request: NextRequest, context: any) {
-    const proxiedRequest = await createProxiedRequest(request);
-    return handler.POST(proxiedRequest, context);
+    return handler.POST(await withProductionOrigin(request), context);
 }
 
 export async function PUT(request: NextRequest, context: any) {
-    const proxiedRequest = await createProxiedRequest(request);
-    return handler.PUT(proxiedRequest, context);
+    return handler.PUT(await withProductionOrigin(request), context);
 }
 
 export async function PATCH(request: NextRequest, context: any) {
-    const proxiedRequest = await createProxiedRequest(request);
-    return handler.PATCH(proxiedRequest, context);
+    return handler.PATCH(await withProductionOrigin(request), context);
 }
 
 export async function DELETE(request: NextRequest, context: any) {
-    const proxiedRequest = await createProxiedRequest(request);
-    return handler.DELETE(proxiedRequest, context);
+    return handler.DELETE(await withProductionOrigin(request), context);
 }
 
 export async function OPTIONS() {
