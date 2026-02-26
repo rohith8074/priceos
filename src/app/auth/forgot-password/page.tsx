@@ -41,7 +41,7 @@ function ForgotPasswordContent() {
       setUserName(checkData.name || email);
 
       // Use Neon Auth's password reset flow — sends a reset link via email
-      const result = await authClient.forgetPassword({
+      const result = await (authClient as any).requestPasswordReset({
         email: email,
         redirectTo: "/auth/reset-password",
       });

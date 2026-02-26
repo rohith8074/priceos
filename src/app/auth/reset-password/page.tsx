@@ -46,7 +46,7 @@ function ResetPasswordContent() {
     setIsSaving(true);
 
     try {
-      const result = await authClient.resetPassword({
+      const result = await (authClient as any).resetPassword({
         newPassword: newPassword,
         token: token,
       });
