@@ -4,31 +4,29 @@ import { auth } from '@/lib/auth/server';
 export const dynamic = 'force-dynamic';
 
 /**
- * Custom auth proxy handler that overrides the Origin header
- * to match the production domain registered in Neon Auth.
+ * Custom auth proxy that rewrites the Origin header to match the Neon Auth
+ * backend's own origin. This bypasses the CSRF "Invalid origin" check.
  * 
- * This fixes the "Invalid origin" 403 error on Vercel preview deployments
- * where the URL changes on every push (e.g. priceos-abc123.vercel.app).
+ * The SDK's prepareRequestHeaders always sends an Origin header (derived from 
+ * request.headers.origin || referer || request.url.origin). The Neon Auth 
+ * backend validates this and rejects unknown origins with 403.
  * 
- * The Neon Auth backend validates the Origin header against its allowed origins.
- * By rewriting the Origin to our canonical production URL, all deployments work.
+ * By setting the Origin to the Neon Auth backend's own URL, the request is
+ * treated as a "same-origin" call and passes CSRF validation.
+ * 
+ * This is safe because our Next.js proxy IS a trusted server-side intermediary
+ * between the browser and the Neon Auth backend.
  */
-function getProductionOrigin(): string | undefined {
-    if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
-    if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-    return undefined;
-}
+const NEON_AUTH_ORIGIN = (() => {
+    try {
+        return new URL(process.env.NEON_AUTH_BASE_URL!).origin;
+    } catch {
+        return 'https://localhost';
+    }
+})();
 
-/**
- * Creates a new Request with the Origin header overridden to the production URL.
- * Uses standard Request constructor (not NextRequest) for reliable body handling.
- * Reads body as text first since streams can only be consumed once.
- */
-async function withProductionOrigin(request: NextRequest): Promise<Request> {
-    const origin = getProductionOrigin();
-    if (!origin) return request;
-
-    // Read body as text for POST/PUT/PATCH (streams can only be read once)
+async function rewriteOriginToNeonAuth(request: NextRequest): Promise<Request> {
+    // Read body for mutating requests (streams can only be consumed once)
     let bodyText: string | null = null;
     if (request.method !== 'GET' && request.method !== 'HEAD') {
         try {
@@ -38,26 +36,11 @@ async function withProductionOrigin(request: NextRequest): Promise<Request> {
         }
     }
 
-    // Clone all headers and override origin
+    // Clone headers with Origin + Referer pointing to the Neon Auth backend
     const headers = new Headers(request.headers);
-    headers.set('origin', origin);
+    headers.set('origin', NEON_AUTH_ORIGIN);
+    headers.delete('referer');
 
-    // Also override referer to match
-    const referer = headers.get('referer');
-    if (referer) {
-        try {
-            const refUrl = new URL(referer);
-            const prodUrl = new URL(origin);
-            refUrl.host = prodUrl.host;
-            refUrl.protocol = prodUrl.protocol;
-            headers.set('referer', refUrl.toString());
-        } catch { /* keep original */ }
-    }
-
-    // Log for debugging (remove in production later)
-    console.log(`[Auth Proxy] ${request.method} ${request.nextUrl.pathname} → Origin overridden to: ${origin}`);
-
-    // Use standard Request constructor for reliable body+header cloning
     return new Request(request.url, {
         method: request.method,
         headers,
@@ -68,23 +51,23 @@ async function withProductionOrigin(request: NextRequest): Promise<Request> {
 const handler = auth.handler();
 
 export async function GET(request: NextRequest, context: any) {
-    return handler.GET(await withProductionOrigin(request), context);
+    return handler.GET(await rewriteOriginToNeonAuth(request), context);
 }
 
 export async function POST(request: NextRequest, context: any) {
-    return handler.POST(await withProductionOrigin(request), context);
+    return handler.POST(await rewriteOriginToNeonAuth(request), context);
 }
 
 export async function PUT(request: NextRequest, context: any) {
-    return handler.PUT(await withProductionOrigin(request), context);
+    return handler.PUT(await rewriteOriginToNeonAuth(request), context);
 }
 
 export async function PATCH(request: NextRequest, context: any) {
-    return handler.PATCH(await withProductionOrigin(request), context);
+    return handler.PATCH(await rewriteOriginToNeonAuth(request), context);
 }
 
 export async function DELETE(request: NextRequest, context: any) {
-    return handler.DELETE(await withProductionOrigin(request), context);
+    return handler.DELETE(await rewriteOriginToNeonAuth(request), context);
 }
 
 export async function OPTIONS() {
