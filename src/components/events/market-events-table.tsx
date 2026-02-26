@@ -172,17 +172,24 @@ export function MarketEventsTable() {
                                                     <span className="text-sm font-bold text-foreground">
                                                         {ev.title}
                                                     </span>
-                                                    {ev.source && ev.source.startsWith('http') && (
-                                                        <a href={ev.source} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
-                                                            <ExternalLink className="h-3 w-3" />
-                                                        </a>
-                                                    )}
                                                 </div>
                                                 <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 group-hover:line-clamp-none transition-all">
                                                     {ev.description}
                                                 </p>
 
-                                                <div className="flex flex-wrap gap-2 mt-1">
+                                                {ev.source && ev.source.startsWith('http') && (
+                                                    <a
+                                                        href={ev.source}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1 mt-1 transition-all"
+                                                    >
+                                                        Go to source
+                                                        <ExternalLink className="h-2.5 w-2.5" />
+                                                    </a>
+                                                )}
+
+                                                <div className="flex flex-wrap gap-2 mt-1.5">
                                                     {isEvent && <Badge variant="outline" className="text-[9px] bg-blue-500/5 text-blue-500 border-blue-500/20">Event</Badge>}
                                                     {isHoliday && <Badge variant="outline" className="text-[9px] bg-purple-500/5 text-purple-500 border-purple-500/20">Holiday</Badge>}
                                                 </div>

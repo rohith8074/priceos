@@ -262,19 +262,40 @@ export function BenchmarkWidget({ listingId, dateFrom, dateTo, refreshKey = 0 }:
                                                     <div className="flex flex-col min-w-0">
                                                         <div className="flex items-center gap-1.5">
                                                             <span className="text-[11px] font-bold truncate max-w-[140px]">{comp.name ?? "Unnamed"}</span>
-                                                            {comp.sourceUrl && (
-                                                                <a href={comp.sourceUrl} target="_blank" rel="noopener noreferrer">
-                                                                    <ExternalLink className="h-2.5 w-2.5 text-muted-foreground hover:text-foreground" />
-                                                                </a>
-                                                            )}
                                                         </div>
-                                                        <div className="flex items-center gap-1.5 mt-0.5">
-                                                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-semibold">{comp.source ?? "OTA"}</span>
-                                                            {comp.rating && (
-                                                                <span className="text-[9px] text-amber-500 font-bold">★ {comp.rating}</span>
-                                                            )}
-                                                            {comp.reviews != null && (
-                                                                <span className="text-[9px] text-muted-foreground">{comp.reviews} reviews</span>
+                                                        <div className="flex flex-col gap-1 mt-0.5">
+                                                            <div className="flex items-center gap-1.5">
+                                                                {comp.sourceUrl ? (
+                                                                    <a
+                                                                        href={comp.sourceUrl}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="text-[9px] px-1.5 py-0.5 rounded bg-[#f39c12]/10 text-[#f39c12] hover:bg-[#f39c12]/20 font-semibold border border-[#f39c12]/20 transition-colors"
+                                                                    >
+                                                                        {comp.source ?? "OTA"}
+                                                                    </a>
+                                                                ) : (
+                                                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-semibold">{comp.source ?? "OTA"}</span>
+                                                                )}
+
+                                                                {comp.rating && (
+                                                                    <span className="text-[9px] text-amber-500 font-bold">★ {comp.rating}</span>
+                                                                )}
+                                                                {comp.reviews != null && (
+                                                                    <span className="text-[9px] text-muted-foreground">{comp.reviews} reviews</span>
+                                                                )}
+                                                            </div>
+
+                                                            {comp.sourceUrl && (
+                                                                <a
+                                                                    href={comp.sourceUrl}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-[9px] font-bold text-[#f39c12] hover:underline flex items-center gap-1 transition-all"
+                                                                >
+                                                                    Go to listing
+                                                                    <ExternalLink className="h-2 w-2" />
+                                                                </a>
                                                             )}
                                                         </div>
                                                     </div>
