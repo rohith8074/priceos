@@ -156,62 +156,9 @@ export default function UsersPage() {
                         Manage administrative access, user permissions, and approve new sign-ups.
                     </p>
                 </div>
-                <Button
-                    onClick={() => {
-                        setIsAddMode(!isAddMode);
-                        setIsAdminState(false);
-                    }}
-                    className="bg-amber-500 hover:bg-amber-600 font-bold"
-                >
-                    {isAddMode ? "Cancel" : (
-                        <>
-                            <UserPlus className="mr-2 h-4 w-4" />
-                            Add User
-                        </>
-                    )}
-                </Button>
             </div>
 
-            {isAddMode && (
-                <Card className="border-amber-500/20 bg-amber-500/[0.02]">
-                    <CardHeader>
-                        <CardTitle className="text-lg font-bold">Add New User</CardTitle>
-                        <CardDescription>Authorize a new user. They will be added directly to the Neon Database with immediate access.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={handleAddUser} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-muted-foreground uppercase">Username ID</label>
-                                <Input name="userId" placeholder="e.g. jdoe" required />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-muted-foreground uppercase">Full Name</label>
-                                <Input name="fullName" placeholder="John Doe" required />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-muted-foreground uppercase">Email Address</label>
-                                <Input name="email" type="email" placeholder="john@example.com" required />
-                            </div>
-                            <div className="col-span-1 md:col-span-3 pt-2">
-                                <div className="flex items-center justify-between p-4 border border-amber-500/20 rounded-lg bg-background/50">
-                                    <div className="space-y-0.5">
-                                        <label className="text-sm font-bold">Admin Privileges</label>
-                                        <p className="text-xs text-muted-foreground">Grant full access to system settings and user management.</p>
-                                    </div>
-                                    <Switch
-                                        checked={isAdminState}
-                                        onCheckedChange={setIsAdminState}
-                                        className="data-[state=checked]:bg-amber-500"
-                                    />
-                                </div>
-                            </div>
-                            <Button type="submit" className="md:col-span-3 bg-gradient-to-r from-amber-500 to-orange-600 font-bold uppercase tracking-widest mt-2">
-                                Authorize User
-                            </Button>
-                        </form>
-                    </CardContent>
-                </Card>
-            )}
+            {/* ── Users now sign up through Neon Auth with email verification ── */}
 
             {/* ── Pending Approval Section ── */}
             {pendingUsers.length > 0 && (
