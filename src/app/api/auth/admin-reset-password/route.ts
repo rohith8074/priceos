@@ -48,15 +48,16 @@ export async function POST(req: NextRequest) {
         for (let i = 0; i < 6; i++) {
             await new Promise(r => setTimeout(r, 600));
             const rows = await sql`
-                SELECT "value", "identifier" FROM neon_auth.verification 
+                SELECT "identifier", "value" FROM neon_auth.verification 
                 WHERE identifier LIKE 'reset-password:%'
                 AND "createdAt" >= ${startTime}
                 ORDER BY "createdAt" DESC LIMIT 1
             `;
             if (rows.length > 0) {
-                // Some versions use the value, others use the identifier suffix
-                token = rows[0].value;
-                console.log(`[admin-reset-password] Found token in DB.`);
+                // The token is the part after the colon in 'reset-password:TOKEN'
+                const fullIdentifier = rows[0].identifier;
+                token = fullIdentifier.split(':')[1];
+                console.log(`[admin-reset-password] Found token in identifier suffix.`);
                 break;
             }
         }
