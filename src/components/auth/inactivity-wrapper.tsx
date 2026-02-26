@@ -15,16 +15,14 @@ export function InactivityMonitor() {
 
         const handleLogout = async () => {
             try {
-                const signOutPromise = authClient.signOut();
-                const timeoutPromise = new Promise(resolve => setTimeout(resolve, 2000));
-                await Promise.race([signOutPromise, timeoutPromise]);
+                await authClient.signOut();
             } catch { }
             const cookiesToClear = ['priceos-session', '__Secure-neon-auth.session_token', '__Secure-neon-auth.local.session_data', 'neon-auth.session_token', 'better-auth.session_token'];
             cookiesToClear.forEach(name => {
                 document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
                 document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; secure; samesite=lax`;
             });
-            window.location.href = '/login';
+            window.location.href = '/login?signedout=true';
         };
 
         const resetTimer = () => {

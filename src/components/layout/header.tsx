@@ -34,10 +34,9 @@ export function Header() {
   }, []);
 
   const handleSignOut = async () => {
+    // VERSION: 2.2 - Sign out Fix
     try {
-      const signOutPromise = authClient.signOut();
-      const timeoutPromise = new Promise(resolve => setTimeout(resolve, 2000));
-      await Promise.race([signOutPromise, timeoutPromise]);
+      await authClient.signOut();
     } catch { }
     const cookiesToClear = [
       'priceos-session',
@@ -51,7 +50,7 @@ export function Header() {
       document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; secure; samesite=lax`;
       document.cookie = `${name}=; path=/; domain=${window.location.hostname}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
     });
-    window.location.href = '/login';
+    window.location.href = '/login?signedout=true';
   };
 
   const handleProfile = () => {
