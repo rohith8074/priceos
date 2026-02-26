@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, ExternalLink, BarChart3 } from "lucide-react";
+import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, ExternalLink, BarChart3, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
+import { useContextStore } from "@/stores/context-store";
 
 interface BenchmarkSummary {
     id: number;
@@ -71,6 +72,7 @@ export function BenchmarkWidget({ listingId, dateFrom, dateTo, refreshKey = 0 }:
     const [comps, setComps] = useState<BenchmarkComp[]>([]);
     const [loading, setLoading] = useState(false);
     const [hasData, setHasData] = useState(false);
+    const { triggerMarketRefresh } = useContextStore();
 
     const fetchBenchmark = useCallback(async () => {
         if (!listingId) return;
@@ -113,13 +115,25 @@ export function BenchmarkWidget({ listingId, dateFrom, dateTo, refreshKey = 0 }:
                 <div className="flex items-center gap-2">
                     <BarChart3 className="h-4 w-4 text-[#f39c12]" />
                     <span className="text-[11px] font-black uppercase tracking-widest">Benchmark Intelligence</span>
+                </div>
+                <div className="flex items-center gap-2">
                     {hasData && (
                         <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#f39c12]/10 text-[#f39c12] border border-[#f39c12]/30">
                             {comps.length} comps
                         </span>
                     )}
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            triggerMarketRefresh();
+                        }}
+                        className="p-1 rounded-full hover:bg-muted text-muted-foreground transition-colors"
+                        title="Refresh from database"
+                    >
+                        <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+                    </button>
+                    {open ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
                 </div>
-                {open ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
             </button>
 
             {open && (

@@ -59,7 +59,7 @@ export const useContextStore = create<ContextStore>()(
       // Initial Date Range (Next 30 days)
       dateRange: {
         from: new Date(),
-        to: addDays(new Date(), 30),
+        to: addDays(new Date(), 14),
       },
 
       marketRefreshTrigger: 0,

@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
         const { dateRange, context } = body;
-        const listingId = context?.listingId ? Number(context.listingId) : null;
+        const listingId = context?.propertyId ? Number(context.propertyId) : null;
 
         if (!dateRange?.from || !dateRange?.to) {
             return NextResponse.json({ error: "Date range is required" }, { status: 400 });
@@ -219,16 +219,26 @@ Execute market research and return JSON with events, holidays, competitors, posi
                 const compsJson = JSON.stringify(Array.isArray(bd.comps) ? bd.comps : []);
                 const dist = bd.rate_distribution || {};
                 const verdict = bd.pricing_verdict || {};
+                const trend = bd.rate_trend || {};
+                const recommended = bd.recommended_rates || {};
 
                 await sql`DELETE FROM benchmark_data WHERE listing_id = ${listingId} AND date_from = ${dateRange.from} AND date_to = ${dateRange.to}`;
                 await sql`
                     INSERT INTO benchmark_data (
                         listing_id, date_from, date_to, p25_rate, p50_rate, p75_rate, p90_rate,
-                        your_price, percentile, verdict, comps
+                        avg_weekday, avg_weekend,
+                        your_price, percentile, verdict, reasoning,
+                        rate_trend, trend_pct,
+                        recommended_weekday, recommended_weekend, recommended_event,
+                        comps
                     ) VALUES (
                         ${listingId}, ${dateRange.from}, ${dateRange.to}, 
                         ${toNumeric(dist.p25)}, ${toNumeric(dist.p50)}, ${toNumeric(dist.p75)}, ${toNumeric(dist.p90)},
-                        ${toNumeric(verdict.your_price)}, ${toInt(verdict.percentile)}, ${verdict.verdict || null}, ${compsJson}
+                        ${toNumeric(dist.avg_weekday)}, ${toNumeric(dist.avg_weekend)},
+                        ${toNumeric(verdict.your_price)}, ${toInt(verdict.percentile)}, ${verdict.verdict || null}, ${recommended.reasoning || verdict.insight || null},
+                        ${trend.direction || null}, ${toNumeric(trend.pct_change)},
+                        ${toNumeric(recommended.weekday)}, ${toNumeric(recommended.weekend)}, ${toNumeric(recommended.event_peak)},
+                        ${compsJson}
                     )
                 `;
             } catch (err) {

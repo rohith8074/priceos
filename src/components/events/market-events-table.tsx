@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Loader2, Sparkles, AlertTriangle, ExternalLink, ChevronDown } from "lucide-react";
+import { Calendar as CalendarIcon, Loader2, Sparkles, AlertTriangle, ExternalLink, ChevronDown, RefreshCw } from "lucide-react";
 import { MarketEventRow } from "@/lib/db/schema";
 import { useContextStore } from "@/stores/context-store";
 import { cn } from "@/lib/utils";
@@ -26,7 +26,7 @@ export function MarketEventsTable() {
 
     // We use the same context that the chat uses so the table updates dynamically 
     // if you switch from Portfolio to Property view.
-    const { contextType, propertyId, dateRange, marketRefreshTrigger } = useContextStore();
+    const { contextType, propertyId, dateRange, marketRefreshTrigger, triggerMarketRefresh } = useContextStore();
 
     useEffect(() => {
         const fetchEvents = async () => {
@@ -116,6 +116,16 @@ export function MarketEventsTable() {
                         <Badge variant="secondary" className="text-[10px] font-medium font-mono">
                             {events.length} records
                         </Badge>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                triggerMarketRefresh();
+                            }}
+                            className="p-1.5 rounded-full hover:bg-muted text-muted-foreground transition-colors"
+                            title="Refresh from database"
+                        >
+                            <RefreshCw className={cn("h-3.5 w-3.5", loading ? "animate-spin" : "")} />
+                        </button>
                         <ChevronDown className={cn("h-4 w-4 transition-transform text-muted-foreground", isExpanded ? "rotate-180" : "")} />
                     </div>
                 </div>
