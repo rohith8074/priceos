@@ -32,9 +32,11 @@ export function HeaderNav() {
   const [userName, setUserName] = useState("User Account");
   const [userInitial, setUserInitial] = useState("U");
   const [userEmail, setUserEmail] = useState("");
+  const [mounted, setMounted] = useState(false);
 
-  // Fetch user info from Neon Auth session
+  // Fetch user info from Neon Auth session — only after mount to avoid hydration mismatch
   useEffect(() => {
+    setMounted(true);
     async function loadSession() {
       try {
         const res = await authClient.getSession();
@@ -115,8 +117,8 @@ export function HeaderNav() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
               <Avatar className="h-8 w-8">
-                <AvatarFallback className="text-xs bg-primary text-primary-foreground font-semibold uppercase">
-                  {userInitial}
+                <AvatarFallback className="text-xs bg-primary text-primary-foreground font-semibold uppercase" suppressHydrationWarning>
+                  {mounted ? userInitial : "U"}
                 </AvatarFallback>
               </Avatar>
             </Button>
@@ -125,13 +127,13 @@ export function HeaderNav() {
             <div className="flex items-center gap-2 px-2 py-1.5">
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="text-xs bg-primary text-primary-foreground font-semibold uppercase">
-                  {userInitial}
+                  {mounted ? userInitial : "U"}
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-col overflow-hidden">
-                <p className="text-sm font-medium truncate">{userName}</p>
-                <p className="text-[10px] text-muted-foreground truncate">
-                  {userEmail || "Property Manager"}
+                <p className="text-sm font-medium truncate" suppressHydrationWarning>{mounted ? userName : ""}</p>
+                <p className="text-[10px] text-muted-foreground truncate" suppressHydrationWarning>
+                  {mounted ? (userEmail || "Property Manager") : ""}
                 </p>
               </div>
             </div>
